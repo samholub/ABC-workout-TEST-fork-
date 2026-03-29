@@ -67,6 +67,8 @@ var SCHEMA_VERSION=1;
 function runMigrations(){var stored=S.get(KEYS.schemaVersion)||0;if(stored<1){console.log("Migrating to schema v1")}S.set(KEYS.schemaVersion,SCHEMA_VERSION)}
 runMigrations();
 
+function getLocalDateKey(d){d=d||new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,"0");var day=String(d.getDate()).padStart(2,"0");return y+"-"+m+"-"+day}
+
 function clampSet(s){if(!s||typeof s!=="object")return{weight:0,reps:0,rpe:0,completed:false};return{weight:Math.max(0,Math.min(Number(s.weight)||0,2000)),reps:Math.max(0,Math.min(Number(s.reps)||0,500)),rpe:Math.max(0,Math.min(Number(s.rpe)||0,10)),completed:!!s.completed}}
 function validateLogs(raw){if(!Array.isArray(raw))return[];return raw.filter(function(l){return l&&typeof l==="object"&&typeof l.date==="string"&&typeof l.session==="string"&&(!l.exercises||Array.isArray(l.exercises))}).map(function(l){if(!l.exercises)return l;return Object.assign({},l,{exercises:l.exercises.map(function(ex){if(!ex||!Array.isArray(ex.sets))return ex;return Object.assign({},ex,{sets:ex.sets.map(clampSet)})})})})}
 function validateState(raw){var def={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};if(!raw||typeof raw!=="object")return def;return{lastSession:typeof raw.lastSession==="string"?raw.lastSession:null,lastDate:raw.lastDate||null,isDoubleDay:!!raw.isDoubleDay,completedToday:Array.isArray(raw.completedToday)?raw.completedToday:[],preTgu:raw.preTgu||undefined}}
@@ -720,7 +722,7 @@ var _df=useState(function(){return S.get(KEYS.draft)||null}),draftSession=_df[0]
 var setRestDur=function(v){setRestDurState(v);S.set(KEYS.rest,v)};
 var setCarryPref=function(v){setCarryType(v);S.set(KEYS.carry,v)};
 
-useEffect(function(){var today=new Date().toDateString();if(cycleState.lastDate&&new Date(cycleState.lastDate).toDateString()!==today){var updated=Object.assign({},cycleState,{completedToday:[]});setCycleState(updated);S.set(KEYS.state,updated)}},[]);
+useEffect(function(){var today=getLocalDateKey();if(cycleState.lastDate&&getLocalDateKey(new Date(cycleState.lastDate))!==today){var updated=Object.assign({},cycleState,{completedToday:[]});setCycleState(updated);S.set(KEYS.state,updated)}},[]);
 
 useEffect(function(){if(screen!=="workout")return;var id=setInterval(function(){var draft={session:currentSession,exData:exData,start:start,readiness:readiness,warmup:warmup,notes:notes,timeAvail:timeAvail,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()};S.set(KEYS.draft,draft)},5000);return function(){clearInterval(id)}},[screen,currentSession,exData,start,readiness,warmup,notes,timeAvail,sessionRPE,activeEx,circuitMode]);
 
@@ -753,7 +755,7 @@ sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.sli
 var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness,sessionRPE:sessionRPE||0,prs:sessionPRs.length>0?sessionPRs:undefined,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
 var nlFull=[log].concat(logs);var trimmed=nlFull.length>100;var nl=nlFull.slice(0,100);
 var ct=(cycleState.completedToday||[]).concat([currentSession]);
-var ns={lastSession:currentSession,lastDate:new Date().toISOString(),isDoubleDay:ct.length>=2&&CYCLE.indexOf(currentSession)!==-1,completedToday:ct,preTgu:currentSession==="TGU"?(cycleState.preTgu||getRec()):undefined};
+var ns={lastSession:currentSession,lastDate:getLocalDateKey(),isDoubleDay:ct.length>=2&&CYCLE.indexOf(currentSession)!==-1,completedToday:ct,preTgu:currentSession==="TGU"?(cycleState.preTgu||getRec()):undefined};
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
 if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
 if(trimmed)alert("Oldest session removed to stay within storage limits.");
@@ -770,7 +772,7 @@ var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(functio
 
 var rec=getRec();
 var recReason=getRecReason();
-var daysSince=cycleState.lastDate?Math.floor((Date.now()-new Date(cycleState.lastDate).getTime())/86400000):null;
+var daysSince=cycleState.lastDate?(function(){var ld=cycleState.lastDate;var last=ld.length===10?new Date(ld+"T12:00:00"):new Date(ld);var today=new Date();today.setHours(12,0,0,0);return Math.floor((today-last)/86400000)})():null;
 var acwrVal=calcACWR(logs);
 var deloadWarn=shouldDeload(logs);
 var weekVol=calcTotalVolume(logs,7);
