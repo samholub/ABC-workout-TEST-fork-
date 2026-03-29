@@ -1092,10 +1092,23 @@ return null
 }
 
 // ========================================================================
-// 10. MOUNT
+// 10. ERROR BOUNDARY & MOUNT
 // ========================================================================
 
-RD.createRoot(document.getElementById("root")).render(e(App));
+class AppBoundary extends R.Component{
+constructor(props){super(props);this.state={hasError:false}}
+static getDerivedStateFromError(){return{hasError:true}}
+componentDidCatch(error,info){console.error("AppBoundary caught:",error,info)}
+render(){if(!this.state.hasError)return this.props.children;
+var exportBackup=function(){try{var data={version:20,exportDate:new Date().toISOString(),emergency:true,state:S.get(KEYS.state),logs:S.get(KEYS.logs),weights:S.get(KEYS.weights),videos:S.get(KEYS.videos),carry:S.get(KEYS.carry),rest:S.get(KEYS.rest)};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="emergency_backup.json";a.click();URL.revokeObjectURL(url)}catch(ex){alert("Export failed: "+ex.message)}};
+return e("div",{style:{position:"fixed",inset:0,background:T.bg,color:T.txt,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"-apple-system,system-ui,sans-serif",textAlign:"center"}},
+e("div",{style:{fontSize:48,marginBottom:16}},"\u26A0\uFE0F"),
+e("div",{style:{fontSize:20,fontWeight:700,marginBottom:8,color:T.hi}},"Something went wrong."),
+e("div",{style:{fontSize:14,color:T.sec,marginBottom:32}},"The app crashed. Your data is safe in storage."),
+e("div",{style:{display:"flex",gap:12,flexDirection:"column",width:"100%",maxWidth:280}},
+e("button",{onClick:exportBackup,style:{padding:"14px 20px",background:T.acc,border:"none",borderRadius:10,color:T.bg,fontSize:15,fontWeight:700,cursor:"pointer"}},"Export Backup"),
+e("button",{onClick:function(){window.location.reload()},style:{padding:"14px 20px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.txt,fontSize:15,fontWeight:600,cursor:"pointer"}},"Reload App")))}}
+RD.createRoot(document.getElementById("root")).render(e(AppBoundary,null,e(App)));
 </script>
 </body>
 </html>
