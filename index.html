@@ -267,6 +267,24 @@ return null}
 // Looks at the last 9 non-TGU, non-manual sessions. If any core type (A, B, C)
 // is completely absent, surfaces one calm recommendation for the most neglected.
 // modC counts toward C-family (both include vertical pulling).
+function getPreSessionContext(sessionName,logs,readiness,lastWeights,cycleState){
+var sess=SESSIONS[sessionName];if(!sess)return null;
+var sesCount=getSessionCount(logs);var period=getPeriodPhase(sesCount);
+var fatigue=getFatigueTrend(logs);var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
+var isDouble=(cycleState||{}).isDoubleDay;
+var exercises=sess.exercises.map(function(ex){
+var prog=getProgression(ex.id,logs,readiness,sesCount);
+var sug=getSuggestedLoad(ex.id,logs,readiness,sesCount,isDouble&&ex.isCarry);
+var lastSets=null;var gids=getGroupIds(ex.id);
+for(var i=0;i<logs.length;i++){var l=logs[i];if(!l.exercises)continue;
+var found=l.exercises.find(function(x){return gids.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});
+if(found){lastSets=found.sets;break}}
+return{id:ex.id,name:ex.name,sets:ex.sets,hasWeight:ex.hasWeight!==false,
+suggestedWeight:sug?sug.weight:(lastWeights[ex.id]||null),
+suggestedReason:sug?sug.reason:null,
+progression:prog,lastSets:lastSets}});
+return{session:sess,exercises:exercises,readinessScore:rdScore,period:period,fatigue:fatigue,isDouble:isDouble}}
+
 function getBalanceAdvisory(logs,rec){
 var recent=[];
 for(var i=0;i<logs.length&&recent.length<9;i++){
@@ -891,8 +909,48 @@ fatigueTrend&&e("div",{style:{marginTop:10,background:"#1a1a0a",border:"1px soli
 score<=4&&e("div",{style:{marginTop:8,fontSize:13,color:"#A8A29E",fontStyle:"italic"}},"Readiness \u22644/9. Progression paused \u2014 maintain loads."))),
 e("div",{style:{flexShrink:0,background:T.bg,borderTop:"1px solid "+T.inp,padding:"12px 14px 12px"}},
 e("div",{style:{display:"flex",gap:8}},
+e("button",{onClick:function(){setScreen("gameplan")},style:{width:"100%",padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"See Game Plan \u2192"))))
+}
+
+// ── Screen: Game Plan ──
+function renderGamePlan(){
+var sess=SESSIONS[currentSession];
+var ctx=getPreSessionContext(currentSession,logs,readiness,lastWeights,cycleState);
+if(!ctx)return e("div",null,"Loading...");
+var rdClr=ctx.readinessScore<=4?T.err:ctx.readinessScore<=6?T.warn:T.ok;
+var rdLbl=ctx.readinessScore<=4?"Low":ctx.readinessScore<=6?"Moderate":"High";
+return e("div",{style:{height:"100%",display:"flex",flexDirection:"column",background:T.bg}},
+e("div",{style:{padding:"calc(14px + env(safe-area-inset-top,0px)) 16px 10px",flexShrink:0}},
+e("button",{onClick:function(){setScreen("readiness")},style:{background:T.inp,border:"none",borderRadius:8,color:T.txt,padding:"8px 14px",fontSize:14,cursor:"pointer",marginBottom:10}},"\u2190 Back"),
+e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+e("div",null,
+e("div",{style:{fontSize:13,color:sess.color,textTransform:"uppercase",letterSpacing:2,fontWeight:700}},sess.label),
+e("div",{style:{fontSize:22,fontWeight:700,color:T.hi,marginTop:3}},"Your Game Plan")),
+e("div",{style:{textAlign:"center"}},
+e("div",{style:{fontSize:22,fontWeight:700,color:rdClr,fontFamily:"'JetBrains Mono',monospace"}},ctx.readinessScore+"/9"),
+e("div",{style:{fontSize:11,color:rdClr,fontWeight:600}},rdLbl)))),
+e("div",{style:{flex:1,overflowY:"auto",padding:"0 14px 14px",WebkitOverflowScrolling:"touch"}},
+ctx.fatigue&&e("div",{style:{background:"#1a1a0a",border:"1px solid #854d0e44",borderRadius:10,padding:"10px 14px",marginBottom:10}},
+e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},ctx.fatigue.msg)),
+ctx.isDouble&&e("div",{style:{background:"#1a1a0a",border:"1px solid #854d0e44",borderRadius:10,padding:"10px 14px",marginBottom:10}},
+e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},"Second session today \u2014 consider lighter carries.")),
+ctx.period&&e("div",{style:{display:"inline-flex",alignItems:"center",gap:6,background:ctx.period.clr+"15",border:"1px solid "+ctx.period.clr+"33",borderRadius:8,padding:"4px 12px",marginBottom:12}},
+e("span",{style:{fontSize:11,color:ctx.period.clr,fontWeight:600}},ctx.period.msg)),
+ctx.exercises.map(function(ex){
+var progClr=ex.progression?ex.progression.type==="progress"?T.ok:ex.progression.type==="caution"?T.warn:T.sec:T.sec;
+var progIcon=ex.progression?ex.progression.type==="progress"?"\u2B06":ex.progression.type==="caution"?"\u26A0":"\u2192":null;
+return e("div",{key:ex.id,style:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,padding:"12px 14px",marginBottom:8}},
+e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
+e("div",{style:{fontSize:15,fontWeight:700,color:T.hi}},ex.name),
+ex.suggestedWeight&&e("div",{style:{fontSize:18,fontWeight:700,color:T.accL,fontFamily:"'JetBrains Mono',monospace"}},ex.suggestedWeight+" lbs")),
+e("div",{style:{fontSize:12,color:T.mut}},ex.sets+" sets"+(ex.lastSets?" \u00b7 Last: "+ex.lastSets.map(function(s){return(s.weight||"BW")+(s.reps?"x"+s.reps:"")}).join(", "):"")),
+ex.progression&&e("div",{style:{marginTop:4,fontSize:12,color:progClr,display:"flex",alignItems:"center",gap:4}},
+e("span",null,progIcon),e("span",null,ex.progression.msg)),
+ex.suggestedReason&&!ex.progression&&e("div",{style:{marginTop:4,fontSize:12,color:T.sec}},ex.suggestedReason))})),
+e("div",{style:{flexShrink:0,background:T.bg,borderTop:"1px solid "+T.inp,padding:"12px 14px 12px"}},
+e("div",{style:{display:"flex",gap:8}},
 e("button",{onClick:function(){setScreen("warmup")},style:{flex:1,padding:16,background:T.inp,border:"1px solid "+T.brd,borderRadius:14,color:T.txt,fontSize:14,fontWeight:600,cursor:"pointer"}},"Pick Warm-Up"),
-e("button",{onClick:function(){var sw=getSmartWarmup(currentSession,readiness,daysSince,timeAvail);setWarmup(sw);setScreen("workout")},style:{flex:1,padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}},"Quick Start \u2192"))))
+e("button",{onClick:function(){var sw=getSmartWarmup(currentSession,readiness,daysSince,timeAvail);setWarmup(sw);setScreen("workout")},style:{flex:1,padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"Start Lifting \uD83C\uDFCB"))))
 }
 
 // ── Screen: Warmup Selection ──
@@ -901,7 +959,7 @@ var sess=SESSIONS[currentSession];
 var smartWU=getSmartWarmup(currentSession,readiness,daysSince,timeAvail);
 return e("div",{style:{height:"100%",display:"flex",flexDirection:"column",background:"#0C0A09"}},
 e("div",{style:{padding:"calc(14px + env(safe-area-inset-top,0px)) 16px 10px",flexShrink:0}},
-e("button",{onClick:function(){setScreen("readiness")},style:{background:"#292524",border:"none",borderRadius:8,color:"#F5F5F4",padding:"8px 14px",fontSize:14,cursor:"pointer",marginBottom:10}},"\u2190 Back"),
+e("button",{onClick:function(){setScreen("gameplan")},style:{background:"#292524",border:"none",borderRadius:8,color:"#F5F5F4",padding:"8px 14px",fontSize:14,cursor:"pointer",marginBottom:10}},"\u2190 Back"),
 e("div",{style:{fontSize:13,color:sess.color,textTransform:"uppercase",letterSpacing:2,fontWeight:700}},"Starting "+sess.label),
 e("div",{style:{fontSize:24,fontWeight:700,color:"#F5F5F4",marginTop:4}},"Pick Your Warm-Up")),
 e("div",{style:{flex:1,padding:"0 14px",display:"flex",flexDirection:"column",minHeight:0}},
@@ -1100,6 +1158,7 @@ e("button",{onClick:saveAndFinish,style:{width:"100%",padding:"14px",background:
 if(screen==="home"&&!showHist) return renderHome();
 if(showHist) return renderHistory();
 if(screen==="readiness") return renderReadinessCheckIn();
+if(screen==="gameplan") return renderGamePlan();
 if(screen==="warmup") return renderWarmupSelection();
 if(screen==="workout") return renderActiveWorkout();
 if(screen==="complete") return renderSessionComplete();
