@@ -210,6 +210,17 @@ function shouldDeload(logs){if(logs.length<6)return false;var recent=logs.slice(
 // Session count and training focus — based on sessions logged, not calendar
 function getSessionCount(logs){var c=0;for(var i=0;i<logs.length;i++){if(!logs[i].manual)c++}return c}
 function getPeriodPhase(sessionCount){if(sessionCount<=8)return{phase:"early",msg:"Establish working weights",clr:"#60A5FA"};if(sessionCount<=20)return{phase:"building",msg:"Build consistency",clr:"#A78BFA"};if(sessionCount<=40)return{phase:"established",msg:"Normal progression",clr:"#FBBF24"};return{phase:"experienced",msg:"Maintain and progress",clr:"#10B981"}}
+function getWorkingWeight(sets){
+var weights=sets.filter(function(s){return s.weight>0}).map(function(s){return s.weight});
+if(weights.length===0)return 0;
+var freq={};weights.forEach(function(w){freq[w]=(freq[w]||0)+1});
+var modeW=0,modeCount=0;
+Object.keys(freq).forEach(function(w){if(freq[w]>modeCount){modeCount=freq[w];modeW=Number(w)}});
+if(modeCount>1)return modeW;
+weights.sort(function(a,b){return a-b});
+var mid=Math.floor(weights.length/2);
+return weights.length%2===0?weights[mid-1]:weights[mid]}
+
 function getProgression(exId,logs,readiness,sessionCount){
 var cfg=PROG[exId];if(!cfg||cfg.inc===0)return null;
 var groupIds=getGroupIds(exId);
@@ -219,7 +230,7 @@ var l=logs[i];if(!l.exercises)continue;
 var ex=l.exercises.find(function(x){return groupIds.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});
 if(ex){var sets=ex.sets;var avgReps=sets.reduce(function(a,s){return a+(s.reps||0)},0)/sets.length;
 var rpes=sets.filter(function(s){return s.rpe>0});var avgRPE=rpes.length?rpes.reduce(function(a,s){return a+s.rpe},0)/rpes.length:0;
-var maxW=Math.max.apply(null,sets.map(function(s){return s.weight||0}));
+var maxW=getWorkingWeight(sets);
 history.push({reps:avgReps,rpe:avgRPE,weight:maxW})}}
 if(history.length<2)return null;
 var h0=history[0],h1=history[1];
@@ -249,7 +260,7 @@ if(!cfg||cfg.inc===0)return null;
 var gids=getGroupIds(exId);var lastW=0;
 for(var i=0;i<logs.length;i++){var l=logs[i];if(!l.exercises)continue;
 var ex=l.exercises.find(function(x){return gids.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});
-if(ex){var w=Math.max.apply(null,ex.sets.map(function(s){return s.weight||0}));if(w>0){lastW=w;break}}}
+if(ex){var w=getWorkingWeight(ex.sets);if(w>0){lastW=w;break}}}
 if(!lastW)return null;
 var prog=getProgression(exId,logs,readiness,sessionCount);
 if(prog&&prog.type==="progress")return{weight:prog.weight,reason:prog.msg};
@@ -693,6 +704,7 @@ function ExerciseCard(props){
 var exercise=props.exercise,setData=props.setData,onUpdate=props.onUpdate,lastWeight=props.lastWeight,showTimer=props.showTimer,onTimerDone=props.onTimerDone,restDuration=props.restDuration,carryType=props.carryType,onCarryTypeChange=props.onCarryTypeChange,videoUrls=props.videoUrls,onVideoSave=props.onVideoSave,isExpanded=props.isExpanded,onToggle=props.onToggle,progression=props.progression,onHR=props.onHR,ghostSets=props.ghostSets,prs=props.prs,e1rmData=props.e1rmData,carryAdvisory=props.carryAdvisory,suggestedLoad=props.suggestedLoad;
 var _c=useState(false),showCues=_c[0],setShowCues=_c[1];
 var _v=useState(false),editVid=_v[0],setEditVid=_v[1];
+var _sv=useState(false),showVid=_sv[0],setShowVid=_sv[1];
 var _vi=useState(""),vidInput=_vi[0],setVidInput=_vi[1];
 var cues=FORM_CUES[exercise.id]||[];
 var videoUrl=(videoUrls||{})[exercise.id]||"";
@@ -725,14 +737,19 @@ progression&&e("div",{style:{margin:"0 16px 8px",padding:"8px 12px",background:p
 !progression&&suggestedLoad&&suggestedLoad.reason&&e("div",{style:{margin:"0 16px 8px",padding:"8px 12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:8}},e("div",{style:{fontSize:12,color:T.sec}},suggestedLoad.reason)),
 showCues&&cues.length>0&&e("div",{style:{padding:"0 16px 10px"}},e("div",{style:{background:"#1a1a14",border:"1px solid #3d3d00",borderRadius:8,padding:"10px 12px"}},cues.map(function(c,i){return e("div",{key:i,style:{fontSize:13,color:"#D4D4AA",lineHeight:1.5,marginBottom:i<cues.length-1?6:0,paddingLeft:8,borderLeft:"2px solid #554d00"}},c)}))),
 exercise.isCarry&&e("div",{style:{padding:"0 16px 8px",display:"flex",gap:6}},Object.keys(CARRY_TYPES).map(function(k){var v=CARRY_TYPES[k];return e("button",{key:k,onClick:function(){onCarryTypeChange(k)},style:{flex:1,padding:"6px 8px",borderRadius:8,fontSize:12,cursor:"pointer",fontWeight:carryType===k?600:400,background:carryType===k?"#292524":"transparent",border:"1px solid "+(carryType===k?"#57534E":"#333"),color:carryType===k?"#F5F5F4":"#78716C"}},v.label,e("span",{style:{display:"block",fontSize:10,fontWeight:400,color:"#78716C",marginTop:1}},v.desc))})),
-vidId&&e("div",{style:{padding:"0 16px 8px"}},e("div",{style:{position:"relative",paddingBottom:"56.25%",borderRadius:8,overflow:"hidden",background:"#0C0A09"}},e("iframe",{src:"https://www.youtube.com/embed/"+vidId,style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"},allow:"accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture",allowFullScreen:true})),e("button",{onClick:function(){setEditVid(true);setVidInput(videoUrl)},style:{marginTop:4,background:"transparent",border:"none",color:"#57534E",fontSize:11,cursor:"pointer"}},"Change video")),
+vidId&&e("div",{style:{padding:"0 16px 8px"}},
+e("div",{onClick:function(){setShowVid(!showVid)},style:{width:"100%",background:T.inp,border:"1px solid "+T.brd,borderRadius:8,padding:"8px 12px",color:T.sec,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+e("span",null,(showVid?"\u25B2 Hide":"\u25B6 Show")+" Video Reference"),
+e("button",{onClick:function(ev){ev.stopPropagation();setEditVid(true);setVidInput(videoUrl)},style:{background:"transparent",border:"none",color:T.mut,fontSize:11,cursor:"pointer",padding:"2px 6px"}},"Edit")),
+showVid&&e("div",{style:{position:"relative",paddingBottom:"56.25%",borderRadius:8,overflow:"hidden",background:"#0C0A09",marginTop:6}},
+e("iframe",{src:"https://www.youtube.com/embed/"+vidId,style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"},allow:"accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture",allowFullScreen:true}))),
 !vidId&&!editVid&&e("button",{onClick:function(){setEditVid(true);setVidInput("")},style:{margin:"0 16px 8px",padding:"8px 12px",background:"#292524",border:"1px dashed #44403C",borderRadius:8,color:"#78716C",fontSize:13,cursor:"pointer",width:"calc(100% - 32px)",display:"flex",alignItems:"center",justifyContent:"center",gap:6}},"\u{1F3AC} Add YouTube Reference"),
 editVid&&e("div",{style:{padding:"0 16px 8px",display:"flex",gap:6}},e("input",{value:vidInput,onChange:function(ev){setVidInput(ev.target.value)},placeholder:"Paste YouTube URL...",style:{flex:1,background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#F5F5F4",padding:"8px 10px",fontSize:13,outline:"none"}}),e("button",{onClick:function(){onVideoSave(exercise.id,vidInput);setEditVid(false)},style:{background:"#F59E0B",border:"none",borderRadius:8,color:"#1C1917",padding:"8px 12px",fontSize:13,fontWeight:600,cursor:"pointer"}},"Save"),e("button",{onClick:function(){setEditVid(false)},style:{background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#A8A29E",padding:"8px 10px",fontSize:13,cursor:"pointer"}},"\u2715")),
 e("div",{style:{padding:"0 16px 12px"}},
 e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"4px 0",marginBottom:4}},
 e("div",{style:{width:44,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"Set"),
 exercise.hasWeight&&e("div",{style:{width:60,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"Weight"),
-e("div",{style:{width:52,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"Reps"),
+e("div",{style:{width:52,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},exercise.isCarry?"Yards":"Reps"),
 e("div",{style:{flex:1,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"RPE")),
 setData.map(function(set,i){var ghost=ghostSets&&ghostSets[i]?ghostSets[i]:null;var isPR=prs&&prs.some(function(p){return p.setIdx===i});
 var RPE_COLORS={5:T.ok,6:"#34D399",7:T.ok,8:T.acc,9:T.err,10:T.err};
@@ -921,7 +938,7 @@ e("button",{onClick:function(){startSession(rec)},style:{width:"100%",padding:"1
 e("div",{style:{display:"flex",flexDirection:"column",minHeight:0}},
 e("div",{style:Object.assign({},STYLES.sectionLabel,{fontSize:11,letterSpacing:2,marginBottom:6,paddingLeft:2})},"All Sessions"),
 e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,alignContent:"start"}},
-Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];var avg=getAvgTime(k,logs);return e("button",{key:k,onClick:function(){startSession(k)},style:{background:"#1C1917",border:"1px solid "+(k===rec?s.color+"66":"#292524"),borderRadius:12,padding:"10px 12px",cursor:"pointer",textAlign:"left",minHeight:70,display:"flex",flexDirection:"column",justifyContent:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:1}},e("div",{style:{width:7,height:7,borderRadius:"50%",background:s.color}}),e("div",{style:{fontSize:14,fontWeight:600,color:"#F5F5F4"}},s.label)),e("div",{style:{fontSize:11,color:"#78716C"}},s.time+(avg?" \u00b7 Avg: "+avg+"m":"")),s.subtitle&&e("div",{style:{fontSize:10,color:"#57534E",fontStyle:"italic"}},s.subtitle))})),
+Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];var avg=getAvgTime(k,logs);return e("button",{key:k,onClick:function(){startSession(k)},style:{background:"#1C1917",border:"1px solid "+(k===rec?s.color+"66":"#292524"),borderRadius:12,padding:"10px 12px",cursor:"pointer",textAlign:"left",minHeight:70,display:"flex",flexDirection:"column",justifyContent:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:1}},e("div",{style:{width:7,height:7,borderRadius:"50%",background:s.color}}),e("div",{style:{fontSize:14,fontWeight:600,color:"#F5F5F4"}},s.label)),e("div",{style:{fontSize:11,color:"#78716C"}},s.time+(avg?" \u00b7 Avg: "+avg+"m total":"")),s.subtitle&&e("div",{style:{fontSize:10,color:"#57534E",fontStyle:"italic"}},s.subtitle))})),
 todayN===1&&CYCLE.indexOf((cycleState.completedToday||[])[0])!==-1&&e("div",{style:{marginTop:6,background:"#1C1917",border:"1px solid #44403C",borderRadius:10,padding:"8px 12px"}},e("div",{style:{fontSize:12,color:"#FBBF24",fontWeight:600}},"\u26a1 Double Day Available")))),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:0})},
 e("div",{style:{display:"flex",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"🎯 Loads"),e("button",{onClick:function(){setScreen("prs")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"🏆 Records"),e("button",{onClick:function(){setScreen("dashboard")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"📊 Dashboard"),e("button",{onClick:function(){setShowHist(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"📋 History"))),

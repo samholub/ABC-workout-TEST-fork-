@@ -1,0 +1,194 @@
+# ABC Workout PWA — Change Batch: Weight Logic Fix + Polish
+
+## CONTEXT
+You are preparing implementation instructions for Replit to execute against a single-file React PWA (`index.html`, ~1238 lines). The app uses React 18 via CDN with `React.createElement` directly (no JSX, no build tools). All state is in `useState` hooks inside an `App` function component. The file is organized into 10 labeled sections with a TOC at the top.
+
+Key architectural rules:
+- Single file: `index.html`. Do not create additional files.
+- No JSX. All UI is `React.createElement` (aliased as `e`).
+- Inline styles throughout, with `T` (color tokens) and `STYLES` (layout tokens) objects.
+- Carry exercises have `isCarry: true` in their definition.
+- `MONO` is the monospace font variable (`'JetBrains Mono',monospace`).
+- The ExerciseCard component is in Section 8. The progression engine is in Section 5.
+
+## CHANGES TO IMPLEMENT (Execute in this order)
+
+### 1. CRITICAL BUG FIX: Working Weight Uses Mode Instead of Max
+
+**Problem:** `getProgression()` and `getSuggestedLoad()` use `Math.max` across all sets to determine working weight. If a user accidentally loads too heavy on one set out of three, the app treats that outlier as the working weight and suggests progressing from it.
+
+**What to do:**
+
+A) Add this helper function in Section 5, BEFORE `getProgression`:
+
+```javascript
+function getWorkingWeight(sets){
+  var weights=sets.filter(function(s){return s.weight>0}).map(function(s){return s.weight});
+  if(weights.length===0)return 0;
+  var freq={};weights.forEach(function(w){freq[w]=(freq[w]||0)+1});
+  var modeW=0,modeCount=0;
+  Object.keys(freq).forEach(function(w){if(freq[w]>modeCount){modeCount=freq[w];modeW=Number(w)}});
+  if(modeCount>1)return modeW;
+  weights.sort(function(a,b){return a-b});
+  var mid=Math.floor(weights.length/2);
+  return weights.length%2===0?weights[mid-1]:weights[mid];
+}
+```
+
+B) In `getProgression`, find this line:
+```javascript
+var maxW=Math.max.apply(null,sets.map(function(s){return s.weight||0}));
+```
+Replace with:
+```javascript
+var maxW=getWorkingWeight(sets);
+```
+
+C) In `getSuggestedLoad`, find this line:
+```javascript
+var w=Math.max.apply(null,ex.sets.map(function(s){return s.weight||0}));
+```
+Replace with:
+```javascript
+var w=getWorkingWeight(ex.sets);
+```
+
+**Verify:** If sets are logged at 35, 35, 50 lbs, working weight resolves to 35. Progression suggests 40 (35+5), not 55.
+
+---
+
+### 2. POLISH: Collapsible YouTube Videos
+
+**Problem:** YouTube iframes auto-load when exercise card expands, causing performance jank.
+
+**What to do:**
+
+A) In ExerciseCard (Section 8), add a new state variable after the existing `editVid` state:
+```javascript
+var _sv=useState(false),showVid=_sv[0],setShowVid=_sv[1];
+```
+
+B) Find the block that starts with `vidId&&e("div"` — this renders the YouTube iframe and "Change video" button. Replace the ENTIRE `vidId&&` block (the iframe, the wrapping div, and the "Change video" button below it) with:
+
+```javascript
+vidId&&e("div",{style:{padding:"0 16px 8px"}},
+  e("button",{onClick:function(){setShowVid(!showVid)},style:{width:"100%",background:T.inp,border:"1px solid "+T.brd,borderRadius:8,padding:"8px 12px",color:T.sec,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+    e("span",null,(showVid?"\u25B2 Hide":"\u25B6 Show")+" Video Reference"),
+    e("button",{onClick:function(ev){ev.stopPropagation();setEditVid(true);setVidInput(videoUrl)},style:{background:"transparent",border:"none",color:T.mut,fontSize:11,cursor:"pointer",padding:"2px 6px"}},"Edit")),
+  showVid&&e("div",{style:{position:"relative",paddingBottom:"56.25%",borderRadius:8,overflow:"hidden",background:"#0C0A09",marginTop:6}},
+    e("iframe",{src:"https://www.youtube.com/embed/"+vidId,style:{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"},allow:"accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture",allowFullScreen:true}))),
+```
+
+Make sure the old "Change video" button (`e("button",{onClick:function(){setEditVid(true)...}..."Change video")`) that was a separate element BELOW the iframe is removed — it's now integrated into the toggle button as "Edit".
+
+**Verify:** Exercise with a saved YouTube URL shows a "▶ Show Video Reference" button instead of auto-loading iframe. Tapping toggles the iframe. "Edit" button opens the URL editor.
+
+---
+
+### 3. POLISH: Carry Exercises Show "Yards" Instead of "Reps"
+
+**What to do:**
+
+In ExerciseCard's expanded set row area, find where the column headers are rendered (these may have been added in the recent polish pass — look for "Reps" or "reps" as a header label). If column headers exist above the set rows, change the reps column header to be conditional:
+
+```javascript
+exercise.isCarry?"Yards":"Reps"
+```
+
+If the per-row "reps" label span still exists (from before the polish pass removed them), apply the same conditional there.
+
+Also in the collapsed card summary line, if it shows "reps" text for carries, change to "yards".
+
+**Verify:** Open a carry exercise (Suitcase Carry, Carries) → header or label says "Yards". Open a non-carry exercise (BSS, Rows) → says "Reps".
+
+---
+
+### 4. POLISH: Avg Time Shows "total" Suffix
+
+**What to do:**
+
+In `renderHome()`, find the session card rendering where `getAvgTime` is displayed. Look for this pattern:
+```javascript
+s.time+(avg?" \u00b7 Avg: "+avg+"m":"")
+```
+
+Change to:
+```javascript
+s.time+(avg?" \u00b7 Avg: "+avg+"m total":"")
+```
+
+**Verify:** Session cards on home screen show "15 min · Avg: 18m total" instead of "15 min · Avg: 18m".
+
+---
+
+### 5. UI POLISH BATCH (from prior design review — implement together)
+
+These are styling changes to ExerciseCard and RestTimer for better gym ergonomics. No logic changes.
+
+**5A. Enlarge set completion check circles to 44x44**
+
+In ExerciseCard's expanded set row (inside `setData.map`), find the check circle div with `width:28,height:28`. Change to `width:44,height:44,borderRadius:"50%",fontSize:16`. This is the div with `onClick:function(){toggleDone(i)}`.
+
+Do NOT change the collapsed card's status circle (the one showing set count) — that stays at 28x28.
+
+**5B. Replace RPE dropdown with inline tap buttons**
+
+In ExerciseCard's expanded set row, find the `e("select"` element for RPE input. Replace the entire RPE section (the "RPE" label span + the select element) with inline buttons:
+
+```javascript
+e("div",{style:{display:"flex",gap:3,marginLeft:"auto"}},
+  ["",5,6,7,8,9,10].map(function(v){
+    var isActive=set.rpe===v||(v===""&&!set.rpe);
+    var clr=v===""?T.mut:v<=6?T.ok:v<=8?T.warn:T.err;
+    return e("button",{key:v====""?"none":v,onClick:function(ev){ev.stopPropagation();updateSet(i,"rpe",v===""?0:Number(v))},
+      style:{width:32,height:32,borderRadius:8,fontSize:12,fontWeight:isActive?700:400,
+        background:isActive&&v!==""?clr+"33":"transparent",
+        border:"1px solid "+(isActive&&v!==""?clr:T.inp),
+        color:isActive?v===""?T.mut:clr:T.mut,cursor:"pointer",padding:0,
+        fontFamily:MONO}},v===""?"\u2014":v)}))
+```
+
+**5C. Add column headers above set rows**
+
+In ExerciseCard's expanded view, immediately BEFORE the `e("div",{style:{padding:"0 16px 12px"}},setData.map(...)` block, add:
+
+```javascript
+e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"0 16px 4px",marginBottom:2}},
+  e("div",{style:{width:44,fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1,fontWeight:600,textAlign:"center",flexShrink:0}},"Set"),
+  exercise.hasWeight&&e("div",{style:{width:60,fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1,fontWeight:600,textAlign:"center"}},"Wt"),
+  e("div",{style:{width:52,fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1,fontWeight:600,textAlign:"center"}},exercise.isCarry?"Yds":"Reps"),
+  e("div",{style:{fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1,fontWeight:600,marginLeft:"auto"}},"RPE")),
+```
+
+**5D. Remove per-row labels**
+
+In the set row inside `setData.map`, remove these three elements:
+- `e("span",{style:{fontSize:12,color:T.mut}},"lbs")` — after weight input
+- `e("span",{style:{fontSize:12,color:T.mut}},"reps")` — after reps input
+- `e("span",{style:{fontSize:11,color:T.mut}},"RPE")` — before RPE select (this is gone now, replaced by buttons)
+
+**5E. Widen input fields**
+
+Find `STYLES.numInput` in Section 2 and update padding and fontSize:
+```javascript
+numInput:{background:T.inp,border:"1px solid "+T.brd,borderRadius:8,color:T.hi,padding:8,fontSize:16,textAlign:"center",outline:"none",fontFamily:MONO}
+```
+
+In the set row, change weight input width from 52 to 60, and reps input width from 44 to 52.
+
+**5F. Enlarge floating timer buttons**
+
+In RestTimer's floating variant (the `if(floating)` branch), change button padding from `"5px 10px"` to `"10px 16px"` and fontSize from 12 to 14 for the Pause and Skip/Next buttons. Change the HR button padding from `"5px 7px"` to `"10px 12px"`.
+
+**Verify all of 5A-5F:** Start a workout. Check circles are large and easy to tap. RPE is one-tap inline buttons. Column headers show above set rows. No "lbs" or "reps" labels on individual rows. Inputs feel spacious. Timer buttons are comfortable to tap. No horizontal overflow on any iPhone screen width.
+
+---
+
+## EXECUTION RULES FOR REPLIT
+
+1. **Read before writing.** Before editing any section, read the surrounding 20 lines to understand the context.
+2. **One change at a time.** Implement change 1, verify it doesn't break anything, then move to change 2.
+3. **Do not refactor adjacent code.** If you see something you'd like to improve near a change site, leave it alone.
+4. **Do not change the section structure, TOC, or version number.** Those are managed separately.
+5. **Test by loading the app** after each change. Confirm no console errors and the feature works as described.
+6. **Preserve all existing functionality.** Ghost sets, PR detection, progression badges, draft persistence, carry type toggle — all must continue working exactly as before.
