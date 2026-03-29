@@ -736,7 +736,10 @@ setScreen("readiness")
 };
 
 var saveAndFinish=function(){
-var sess=SESSIONS[currentSession];var nw=Object.assign({},lastWeights);
+var sess=SESSIONS[currentSession];
+var totalDone=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(function(s){if(s.completed)totalDone++})});
+if(totalDone===0){if(window.confirm("No sets completed. Discard this session?")){localStorage.removeItem(KEYS.draft);home()}return}
+var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
 setLastWeights(nw);S.set(KEYS.weights,nw);
 var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness,sessionRPE:sessionRPE||0,prs:sessionPRs.length>0?sessionPRs:undefined,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
