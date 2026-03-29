@@ -1,0 +1,30 @@
+The RPE-Adaptive Timer is working perfectly. 
+
+We are now moving to Phase 3B: Personal Records Board. Do not touch the timer logic or any existing data persistence logic.
+
+**Current Task: Phase 3B - PR Board and Game Plan Integration**
+
+**Requirements:**
+1. **The Data Function:** Create a function `getAllTimePRs(logs)` (place it in Section 4 with other data utilities). 
+   - Iterate through all logs and calculate the all-time bests for each exercise group.
+   - For each group, return an object containing: `bestWeight`, `bestWeightDate`, `bestE1RM`, `bestE1RMDate`, and `bestRepsAtWeight` (the max reps achieved at that `bestWeight`).
+
+2. **The PR Board Screen:** Create a new React component `renderPRBoard()`.
+   - It should render a clean, scrollable list of cards (one for each exercise group).
+   - Each card displays the exercise name, the All-Time Max Weight (and the date it was set), and the All-Time Best e1RM (and the date).
+   - Add a standard "Back to Home" button at the top or bottom to return to the main screen.
+
+3. **Navigation:** Add a new "PRs" or "Records" button to the main Home screen footer (alongside History). Clicking it should change the app state to render the PR Board (e.g., `screen === 'prs'`). Make sure to update your main `App` render router to handle this new screen.
+
+4. **Game Plan Integration:** Update the `getPreSessionContext` function.
+   - For each exercise in the upcoming session, calculate the `prGap`: subtract the `suggestedWeight` from the `bestWeight` found via `getAllTimePRs`.
+   - Pass this `prTarget` data into the context object.
+
+5. **Game Plan UI:** Update the `PreSessionCard` (Game Plan) UI. 
+   - Underneath the suggested weight for each exercise, add a small text line indicating PR proximity. 
+   - If they are close: "PR: [X] lbs ([Y] lbs away)".
+   - If the suggested weight matches the PR: "At PR weight".
+   - If the suggested weight is higher: "New PR territory 🔥".
+   - Use your `STYLES` tokens or clean Tailwind classes (e.g., `text-xs text-amber-600` for close, `text-green-600` for new territory).
+
+Implement this logic and UI now. Let me know when it is ready to test!

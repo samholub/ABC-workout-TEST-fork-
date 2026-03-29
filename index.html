@@ -165,6 +165,8 @@ function detectPRs(exId,currentSets,logs){var gids=getGroupIds(exId);var prs=[];
 for(var i=0;i<logs.length;i++){var l=logs[i];if(!l.exercises)continue;var ex=l.exercises.find(function(x){return gids.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});if(ex)ex.sets.forEach(function(s){if(s.weight>bestWeight)bestWeight=s.weight;var key=s.weight||0;if(!bestReps[key]||s.reps>bestReps[key])bestReps[key]=s.reps;var e=calcE1RM(s.weight||0,s.reps||0);if(e>bestE1RM)bestE1RM=e})}
 currentSets.forEach(function(s,i){if(!s.completed)return;var reasons=[];if(s.weight>0&&s.weight>bestWeight)reasons.push("weight");var key=s.weight||0;if(s.reps>0&&(!bestReps[key]||s.reps>bestReps[key]))reasons.push("reps");var e=calcE1RM(s.weight||0,s.reps||0);if(e>0&&e>bestE1RM)reasons.push("e1rm");if(reasons.length>0)prs.push({setIdx:i,reasons:reasons})});return prs}
 
+function getAllTimePRs(logs){var prs={};Object.keys(EX_GROUP_NAMES).forEach(function(g){prs[g]={bestWeight:0,bestWeightDate:null,bestE1RM:0,bestE1RMDate:null,bestRepsAtWeight:0,bestReps:0,bestRepsDate:null}});for(var i=0;i<logs.length;i++){var l=logs[i];if(!l.exercises)continue;l.exercises.forEach(function(ex){var g=EX_GROUP[ex.id];if(!g||!ex.sets)return;ex.sets.forEach(function(s){var w=s.weight||0;var r=s.reps||0;var rec=prs[g];if(r>rec.bestReps){rec.bestReps=r;rec.bestRepsDate=l.date}if(w>rec.bestWeight){rec.bestWeight=w;rec.bestWeightDate=l.date;rec.bestRepsAtWeight=r}else if(w===rec.bestWeight&&r>rec.bestRepsAtWeight){rec.bestRepsAtWeight=r}var e=calcE1RM(w,r);if(e>rec.bestE1RM){rec.bestE1RM=e;rec.bestE1RMDate=l.date}})})}return prs}
+
 function getGhostSets(exId,logs){var gids=getGroupIds(exId);for(var i=0;i<logs.length;i++){var l=logs[i];if(!l.exercises)continue;var ex=l.exercises.find(function(x){return gids.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});if(ex)return ex.sets}return null}
 
 function calcVolume(logs,days){var cutoff=Date.now()-days*864e5;var vol={};logs.forEach(function(l){if(new Date(l.date).getTime()<cutoff)return;if(!l.exercises)return;l.exercises.forEach(function(ex){var g=EX_GROUP[ex.id]||ex.id;if(!vol[g])vol[g]=0;ex.sets.forEach(function(s){vol[g]+=(s.weight||0)*(s.reps||0)})})});return vol}
@@ -304,6 +306,7 @@ var sess=SESSIONS[sessionName];if(!sess)return null;
 var sesCount=getSessionCount(logs);var period=getPeriodPhase(sesCount);
 var fatigue=getFatigueTrend(logs);var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
 var isDouble=(cycleState||{}).isDoubleDay;
+var allPRs=getAllTimePRs(logs);
 var exercises=sess.exercises.map(function(ex){
 var prog=getProgression(ex.id,logs,readiness,sesCount);
 var sug=getSuggestedLoad(ex.id,logs,readiness,sesCount,isDouble&&ex.isCarry);
@@ -311,10 +314,14 @@ var lastSets=null;var gids=getGroupIds(ex.id);
 for(var i=0;i<logs.length;i++){var l=logs[i];if(!l.exercises)continue;
 var found=l.exercises.find(function(x){return gids.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});
 if(found){lastSets=found.sets;break}}
+var sugW=sug?sug.weight:(lastWeights[ex.id]||null);
+var g=EX_GROUP[ex.id];var prRec=g?allPRs[g]:null;
+var prTarget=null;
+if(sugW&&prRec&&prRec.bestWeight>0){var gap=prRec.bestWeight-sugW;prTarget={bestWeight:prRec.bestWeight,gap:gap}}
 return{id:ex.id,name:ex.name,sets:ex.sets,hasWeight:ex.hasWeight!==false,
-suggestedWeight:sug?sug.weight:(lastWeights[ex.id]||null),
+suggestedWeight:sugW,
 suggestedReason:sug?sug.reason:null,
-progression:prog,lastSets:lastSets}});
+progression:prog,lastSets:lastSets,prTarget:prTarget}});
 return{session:sess,exercises:exercises,readinessScore:rdScore,period:period,fatigue:fatigue,isDouble:isDouble}}
 
 // Pattern-balance advisory — detects session-type drift over recent history.
@@ -899,7 +906,7 @@ e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,alignContent:
 Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];var avg=getAvgTime(k,logs);return e("button",{key:k,onClick:function(){startSession(k)},style:{background:"#1C1917",border:"1px solid "+(k===rec?s.color+"66":"#292524"),borderRadius:12,padding:"10px 12px",cursor:"pointer",textAlign:"left",minHeight:70,display:"flex",flexDirection:"column",justifyContent:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:1}},e("div",{style:{width:7,height:7,borderRadius:"50%",background:s.color}}),e("div",{style:{fontSize:14,fontWeight:600,color:"#F5F5F4"}},s.label)),e("div",{style:{fontSize:11,color:"#78716C"}},s.time+(avg?" \u00b7 Avg: "+avg+"m":"")),s.subtitle&&e("div",{style:{fontSize:10,color:"#57534E",fontStyle:"italic"}},s.subtitle))})),
 todayN===1&&CYCLE.indexOf((cycleState.completedToday||[])[0])!==-1&&e("div",{style:{marginTop:6,background:"#1C1917",border:"1px solid #44403C",borderRadius:10,padding:"8px 12px"}},e("div",{style:{fontSize:12,color:"#FBBF24",fontWeight:600}},"\u26a1 Double Day Available")))),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:0})},
-e("div",{style:{display:"flex",gap:8,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:12,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"\u{1F3AF} Load Targets"),e("button",{onClick:function(){setShowHist(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:12,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"\u{1F4CB} History"))),
+e("div",{style:{display:"flex",gap:8,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:12,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"\u{1F3AF} Loads"),e("button",{onClick:function(){setScreen("prs")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:12,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"\uD83C\uDFC6 Records"),e("button",{onClick:function(){setShowHist(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:12,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"\u{1F4CB} History"))),
 showLoads&&e(LoadTargets,{onClose:function(){setShowLoads(false)}}),showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,carryType:carryType,setCarryType:setCarryPref,onClose:function(){setShowSettings(false)},onReset:clearAll,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
 }
 
@@ -992,6 +999,9 @@ e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center
 e("div",{style:{fontSize:15,fontWeight:700,color:T.hi}},ex.name),
 ex.suggestedWeight&&e("div",{style:{fontSize:18,fontWeight:700,color:T.accL,fontFamily:MONO}},ex.suggestedWeight+" lbs")),
 e("div",{style:{fontSize:12,color:T.mut}},ex.sets+" sets"+(ex.lastSets?" \u00b7 Last: "+ex.lastSets.map(function(s){return(s.weight||"BW")+(s.reps?"x"+s.reps:"")}).join(", "):"")),
+ex.prTarget&&ex.suggestedWeight&&e("div",{style:{marginTop:3,fontSize:11,color:ex.prTarget.gap<0?T.ok:ex.prTarget.gap===0?T.acc:ex.prTarget.gap<=10?T.accL:T.mut}},
+ex.prTarget.gap<0?"\uD83D\uDD25 New PR territory!":ex.prTarget.gap===0?"At PR weight":
+"PR: "+ex.prTarget.bestWeight+" lbs ("+ex.prTarget.gap+" lbs away)"),
 ex.progression&&e("div",{style:{marginTop:4,fontSize:12,color:progClr,display:"flex",alignItems:"center",gap:4}},
 e("span",null,progIcon),e("span",null,ex.progression.msg)),
 ex.suggestedReason&&!ex.progression&&e("div",{style:{marginTop:4,fontSize:12,color:T.sec}},ex.suggestedReason))})),
@@ -1202,9 +1212,38 @@ e("div",{style:{fontSize:13,color:T.mut,textAlign:"center",marginBottom:10}},"Ne
 e("button",{onClick:saveAndFinish,style:{width:"100%",padding:"14px",background:sess.color,border:"none",borderRadius:12,color:"#fff",fontSize:16,fontWeight:600,cursor:"pointer"}},"Save & Done")))
 }
 
+// ── Screen: PR Board ──
+function renderPRBoard(){
+var prs=getAllTimePRs(logs);
+var groups=Object.keys(EX_GROUP_NAMES).filter(function(g){var r=prs[g];return r.bestWeight>0||r.bestE1RM>0||r.bestReps>0});
+var fmtDate=function(d){if(!d)return"";var dt=new Date(d);return dt.toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"})};
+return e("div",{style:STYLES.screen},
+e("div",{style:Object.assign({},STYLES.headerPad,{display:"flex",alignItems:"center",gap:12})},
+e("button",{onClick:function(){setScreen("home")},style:STYLES.backBtnFlat},"\u2190 Back"),
+e("div",{style:{fontSize:20,fontWeight:700,color:T.hi}},"\uD83C\uDFC6 Personal Records")),
+e("div",{style:STYLES.scrollBody},
+groups.length===0?e("div",{style:{textAlign:"center",padding:40,color:T.mut,fontSize:14}},"No PRs yet. Complete some sessions to start tracking records!"):
+groups.map(function(g){var r=prs[g];return e("div",{key:g,style:Object.assign({},STYLES.card,{marginBottom:8})},
+e("div",{style:{fontSize:15,fontWeight:700,color:T.hi,marginBottom:6}},EX_GROUP_NAMES[g]),
+e("div",{style:{display:"flex",gap:12}},
+r.bestWeight>0&&e("div",{style:{flex:1}},
+e("div",{style:STYLES.sectionLabel},"Max Weight"),
+e("div",{style:{fontSize:20,fontWeight:700,color:T.accL,fontFamily:MONO,marginTop:2}},r.bestWeight+" lbs"),
+r.bestRepsAtWeight>0&&e("div",{style:{fontSize:11,color:T.sec,marginTop:1}},r.bestRepsAtWeight+" reps at this weight"),
+e("div",{style:{fontSize:10,color:T.mut,marginTop:2}},fmtDate(r.bestWeightDate))),
+r.bestWeight===0&&r.bestReps>0&&e("div",{style:{flex:1}},
+e("div",{style:STYLES.sectionLabel},"Best Reps"),
+e("div",{style:{fontSize:20,fontWeight:700,color:T.accL,fontFamily:MONO,marginTop:2}},r.bestReps+" reps"),
+e("div",{style:{fontSize:10,color:T.mut,marginTop:2}},fmtDate(r.bestRepsDate))),
+r.bestE1RM>0&&e("div",{style:{flex:1}},
+e("div",{style:STYLES.sectionLabel},"Best e1RM"),
+e("div",{style:{fontSize:20,fontWeight:700,color:T.ok,fontFamily:MONO,marginTop:2}},r.bestE1RM+" lbs"),
+e("div",{style:{fontSize:10,color:T.mut,marginTop:2}},fmtDate(r.bestE1RMDate)))))})))}
+
 // ── Router ──
 if(screen==="home"&&!showHist) return renderHome();
 if(showHist) return renderHistory();
+if(screen==="prs") return renderPRBoard();
 if(screen==="readiness") return renderReadinessCheckIn();
 if(screen==="gameplan") return renderGamePlan();
 if(screen==="warmup") return renderWarmupSelection();
