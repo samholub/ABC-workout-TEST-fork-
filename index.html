@@ -750,11 +750,12 @@ if(totalDone===0){if(window.confirm("No sets completed. Discard this session?"))
 var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
 var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness,sessionRPE:sessionRPE||0,prs:sessionPRs.length>0?sessionPRs:undefined,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
-var nl=[log].concat(logs).slice(0,100);
+var nlFull=[log].concat(logs);var trimmed=nlFull.length>100;var nl=nlFull.slice(0,100);
 var ct=(cycleState.completedToday||[]).concat([currentSession]);
 var ns={lastSession:currentSession,lastDate:new Date().toISOString(),isDoubleDay:ct.length>=2&&CYCLE.indexOf(currentSession)!==-1,completedToday:ct,preTgu:currentSession==="TGU"?(cycleState.preTgu||getRec()):undefined};
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
 if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
+if(trimmed)alert("Oldest session removed to stay within storage limits.");
 setLastWeights(nw);setLogs(nl);setCycleState(ns);localStorage.removeItem(KEYS.draft);home()
 };
 
@@ -795,6 +796,7 @@ e("div",{style:{fontSize:13,color:T.sec,marginBottom:10}},SESSIONS[draftSession.
 e("div",{style:{display:"flex",gap:8}},
 e("button",{onClick:function(){var d=draftSession;if(!d||!SESSIONS[d.session])return;var sess=SESSIONS[d.session];var restoredEx=d.exData||{};sess.exercises.forEach(function(ex){if(!restoredEx[ex.id]||!Array.isArray(restoredEx[ex.id])){restoredEx[ex.id]=Array.from({length:ex.sets},function(){return{weight:0,reps:"",rpe:"",completed:false}})}});var validActiveEx=d.activeEx&&restoredEx[d.activeEx]?d.activeEx:sess.exercises[0].id;setCurrent(d.session);setExData(restoredEx);setStart(d.start||Date.now());setReadiness(d.readiness||{sleep:2,soreness:2,motivation:2});setWarmup(d.warmup||null);setNotes(d.notes||{notes:""});setTimeAvail(d.timeAvail||25);setSessionRPE(d.sessionRPE||0);setActiveEx(validActiveEx);setCircuitMode(!!d.circuitMode);setDraftSession(null);setScreen("workout")},style:{flex:1,padding:"12px",background:T.acc,border:"none",borderRadius:10,color:"#1C1917",fontSize:14,fontWeight:700,cursor:"pointer"}},"Resume"),
 e("button",{onClick:function(){localStorage.removeItem(KEYS.draft);setDraftSession(null)},style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.sec,fontSize:14,fontWeight:500,cursor:"pointer"}},"Discard"))),
+logs.length>=90&&e("div",{style:{background:"#1a1a0a",border:"1px solid #854d0e",borderRadius:12,padding:"12px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}},e("div",{style:{fontSize:18}},"\u26A0\uFE0F"),e("div",{style:{fontSize:13,color:T.warn,lineHeight:1.4}},"Storage advisory: You have ",e("strong",null,logs.length)," saved sessions. Please export a backup soon.")),
 e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}},
 [{l:"Last",v:cycleState.lastSession?(SESSIONS[cycleState.lastSession]?SESSIONS[cycleState.lastSession].label.replace("Session ",""):cycleState.lastSession):"\u2014",s:daysSince!==null?(daysSince===0?"Today":daysSince+"d ago"):""},
 {l:"Next Up",v:rec,s:SESSIONS[rec].time},{l:"Last 7 Days",v:weekLogs.length,s:"sessions"}
