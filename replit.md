@@ -41,6 +41,15 @@ Protects against iOS Safari tab eviction during active workouts:
 - On app mount, checks for existing draft and shows recovery banner on home screen
 - Resume validates and normalizes exercise data structure before restoring state
 
+## Dashboard (Phase 3C)
+Training analytics dashboard accessible via footer button:
+- **e1RM Trajectories:** SVG line chart of estimated 1RM per exercise group over time, color-coded by group
+- **Weekly Volume:** Bar chart of 12-week rolling volume, ACWR color-coded (green/amber/red)
+- **Session Frequency:** 8-week calendar grid aligned by weekday, sessions color-coded by type
+- **RPE Distribution:** Horizontal bar chart showing RPE 5-10 frequency counts
+
+Key helpers: `calcE1RMTrends(logs)`, `calcWeeklyVolumes(logs,weeks)`, `calcRPEDistribution(logs)`, `GROUP_COLORS`
+
 ## Development
 No build step required. The app is served as a static file.
 

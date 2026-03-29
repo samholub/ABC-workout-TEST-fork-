@@ -169,6 +169,14 @@ function getAllTimePRs(logs){var prs={};Object.keys(EX_GROUP_NAMES).forEach(func
 
 function getGhostSets(exId,logs){var gids=getGroupIds(exId);for(var i=0;i<logs.length;i++){var l=logs[i];if(!l.exercises)continue;var ex=l.exercises.find(function(x){return gids.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});if(ex)return ex.sets}return null}
 
+var GROUP_COLORS={bss:"#F59E0B",pushup:"#FB923C",carry:"#A78BFA",sldl:"#3B82F6",row:"#60A5FA",pullup:"#10B981",ohp:"#8B5CF6",tgu:"#EC4899"};
+
+function calcE1RMTrends(logs){var trends={};Object.keys(EX_GROUP_NAMES).forEach(function(g){trends[g]=[]});for(var i=logs.length-1;i>=0;i--){var l=logs[i];if(!l.exercises)continue;var byGroup={};l.exercises.forEach(function(ex){var g=EX_GROUP[ex.id];if(!g||!ex.sets)return;ex.sets.forEach(function(s){var e=calcE1RM(s.weight||0,s.reps||0);if(e>0&&(!byGroup[g]||e>byGroup[g]))byGroup[g]=e})});Object.keys(byGroup).forEach(function(g){trends[g].push({date:l.date,e1rm:byGroup[g]})})}Object.keys(trends).forEach(function(g){trends[g].sort(function(a,b){return new Date(a.date).getTime()-new Date(b.date).getTime()})});return trends}
+
+function calcWeeklyVolumes(logs,weeks){var result=[];var now=Date.now();for(var w=0;w<weeks;w++){var end=now-w*7*864e5;var start=end-7*864e5;var vol=0;logs.forEach(function(l){var t=new Date(l.date).getTime();if(t>=start&&t<end&&l.exercises){l.exercises.forEach(function(ex){if(!ex.sets)return;ex.sets.forEach(function(s){vol+=(s.weight||0)*(s.reps||0)})})}});result.unshift({week:weeks-w,vol:vol,end:end})}return result}
+
+function calcRPEDistribution(logs){var dist={};for(var r=5;r<=10;r++)dist[r]=0;logs.forEach(function(l){if(!l.exercises)return;l.exercises.forEach(function(ex){if(!ex.sets)return;ex.sets.forEach(function(s){var rpe=Math.round(s.rpe||0);if(rpe>=5&&rpe<=10)dist[rpe]++})})});return dist}
+
 function calcVolume(logs,days){var cutoff=Date.now()-days*864e5;var vol={};logs.forEach(function(l){if(new Date(l.date).getTime()<cutoff)return;if(!l.exercises)return;l.exercises.forEach(function(ex){var g=EX_GROUP[ex.id]||ex.id;if(!vol[g])vol[g]=0;ex.sets.forEach(function(s){vol[g]+=(s.weight||0)*(s.reps||0)})})});return vol}
 function calcTotalVolume(logs,days){var v=calcVolume(logs,days);var t=0;Object.keys(v).forEach(function(k){t+=v[k]});return t}
 function calcACWR(logs){var acute=calcTotalVolume(logs,7);var chronic=calcTotalVolume(logs,28)/4;if(chronic<1)return null;return Math.round(acute/chronic*100)/100}
@@ -906,7 +914,7 @@ e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,alignContent:
 Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];var avg=getAvgTime(k,logs);return e("button",{key:k,onClick:function(){startSession(k)},style:{background:"#1C1917",border:"1px solid "+(k===rec?s.color+"66":"#292524"),borderRadius:12,padding:"10px 12px",cursor:"pointer",textAlign:"left",minHeight:70,display:"flex",flexDirection:"column",justifyContent:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:1}},e("div",{style:{width:7,height:7,borderRadius:"50%",background:s.color}}),e("div",{style:{fontSize:14,fontWeight:600,color:"#F5F5F4"}},s.label)),e("div",{style:{fontSize:11,color:"#78716C"}},s.time+(avg?" \u00b7 Avg: "+avg+"m":"")),s.subtitle&&e("div",{style:{fontSize:10,color:"#57534E",fontStyle:"italic"}},s.subtitle))})),
 todayN===1&&CYCLE.indexOf((cycleState.completedToday||[])[0])!==-1&&e("div",{style:{marginTop:6,background:"#1C1917",border:"1px solid #44403C",borderRadius:10,padding:"8px 12px"}},e("div",{style:{fontSize:12,color:"#FBBF24",fontWeight:600}},"\u26a1 Double Day Available")))),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:0})},
-e("div",{style:{display:"flex",gap:8,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:12,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"\u{1F3AF} Loads"),e("button",{onClick:function(){setScreen("prs")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:12,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"\uD83C\uDFC6 Records"),e("button",{onClick:function(){setShowHist(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:12,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"\u{1F4CB} History"))),
+e("div",{style:{display:"flex",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"🎯 Loads"),e("button",{onClick:function(){setScreen("prs")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"🏆 Records"),e("button",{onClick:function(){setScreen("dashboard")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"📊 Dashboard"),e("button",{onClick:function(){setShowHist(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"📋 History"))),
 showLoads&&e(LoadTargets,{onClose:function(){setShowLoads(false)}}),showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,carryType:carryType,setCarryType:setCarryPref,onClose:function(){setShowSettings(false)},onReset:clearAll,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
 }
 
@@ -1212,6 +1220,110 @@ e("div",{style:{fontSize:13,color:T.mut,textAlign:"center",marginBottom:10}},"Ne
 e("button",{onClick:saveAndFinish,style:{width:"100%",padding:"14px",background:sess.color,border:"none",borderRadius:12,color:"#fff",fontSize:16,fontWeight:600,cursor:"pointer"}},"Save & Done")))
 }
 
+// ── Screen: Dashboard ──
+function renderDashboard(){
+var trends=calcE1RMTrends(logs);
+var weekVols=calcWeeklyVolumes(logs,12);
+var rpeDist=calcRPEDistribution(logs);
+
+// Panel 1: e1RM Trajectories
+function renderE1RMChart(){
+var activeGroups=Object.keys(trends).filter(function(g){return trends[g].length>=2});
+if(activeGroups.length===0)return e("div",{style:{color:T.mut,fontSize:13,textAlign:"center",padding:20}},"Need 2+ sessions with weights to show trends.");
+var allPts=[];activeGroups.forEach(function(g){trends[g].forEach(function(p){allPts.push(p.e1rm)})});
+var maxY=Math.max.apply(null,allPts);var minY=Math.min.apply(null,allPts);
+var range=maxY-minY||1;var W=320,H=160,pad=30;
+var allDates=[];logs.forEach(function(l){var t=new Date(l.date).getTime();if(allDates.indexOf(t)===-1)allDates.push(t)});allDates.sort(function(a,b){return a-b});
+var minD=allDates[0],maxD=allDates[allDates.length-1],dRange=maxD-minD||1;
+return e("div",{style:{overflowX:"auto",WebkitOverflowScrolling:"touch"}},
+e("svg",{viewBox:"0 0 "+(W+pad*2)+" "+(H+pad*2),style:{width:"100%",maxHeight:220}},
+activeGroups.map(function(g){
+var pts=trends[g].map(function(p){
+var x=pad+((new Date(p.date).getTime()-minD)/dRange)*W;
+var y=pad+H-((p.e1rm-minY)/range)*H;
+return x+","+y});
+return e("polyline",{key:g,points:pts.join(" "),fill:"none",stroke:GROUP_COLORS[g]||T.sec,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})})),
+e("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginTop:6,justifyContent:"center"}},
+activeGroups.map(function(g){return e("div",{key:g,style:{display:"flex",alignItems:"center",gap:4}},
+e("div",{style:{width:8,height:3,borderRadius:1,background:GROUP_COLORS[g]}}),
+e("span",{style:{fontSize:10,color:T.mut}},EX_GROUP_NAMES[g]))})))}
+
+// Panel 2: Volume Trend
+function renderVolumeChart(){
+var maxV=0;weekVols.forEach(function(w){if(w.vol>maxV)maxV=w.vol});
+if(maxV===0)return e("div",{style:{color:T.mut,fontSize:13,textAlign:"center",padding:20}},"No volume data yet.");
+var chronic4=0;
+return e("div",{style:{display:"flex",alignItems:"flex-end",gap:3,height:120}},
+weekVols.map(function(w,i){
+var pct=maxV>0?(w.vol/maxV)*100:0;
+var recentVols=weekVols.slice(Math.max(0,i-3),i+1);
+var avg4=recentVols.length>=4?recentVols.reduce(function(a,v){return a+v.vol},0)/4:0;
+var acwr=avg4>0?w.vol/avg4:null;
+var clr=T.ok;
+if(acwr!==null){if(acwr>1.5)clr=T.err;else if(acwr>1.3)clr=T.warn}
+return e("div",{key:i,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
+e("div",{style:{width:"100%",background:clr,borderRadius:"3px 3px 0 0",height:pct+"%",minHeight:w.vol>0?4:0,transition:"height 0.3s"}}),
+e("div",{style:{fontSize:8,color:T.mut}},i%2===0?(weekVols.length-i)+"w":""))}))}
+
+// Panel 3: Session Frequency Grid
+function renderFrequencyGrid(){
+var now=new Date();
+var startDate=new Date(now);startDate.setDate(startDate.getDate()-55);
+var startDow=startDate.getDay();
+var totalCols=Math.ceil((56+startDow)/7);
+var grid=[];
+for(var col=0;col<totalCols;col++){for(var row=0;row<7;row++){grid.push(null)}}
+for(var d=0;d<56;d++){
+var day=new Date(startDate);day.setDate(day.getDate()+d);
+var dow=day.getDay();
+var weekIdx=Math.floor((d+startDow)/7);
+var key=day.getFullYear()+"-"+String(day.getMonth()+1).padStart(2,"0")+"-"+String(day.getDate()).padStart(2,"0");
+var match=null;
+for(var li=0;li<logs.length;li++){var ld=logs[li].date?logs[li].date.substring(0,10):"";if(ld===key){var s=SESSIONS[logs[li].session];match=s?s.color:"#44403C";break}}
+grid[weekIdx*7+dow]={key:key,color:match}}
+var dayLabels=["S","M","T","W","T","F","S"];
+return e("div",{style:{display:"flex",gap:2}},
+e("div",{style:{display:"flex",flexDirection:"column",gap:2,marginRight:2}},
+dayLabels.map(function(d,i){return e("div",{key:i,style:{width:12,height:12,fontSize:8,color:T.mut,display:"flex",alignItems:"center",justifyContent:"center"}},i%2===0?d:"")})),
+e("div",{style:{display:"grid",gridTemplateRows:"repeat(7,12px)",gridTemplateColumns:"repeat("+totalCols+",12px)",gap:2}},
+grid.map(function(c,i){return c?e("div",{key:c.key,style:{width:12,height:12,borderRadius:2,background:c.color||"#1C1917",border:"1px solid "+(c.color||T.inp)}}):e("div",{key:"empty-"+i,style:{width:12,height:12}})})))}
+
+// Panel 4: RPE Distribution
+function renderRPEChart(){
+var maxC=0;var total=0;
+for(var r=5;r<=10;r++){if(rpeDist[r]>maxC)maxC=rpeDist[r];total+=rpeDist[r]}
+if(total===0)return e("div",{style:{color:T.mut,fontSize:13,textAlign:"center",padding:20}},"No RPE data logged yet.");
+var rpeColors={5:T.ok,6:"#34D399",7:T.acc,8:T.accL,9:"#FB923C",10:T.err};
+return e("div",null,[10,9,8,7,6,5].map(function(r){
+var pct=maxC>0?(rpeDist[r]/maxC)*100:0;
+return e("div",{key:r,style:{display:"flex",alignItems:"center",gap:8,marginBottom:4}},
+e("div",{style:{width:28,fontSize:12,fontWeight:600,color:rpeColors[r]||T.sec,fontFamily:MONO,textAlign:"right"}},""+r),
+e("div",{style:{flex:1,height:16,background:T.inp,borderRadius:4,overflow:"hidden"}},
+e("div",{style:{height:"100%",width:pct+"%",background:rpeColors[r]||T.sec,borderRadius:4,minWidth:rpeDist[r]>0?4:0,transition:"width 0.3s"}})),
+e("div",{style:{width:30,fontSize:11,color:T.mut,fontFamily:MONO}},rpeDist[r]))}))}
+
+return e("div",{style:STYLES.screen},
+e("div",{style:Object.assign({},STYLES.headerPad,{display:"flex",alignItems:"center",gap:12})},
+e("button",{onClick:function(){setScreen("home")},style:STYLES.backBtnFlat},"\u2190 Back"),
+e("div",{style:{fontSize:20,fontWeight:700,color:T.hi}},"\uD83D\uDCCA Dashboard")),
+e("div",{style:STYLES.scrollBody},
+
+e("div",{style:Object.assign({},STYLES.card,{marginBottom:10})},
+e("div",{style:Object.assign({},STYLES.sectionLabel,{marginBottom:8})},"e1RM Trajectories"),
+renderE1RMChart()),
+
+e("div",{style:Object.assign({},STYLES.card,{marginBottom:10})},
+e("div",{style:Object.assign({},STYLES.sectionLabel,{marginBottom:8})},"Weekly Volume"),
+renderVolumeChart()),
+
+e("div",{style:Object.assign({},STYLES.card,{marginBottom:10})},
+e("div",{style:Object.assign({},STYLES.sectionLabel,{marginBottom:8})},"Session Frequency (8 Weeks)"),
+renderFrequencyGrid()),
+
+e("div",{style:Object.assign({},STYLES.card,{marginBottom:10})},
+e("div",{style:Object.assign({},STYLES.sectionLabel,{marginBottom:8})},"RPE Distribution"),
+renderRPEChart())))}
+
 // ── Screen: PR Board ──
 function renderPRBoard(){
 var prs=getAllTimePRs(logs);
@@ -1244,6 +1356,7 @@ e("div",{style:{fontSize:10,color:T.mut,marginTop:2}},fmtDate(r.bestE1RMDate))))
 if(screen==="home"&&!showHist) return renderHome();
 if(showHist) return renderHistory();
 if(screen==="prs") return renderPRBoard();
+if(screen==="dashboard") return renderDashboard();
 if(screen==="readiness") return renderReadinessCheckIn();
 if(screen==="gameplan") return renderGamePlan();
 if(screen==="warmup") return renderWarmupSelection();
