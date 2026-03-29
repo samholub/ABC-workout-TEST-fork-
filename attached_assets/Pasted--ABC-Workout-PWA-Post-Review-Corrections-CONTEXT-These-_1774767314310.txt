@@ -1,0 +1,136 @@
+# ABC Workout PWA — Post-Review Corrections
+
+## CONTEXT
+These are targeted fixes based on a line-by-line code review of the current `index.html`. Do not add features, refactor adjacent code, or change anything not listed below.
+
+## CORRECTION 1: Version Header
+
+The banner still says v19. Update it to v21.
+
+Find this line near the top of the script:
+```
+// ║  ABC CYCLE TRACKER v19 — Refactored for maintainability             ║
+```
+
+Change to:
+```
+// ║  ABC CYCLE TRACKER v21 — Premium Polish + Dashboard + PR Board      ║
+```
+
+Also find the version display on the home screen. Search for `"v20"` in the renderHome function:
+```
+e("span",{style:{fontSize:9,color:T.brdL,marginLeft:6,letterSpacing:1,textTransform:"none"}},"v20")
+```
+
+Change `"v20"` to `"v21"`.
+
+## CORRECTION 2: Section 5 TOC Comment
+
+The function index in Section 5 is missing `getPreSessionContext` and `getWorkingWeight`. Find this comment block:
+
+```
+//   getBalanceAdvisory() — Detect neglected session types in recent history
+//   getPreSessionContext() — Consolidated pre-session intelligence (load, progression, fatigue)
+```
+
+Replace with:
+```
+//   getWorkingWeight()    — Modal/median weight from a set array (ignores outlier heavy sets)
+//   getBalanceAdvisory()  — Detect neglected session types in recent history
+//   getPreSessionContext() — Consolidated pre-session intelligence (load, progression, fatigue)
+//   getAdaptiveRest()     — RPE-adjusted rest timer duration
+```
+
+## CORRECTION 3: Section 4 TOC and Header
+
+Section 4 added several new analytics functions (calcE1RMTrends, calcWeeklyVolumes, calcRPEDistribution, getAllTimePRs, GROUP_COLORS) but the section header comment doesn't reflect them. Find:
+
+```
+// ========================================================================
+// 4. ANALYTICS & METRICS
+//    e1RM, volume tracking, ACWR, PR detection, fatigue classification, deload triggers
+// ========================================================================
+```
+
+Change to:
+```
+// ========================================================================
+// 4. ANALYTICS & METRICS
+//    e1RM, volume tracking, ACWR, PR detection, fatigue, deload,
+//    all-time PRs, e1RM trends, weekly volumes, RPE distribution
+// ========================================================================
+```
+
+## CORRECTION 4: Misplaced Comment Above getPreSessionContext
+
+Find this comment block that sits directly above `getPreSessionContext`:
+```
+// Pattern-balance advisory — detects session-type drift over recent history.
+// Looks at the last 9 non-TGU, non-manual sessions. If any core type (A, B, C)
+// is completely absent, surfaces one calm recommendation for the most neglected.
+// modC counts toward C-family (both include vertical pulling).
+function getPreSessionContext(sessionName,logs,readiness,lastWeights,cycleState){
+```
+
+Move the comment to above `getBalanceAdvisory` where it belongs, and add a comment for `getPreSessionContext`:
+
+```
+// Consolidated pre-session intelligence — pure function returning per-exercise
+// load, progression, PR distance, last sets, fatigue, and period phase.
+function getPreSessionContext(sessionName,logs,readiness,lastWeights,cycleState){
+```
+
+Then before `getBalanceAdvisory`, add:
+```
+// Pattern-balance advisory — detects session-type drift over recent history.
+// Looks at the last 9 non-TGU, non-manual sessions. If any core type (A, B, C)
+// is completely absent, surfaces one calm recommendation for the most neglected.
+// modC counts toward C-family (both include vertical pulling).
+function getBalanceAdvisory(logs,rec){
+```
+
+(Make sure not to duplicate the function declaration — just move the comment block.)
+
+## CORRECTION 5: Router Comment Missing New Screens
+
+The router section near the bottom of App now includes `prs` and `dashboard` screens but the main TOC at the top of the file still says "6 named screen renderers". Find in the TOC:
+
+```
+//   9. Main App ................. State, screen renderers, router
+```
+
+Change to:
+```
+//   9. Main App ................. State, 9 screen renderers, router
+```
+
+Also find in the screen renderers section comment:
+```
+// Each screen is its own function inside App(), with closure access to state.
+```
+
+Add after it:
+```
+// Screens: Home, History, Readiness, GamePlan, Warmup, Workout, Complete, Dashboard, PRBoard
+```
+
+## CORRECTION 6: Home Footer Button Density
+
+The 4 footer buttons may be too cramped on narrow screens. Change the footer layout from a single row of 4 to a 2×2 grid. Find this in renderHome:
+
+```
+e("div",{style:{display:"flex",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"🎯 Loads"),e("button",{onClick:function(){setScreen("prs")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"🏆 Records"),e("button",{onClick:function(){setScreen("dashboard")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"📊 Dashboard"),e("button",{onClick:function(){setShowHist(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"📋 History"))
+```
+
+Replace the outer `display:"flex"` div with a 2×2 grid:
+
+```
+e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"🎯 Load Targets"),e("button",{onClick:function(){setScreen("prs")},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"🏆 Records"),e("button",{onClick:function(){setScreen("dashboard")},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"📊 Dashboard"),e("button",{onClick:function(){setShowHist(true)},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"📋 History"))
+```
+
+Note: changed `display:"flex"` to `display:"grid",gridTemplateColumns:"1fr 1fr"`, removed `flex:1` from buttons, bumped fontSize from 12 to 13, expanded "Loads" label to "Load Targets" for clarity.
+
+## EXECUTION RULES
+1. Make only the changes listed above. Do not touch any other code.
+2. Do not refactor, rename, or reorganize anything.
+3. Verify the app loads without console errors after each change.

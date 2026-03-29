@@ -35,7 +35,7 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 <script>
 
 // ╔════════════════════════════════════════════════════════════════════════╗
-// ║  ABC CYCLE TRACKER v19 — Refactored for maintainability             ║
+// ║  ABC CYCLE TRACKER v21 — Premium Polish + Dashboard + PR Board      ║
 // ║  Single-file React PWA  ·  No build tools  ·  localStorage only     ║
 // ╚════════════════════════════════════════════════════════════════════════╝
 //
@@ -48,7 +48,7 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 //   6. Utilities ................ Audio cue, exercise history
 //   7. PPG / Heart Rate Engine .. Camera-based pulse detection (experimental)
 //   8. UI Components ............ RestTimer, HRMonitor, ExerciseCard, etc.
-//   9. Main App ................. State, screen renderers, router
+//   9. Main App ................. State, 9 screen renderers, router
 //  10. Mount .................... ReactDOM render call
 //
 
@@ -157,7 +157,8 @@ function getGroupIds(exId){var g=EX_GROUP[exId];return Object.keys(EX_GROUP).fil
 
 // ========================================================================
 // 4. ANALYTICS & METRICS
-//    e1RM, volume tracking, ACWR, PR detection, fatigue classification, deload triggers
+//    e1RM, volume tracking, ACWR, PR detection, fatigue, deload,
+//    all-time PRs, e1RM trends, weekly volumes, RPE distribution
 // ========================================================================
 
 function calcE1RM(w,r){if(!w||w<=0||!r||r<=0)return 0;if(r===1)return w;return Math.round(w*(1+r/30))}
@@ -204,8 +205,10 @@ function shouldDeload(logs){if(logs.length<6)return false;var recent=logs.slice(
 //   getSessionCount()  — Total non-manual sessions logged
 //   getAvgTime()       — Average duration for a session type
 //   getFatigueTrend()  — 3-session lookback for creeping fatigue (soft advisory)
-//   getBalanceAdvisory() — Detect neglected session types in recent history
+//   getWorkingWeight()    — Modal/median weight from a set array (ignores outlier heavy sets)
+//   getBalanceAdvisory()  — Detect neglected session types in recent history
 //   getPreSessionContext() — Consolidated pre-session intelligence (load, progression, fatigue)
+//   getAdaptiveRest()     — RPE-adjusted rest timer duration
 
 // Session count and training focus — based on sessions logged, not calendar
 function getSessionCount(logs){var c=0;for(var i=0;i<logs.length;i++){if(!logs[i].manual)c++}return c}
@@ -321,7 +324,8 @@ if(avgRPE>=7.5&&avgRd>0&&avgRd<=5)
 return{msg:"Avg RPE \u22657.5 with low readiness over last 3 sessions. Consider reducing load today."};
 return null}
 
-// Consolidated pre-session intelligence (load, progression, fatigue)
+// Consolidated pre-session intelligence — pure function returning per-exercise
+// load, progression, PR distance, last sets, fatigue, and period phase.
 function getPreSessionContext(sessionName,logs,readiness,lastWeights,cycleState){
 var sess=SESSIONS[sessionName];if(!sess)return null;
 var sesCount=getSessionCount(logs);var period=getPeriodPhase(sesCount);
@@ -892,6 +896,7 @@ var prevWeekVol=calcTotalVolume(logs,14)-weekVol;
 // ────────────────────────────────────────────────────────────────────────
 // SCREEN RENDERERS
 // Each screen is its own function inside App(), with closure access to state.
+// Screens: Home, History, Readiness, GamePlan, Warmup, Workout, Complete, Dashboard, PRBoard
 // ────────────────────────────────────────────────────────────────────────
 
 // ── Screen: Home ──
@@ -901,7 +906,7 @@ var weekLogs=logs.filter(function(l){return new Date(l.date)>=new Date(Date.now(
 var balanceAdv=getBalanceAdvisory(logs,rec);
 return e("div",{style:STYLES.screen},
 e("div",{style:Object.assign({},STYLES.headerPad,{display:"flex",justifyContent:"space-between",alignItems:"flex-start"})},
-e("div",null,e("div",{style:{fontSize:12,color:T.mut,textTransform:"uppercase",letterSpacing:2.5,fontWeight:600}},"ABC Cycle Tracker",e("span",{style:{fontSize:9,color:T.brdL,marginLeft:6,letterSpacing:1,textTransform:"none"}},"v20")),e("div",{style:{fontSize:26,fontWeight:700,color:T.hi,marginTop:3}},todayN>0?todayN+" session"+(todayN>1?"s":"")+" today":"Ready to train")),
+e("div",null,e("div",{style:{fontSize:12,color:T.mut,textTransform:"uppercase",letterSpacing:2.5,fontWeight:600}},"ABC Cycle Tracker",e("span",{style:{fontSize:9,color:T.brdL,marginLeft:6,letterSpacing:1,textTransform:"none"}},"v21")),e("div",{style:{fontSize:26,fontWeight:700,color:T.hi,marginTop:3}},todayN>0?todayN+" session"+(todayN>1?"s":"")+" today":"Ready to train")),
 e("button",{onClick:function(){setShowSettings(true)},style:{background:T.inp,border:"1px solid "+T.brd,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:T.sec,fontSize:16}},"\u2699")),
 e("div",{style:STYLES.scrollBodyPx},
 draftSession&&SESSIONS[draftSession.session]&&e("div",{style:{background:"#1a1a0a",border:"2px solid "+T.acc,borderRadius:14,padding:"14px 16px",marginBottom:10}},
@@ -941,7 +946,7 @@ e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,alignContent:
 Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];var avg=getAvgTime(k,logs);return e("button",{key:k,onClick:function(){startSession(k)},style:{background:"#1C1917",border:"1px solid "+(k===rec?s.color+"66":"#292524"),borderRadius:12,padding:"10px 12px",cursor:"pointer",textAlign:"left",minHeight:70,display:"flex",flexDirection:"column",justifyContent:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:1}},e("div",{style:{width:7,height:7,borderRadius:"50%",background:s.color}}),e("div",{style:{fontSize:14,fontWeight:600,color:"#F5F5F4"}},s.label)),e("div",{style:{fontSize:11,color:"#78716C"}},s.time+(avg?" \u00b7 Avg: "+avg+"m total":"")),s.subtitle&&e("div",{style:{fontSize:10,color:"#57534E",fontStyle:"italic"}},s.subtitle))})),
 todayN===1&&CYCLE.indexOf((cycleState.completedToday||[])[0])!==-1&&e("div",{style:{marginTop:6,background:"#1C1917",border:"1px solid #44403C",borderRadius:10,padding:"8px 12px"}},e("div",{style:{fontSize:12,color:"#FBBF24",fontWeight:600}},"\u26a1 Double Day Available")))),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:0})},
-e("div",{style:{display:"flex",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"🎯 Loads"),e("button",{onClick:function(){setScreen("prs")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"🏆 Records"),e("button",{onClick:function(){setScreen("dashboard")},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"📊 Dashboard"),e("button",{onClick:function(){setShowHist(true)},style:{flex:1,background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:12,fontWeight:500}},"📋 History"))),
+e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowLoads(true)},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"🎯 Load Targets"),e("button",{onClick:function(){setScreen("prs")},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"🏆 Records"),e("button",{onClick:function(){setScreen("dashboard")},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"📊 Dashboard"),e("button",{onClick:function(){setShowHist(true)},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"📋 History"))),
 showLoads&&e(LoadTargets,{onClose:function(){setShowLoads(false)}}),showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,carryType:carryType,setCarryType:setCarryPref,onClose:function(){setShowSettings(false)},onReset:clearAll,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
 }
 
