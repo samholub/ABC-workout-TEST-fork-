@@ -50,6 +50,14 @@ Training analytics dashboard accessible via footer button:
 
 Key helpers: `calcE1RMTrends(logs)`, `calcWeeklyVolumes(logs,weeks)`, `calcRPEDistribution(logs)`, `GROUP_COLORS`
 
+## Historical Log Editing
+Inline editing of saved session set data in the History view:
+- `editingLogIdx` / `editSnapshot` state variables track which log is being edited and a deep-cloned snapshot of its exercises
+- `startEditLog(idx)` creates a JSON snapshot; `cancelEditLog()` discards it; `updateLogEntry(idx, exercises)` commits changes
+- Edit mode shows weight/reps/RPE inputs per set; inputs write to the snapshot (not live state), so Cancel truly discards
+- Card collapse is locked while any edit is active; Back button resets edit state
+- Only the exercises array is replaced on save — date, duration, readiness, notes, sessionRPE are all preserved
+
 ## Development
 No build step required. The app is served as a static file.
 

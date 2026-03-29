@@ -1,0 +1,134 @@
+# Historical Log Editing — Inline in History View
+
+## CONTEXT
+Users need to correct mistakes in saved sessions (e.g., typed 135 instead of 155). The fix must be contained entirely within the history view. Do NOT reuse the active workout screen, do NOT modify saveAndFinish, and do NOT touch any workout flow logic.
+
+## ARCHITECTURE
+- One new state variable in App: `editingLogIdx`
+- One new function in App: `updateLogEntry`
+- UI changes only in `renderHistory` — make expanded log set data editable when in edit mode
+
+## IMPLEMENTATION
+
+### Step 1: Add state variable
+
+In the App function's state declarations, add:
+```javascript
+var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
+```
+
+### Step 2: Add the update function
+
+After `deleteLog` in App, add:
+```javascript
+var updateLogEntry=function(idx,updatedExercises){
+  var nl=logs.map(function(l,i){
+    if(i!==idx)return l;
+    return Object.assign({},l,{exercises:updatedExercises});
+  });
+  setLogs(nl);S.set(KEYS.logs,nl);
+  setEditingLogIdx(null);
+};
+```
+
+This preserves the original date, session, duration, readiness, sessionRPE, warmup, notes — everything. Only the exercises array (which contains the sets) is replaced.
+
+### Step 3: Add "Edit" button to expanded history cards
+
+In `renderHistory`, find the expanded log detail section. It starts with:
+```javascript
+isExp&&hasDetail&&e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:8}},
+```
+
+Inside this expanded section, AFTER the existing exercise display and BEFORE the notes display, add an Edit/Save toggle.
+
+When `editingLogIdx === i`, render editable inputs for each set's weight, reps, and RPE.
+When `editingLogIdx !== i`, render the existing static display plus an "Edit" button.
+
+Here is the exact replacement for the expanded detail block. Find this entire block:
+
+```javascript
+isExp&&hasDetail&&e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:8}},l.exercises.filter(function(ex){return ex.sets&&ex.sets.length>0}).map(function(ex,j){return e("div",{key:j,style:{marginBottom:6}},e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},e("div",{style:{fontSize:12,fontWeight:600,color:"#A8A29E"}},exNameLookup(ex.id)),e("button",{onClick:function(ev){ev.stopPropagation();setChartEx(ex.id)},style:{background:"transparent",border:"1px solid #44403C",borderRadius:6,color:"#78716C",padding:"2px 8px",fontSize:11,cursor:"pointer"}},"\u{1F4C8}")),e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:3}},ex.sets.map(function(set,k){var label="";if(set.weight&&set.reps)label=set.weight+"x"+set.reps;else if(set.reps)label=set.reps+" reps";else if(set.weight)label=set.weight+" lbs";else label="-";if(set.rpe)label+=" @"+set.rpe;return e("span",{key:k,style:{fontSize:12,fontFamily:MONO,color:"#E7E5E4",background:"#292524",borderRadius:6,padding:"3px 8px"}},label)})))})),
+```
+
+Replace with:
+
+```javascript
+isExp&&hasDetail&&e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:8}},
+editingLogIdx===i?
+// ── EDIT MODE ──
+e("div",null,
+l.exercises.filter(function(ex){return ex.sets&&ex.sets.length>0}).map(function(ex,j){
+return e("div",{key:j,style:{marginBottom:8}},
+e("div",{style:{fontSize:12,fontWeight:600,color:"#A8A29E",marginBottom:4}},exNameLookup(ex.id)),
+e("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"2px 0",marginBottom:2}},
+e("div",{style:{width:32,fontSize:9,color:T.mut,textAlign:"center"}},"#"),
+e("div",{style:{width:56,fontSize:9,color:T.mut,textAlign:"center"}},"Wt"),
+e("div",{style:{width:48,fontSize:9,color:T.mut,textAlign:"center"}},"Reps"),
+e("div",{style:{width:40,fontSize:9,color:T.mut,textAlign:"center"}},"RPE")),
+ex.sets.map(function(set,k){
+return e("div",{key:k,style:{display:"flex",alignItems:"center",gap:6,padding:"3px 0"}},
+e("div",{style:{width:32,fontSize:12,color:T.mut,textAlign:"center",fontFamily:MONO}},k+1),
+e("input",{type:"number",inputMode:"decimal","data-log-edit":true,
+defaultValue:set.weight||"",
+onBlur:function(ev){set.weight=Number(ev.target.value)||0},
+onClick:function(ev){ev.stopPropagation()},
+style:Object.assign({},STYLES.numInput,{width:56,fontSize:14})}),
+e("input",{type:"number",inputMode:"numeric","data-log-edit":true,
+defaultValue:set.reps||"",
+onBlur:function(ev){set.reps=Number(ev.target.value)||0},
+onClick:function(ev){ev.stopPropagation()},
+style:Object.assign({},STYLES.numInput,{width:48,fontSize:14})}),
+e("input",{type:"number",inputMode:"numeric","data-log-edit":true,
+defaultValue:set.rpe||"",
+onBlur:function(ev){var v=Number(ev.target.value)||0;set.rpe=Math.max(0,Math.min(v,10))},
+onClick:function(ev){ev.stopPropagation()},
+style:Object.assign({},STYLES.numInput,{width:40,fontSize:14})})
+)}))}),
+e("div",{style:{display:"flex",gap:6,marginTop:8},onClick:function(ev){ev.stopPropagation()}},
+e("button",{onClick:function(ev){ev.stopPropagation();setEditingLogIdx(null)},
+style:{flex:1,padding:"8px",background:T.inp,border:"1px solid "+T.brd,borderRadius:8,color:T.sec,fontSize:13,cursor:"pointer"}},"Cancel"),
+e("button",{onClick:function(ev){ev.stopPropagation();
+var updated=l.exercises.map(function(ex){return{id:ex.id,sets:ex.sets.map(function(s){return{weight:Math.max(0,Math.min(Number(s.weight)||0,2000)),reps:Math.max(0,Math.min(Number(s.reps)||0,500)),rpe:Math.max(0,Math.min(Number(s.rpe)||0,10)),completed:s.completed!==undefined?s.completed:true}})}});
+updateLogEntry(i,updated)},
+style:{flex:1,padding:"8px",background:T.acc,border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}},"Save Changes"))
+):
+// ── VIEW MODE (existing display + edit button) ──
+e("div",null,
+l.exercises.filter(function(ex){return ex.sets&&ex.sets.length>0}).map(function(ex,j){return e("div",{key:j,style:{marginBottom:6}},e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},e("div",{style:{fontSize:12,fontWeight:600,color:"#A8A29E"}},exNameLookup(ex.id)),e("button",{onClick:function(ev){ev.stopPropagation();setChartEx(ex.id)},style:{background:"transparent",border:"1px solid #44403C",borderRadius:6,color:"#78716C",padding:"2px 8px",fontSize:11,cursor:"pointer"}},"\u{1F4C8}")),e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:3}},ex.sets.map(function(set,k){var label="";if(set.weight&&set.reps)label=set.weight+"x"+set.reps;else if(set.reps)label=set.reps+" reps";else if(set.weight)label=set.weight+" lbs";else label="-";if(set.rpe)label+=" @"+set.rpe;return e("span",{key:k,style:{fontSize:12,fontFamily:MONO,color:"#E7E5E4",background:"#292524",borderRadius:6,padding:"3px 8px"}},label)})))}),
+e("button",{onClick:function(ev){ev.stopPropagation();setEditingLogIdx(i)},
+style:{marginTop:6,padding:"6px 12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:8,color:T.sec,fontSize:12,cursor:"pointer"}},"✏️ Edit Sets"))),
+```
+
+### Step 4: Reset editingLogIdx in home()
+
+In the `home` function, add `setEditingLogIdx(null);` alongside the other state resets.
+
+### Step 5: Prevent card collapse during edit
+
+The history card's `onClick` handler currently toggles expand/collapse. When in edit mode, clicking inside the card (especially on inputs) should NOT collapse it. The existing `onClick` on the card div is:
+
+```javascript
+onClick:function(){if(hasDetail)setExpandedLog(isExp?null:i)}
+```
+
+Change to:
+```javascript
+onClick:function(){if(hasDetail&&editingLogIdx!==i)setExpandedLog(isExp?null:i)}
+```
+
+## WHAT THIS DOES NOT TOUCH
+- saveAndFinish — unchanged
+- Active workout flow — unchanged  
+- Draft persistence — unchanged
+- Cycle state — unchanged
+- PR detection — unchanged (PRs were detected at save time; editing history doesn't retroactively recalculate PRs)
+- Session date/duration/readiness/notes — all preserved, only set data is editable
+
+## VERIFY
+1. Open History, expand a log, tap "Edit Sets" — inputs appear with current values
+2. Change a weight value, tap "Save Changes" — log updates, inputs disappear
+3. Tap "Cancel" — reverts to view mode, no changes saved
+4. Tapping inside input fields does NOT collapse the card
+5. Editing does NOT create a draft, does NOT advance the cycle, does NOT trigger timers
+6. After save, the corrected values appear in the history view and are reflected in dashboard/charts on next render
