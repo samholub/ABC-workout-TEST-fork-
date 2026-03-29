@@ -1,0 +1,30 @@
+The Training Dashboard is live and looks great. We are now moving to Phase 2.5: The Premium Polish Audit. 
+
+This is a pure UI/UX refactor. Do not change any underlying data logic, Service Worker code, or IndexedDB mirroring. We are making the app "Gym-Ready" with better ergonomics.
+
+**Current Task: Phase 2.5 - UI Ergonomics and Visual Cleanliness**
+
+**Requirements (Execute as one batch):**
+
+1. **Update STYLES Tokens:**
+   - Update `numInput`: `padding: 8, fontSize: 16, width: 60` (Weight) and `52` (Reps).
+   - Add `setCheck`: `{ width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, flexShrink: 0, cursor: "pointer" }`
+   - Add `timerBtn`: `{ minHeight: 44, padding: "10px 16px", borderRadius: 10, fontSize: 14, cursor: "pointer" }`
+
+2. **Enlarge Tap Targets:**
+   - Apply `STYLES.setCheck` to the check circles in the set rows.
+   - Apply `STYLES.timerBtn` to all buttons in the Floating Timer (Pause/Resume, Skip, HR).
+
+3. **Clean Up Set Rows (Column Headers):**
+   - **Remove** the inline "lbs", "reps", and "RPE" labels from every individual set row to eliminate visual noise.
+   - **Add** a single header row *above* the set list in the expanded Exercise Card. Labels: "SET", "WEIGHT", "REPS", "RPE". Style: `fontSize: 10, color: T.mut, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4`.
+
+4. **Replace RPE Dropdown with Inline Tap Buttons:**
+   - Remove the `<select>` element for RPE inside the set row.
+   - Replace it with a row of 7 small, circular buttons: `—, 5, 6, 7, 8, 9, 10`.
+   - **Interaction:** One tap selects the value. Tapping the same value again deselects it (returns to null/—).
+   - **Styling:** Inactive buttons: `border: 1px solid T.brd`. Active buttons: Use the RPE color coding (Green for 7, Amber for 8, Red for 9+) with white text.
+
+5. **Widen Inputs:** Apply the updated `numInput` widths. Ensure the layout remains horizontal and doesn't wrap on standard smartphone widths (~375px).
+
+Implement these ergonomics and styling fixes now. Let me know when the app is "Gym-Ready"!
