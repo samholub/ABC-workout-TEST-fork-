@@ -61,8 +61,13 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 "use strict";
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
-var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(x){return false}}};
+var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
+
+var _idbDB=null;
+function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
+function idbSet(k,v){initDB().then(function(db){var tx=db.transaction("keyval","readwrite");tx.objectStore("keyval").put(v,k)}).catch(function(){})}
+function idbGet(k){return initDB().then(function(db){return new Promise(function(resolve,reject){var req=db.transaction("keyval","readonly").objectStore("keyval").get(k);req.onsuccess=function(){resolve(req.result!==undefined?req.result:null)};req.onerror=function(){reject(req.error)}})})}
 
 var SCHEMA_VERSION=1;
 function runMigrations(){var stored=S.get(KEYS.schemaVersion)||0;if(stored<1){console.log("Migrating to schema v1")}S.set(KEYS.schemaVersion,SCHEMA_VERSION)}
@@ -1118,7 +1123,14 @@ e("div",{style:{fontSize:14,color:T.sec,marginBottom:32}},"The app crashed. Your
 e("div",{style:{display:"flex",gap:12,flexDirection:"column",width:"100%",maxWidth:280}},
 e("button",{onClick:exportBackup,style:{padding:"14px 20px",background:T.acc,border:"none",borderRadius:10,color:T.bg,fontSize:15,fontWeight:700,cursor:"pointer"}},"Export Backup"),
 e("button",{onClick:function(){window.location.reload()},style:{padding:"14px 20px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.txt,fontSize:15,fontWeight:600,cursor:"pointer"}},"Reload App")))}}
-RD.createRoot(document.getElementById("root")).render(e(AppBoundary,null,e(App)));
+function bootApp(){RD.createRoot(document.getElementById("root")).render(e(AppBoundary,null,e(App)))}
+function tryIDBRecovery(){
+var critical=[KEYS.logs,KEYS.state,KEYS.weights];
+var missing=critical.filter(function(k){return localStorage.getItem(k)===null});
+if(missing.length===0){bootApp();return}
+console.log("localStorage missing keys:",missing,". Attempting IDB recovery...");
+Promise.all(missing.map(function(k){return idbGet(k).then(function(v){if(v!=null){try{localStorage.setItem(k,JSON.stringify(v));console.log("Recovered",k,"from IndexedDB")}catch(e){}}}).catch(function(){})})).then(bootApp).catch(bootApp)}
+try{tryIDBRecovery()}catch(e){bootApp()}
 </script>
 </body>
 </html>
