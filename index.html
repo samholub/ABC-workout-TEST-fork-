@@ -61,7 +61,11 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(x){return false}}};
-var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft"};
+var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
+
+var SCHEMA_VERSION=1;
+function runMigrations(){var stored=S.get(KEYS.schemaVersion)||0;if(stored<1){console.log("Migrating to schema v1")}S.set(KEYS.schemaVersion,SCHEMA_VERSION)}
+runMigrations();
 
 function clampSet(s){if(!s||typeof s!=="object")return{weight:0,reps:0,rpe:0,completed:false};return{weight:Math.max(0,Math.min(Number(s.weight)||0,2000)),reps:Math.max(0,Math.min(Number(s.reps)||0,500)),rpe:Math.max(0,Math.min(Number(s.rpe)||0,10)),completed:!!s.completed}}
 function validateLogs(raw){if(!Array.isArray(raw))return[];return raw.filter(function(l){return l&&typeof l==="object"&&typeof l.date==="string"&&typeof l.session==="string"&&(!l.exercises||Array.isArray(l.exercises))}).map(function(l){if(!l.exercises)return l;return Object.assign({},l,{exercises:l.exercises.map(function(ex){if(!ex||!Array.isArray(ex.sets))return ex;return Object.assign({},ex,{sets:ex.sets.map(clampSet)})})})})}
