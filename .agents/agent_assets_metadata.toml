@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "0UpfLtsJ5WuK4rJ4VknhH"
+uri = "file://ARCHITECTURE_REVIEW.md"
+type = "text"
+title = "Architecture Design Review: ABC Workout PWA"

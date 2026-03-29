@@ -1,0 +1,226 @@
+# Architecture Design Review: ABC Workout PWA
+
+---
+
+## 1. Architecture Clarity and Component Design
+
+### Strengths
+
+The application uses a deliberate single-file architecture that successfully contains a full-featured workout tracker in approximately 1,080 lines. The file is organized into 10 clearly labeled and commented sections with a table of contents at the top, making navigation straightforward despite the monolithic structure. Each section has a well-defined responsibility:
+
+- Sections 1-3 handle configuration and data definitions.
+- Sections 4-5 encapsulate analytics and recommendation logic as pure functions.
+- Sections 6-7 isolate utilities and the experimental PPG engine.
+- Section 8 contains reusable UI components.
+- Section 9 houses the main App component with state and screen renderers.
+- Section 10 is a single mount call.
+
+The use of pure functions for analytics (calcE1RM, calcACWR, detectPRs, etc.) and recommendations (getProgression, getSuggestedLoad, getSmartWarmup) creates a clean separation between business logic and rendering. These functions accept data as arguments and return results without side effects, making them independently testable.
+
+The exercise grouping system (EX_GROUP) that maps session-specific exercise IDs (bss-a, bss-c) to canonical groups (bss) is a practical solution for tracking the same movement across different sessions.
+
+### Weaknesses
+
+The App component in Section 9 carries approximately 35 useState hooks. This creates a single monolithic state container that manages all screen navigation, workout data, UI toggles, and timer state in one component. There is no state management abstraction, context provider, or reducer pattern to organize this complexity.
+
+The screen renderer functions (renderHome, renderActiveWorkout, etc.) are defined inside the App component as closures over its state. While this avoids prop-drilling, it tightly couples all rendering logic to the App component and prevents any of these screen-level functions from being extracted as standalone components without significant refactoring.
+
+Inline styles are used throughout all components. The theme token object (T) centralizes colors, but layout properties (padding, margin, flex, border-radius) are duplicated across hundreds of createElement calls. This makes global layout adjustments tedious and error-prone.
+
+The router is a simple if-chain at the bottom of App. It works, but adding screens or handling deep-linking would require modifying the main component directly.
+
+### Potential Improvements
+
+- Extract the App state into a useReducer or split related state into custom hooks (useWorkoutState, useTimerState, useNavigationState).
+- Move screen renderers into standalone components that receive state via props or context.
+- Consider a small CSS-in-JS utility or a style object factory to reduce inline style duplication.
+
+---
+
+## 2. External System Integrations
+
+### Strengths
+
+The application has minimal external dependencies by design. React 18 and ReactDOM are loaded from cdnjs.cloudflare.com, which is a highly available CDN with global distribution. Google Fonts are loaded asynchronously with preconnect hints, preventing render-blocking. There is no backend API, database service, or authentication provider to manage.
+
+The AI analysis integration is handled via clipboard export rather than a live API call. The copySummary function assembles a structured text prompt from session data that the user manually pastes into an external AI tool. This avoids API key management, rate limiting, and network dependency entirely.
+
+### Weaknesses
+
+CDN dependency creates a hard requirement on network availability for the initial load. If cdnjs.cloudflare.com is unreachable, the application fails completely. There is no service worker or local cache of React bundles.
+
+The manifest is embedded as a base64 data URI. While this eliminates a network request, it prevents the browser from caching the manifest independently and makes it harder to update PWA metadata without modifying the HTML.
+
+YouTube video embeds load the full YouTube iframe player for each exercise reference. This can impact performance when multiple exercise cards are expanded simultaneously, as each iframe loads its own scripts and assets.
+
+### Potential Improvements
+
+- Add a service worker to cache the React CDN scripts and the HTML file for offline use.
+- Lazy-load YouTube embeds, rendering a thumbnail placeholder until the user explicitly taps to play.
+- Move the manifest to a separate manifest.json file for independent caching.
+
+---
+
+## 3. Security Architecture
+
+### Strengths
+
+The attack surface is minimal. There is no server-side code, no authentication system, no API endpoints, and no user accounts. The application runs entirely in the browser with data stored in localStorage. There is no opportunity for SQL injection, authentication bypass, or server-side request forgery.
+
+Camera access for the PPG heart rate feature uses the standard browser permissions API (navigator.mediaDevices.getUserMedia), which requires explicit user consent. The camera stream is processed locally and never transmitted.
+
+Data export produces a local JSON file. Data import includes validation: it checks for JSON parse success, verifies logs is an array, validates the first 3 entries have date and session fields, and confirms state and weights are objects. A confirmation dialog displays session count and export date before overwriting.
+
+### Weaknesses
+
+localStorage is accessible to any JavaScript running on the same origin. If the hosting domain were compromised or an XSS vulnerability existed, all workout data could be read or modified. There is no encryption of stored data.
+
+The import validation is defensive but not exhaustive. It checks structural properties (is it an array, do entries have date/session fields) but does not sanitize string content. Malformed data in exercise names or notes fields could potentially cause rendering errors.
+
+The YouTube URL extraction uses a regex that could accept crafted URLs. While the extracted ID is only used to construct an embed URL, the full user-provided URL is stored in localStorage without sanitization.
+
+React CDN scripts are loaded without Subresource Integrity (SRI) hashes. If the CDN were compromised, modified scripts would load without detection.
+
+### Potential Improvements
+
+- Add SRI hashes to the React CDN script tags.
+- Sanitize string fields during import (trim, length-limit, strip HTML).
+- Validate YouTube URLs more strictly or sanitize the extracted video ID.
+- Consider encrypting localStorage with a user-provided passphrase for users storing sensitive training data.
+
+---
+
+## 4. Performance, Scalability, and Resilience
+
+### Strengths
+
+The application loads a single HTML file with two CDN scripts and an async font stylesheet. There is no build step, no code splitting, no webpack chunk loading. Time to interactive is primarily gated on the React CDN fetch, which benefits from browser caching on repeat visits.
+
+Analytics functions (calcVolume, calcACWR, detectPRs) operate on the logs array, which is capped at 100 entries (S.set for logs stores at most 100). This bounds the computational cost of all analytics to a fixed maximum.
+
+The PPG heart rate engine uses Float64Array throughout its signal processing pipeline (Butterworth filtering, FFT, Welch PSD), which provides efficient memory layout and avoids boxing overhead compared to regular arrays.
+
+The rest timer uses setInterval with cleanup, and the HR monitor uses requestAnimationFrame with proper cancellation on unmount. Both handle lifecycle correctly.
+
+### Weaknesses
+
+The App component re-renders on every state change across any of its 35+ state variables. There is no memoization (React.memo, useMemo, useCallback) on child components or computed values. Opening settings, toggling insights, or updating a timer all trigger a full App re-render including all visible exercise cards.
+
+All logs are loaded from localStorage into state on mount and re-serialized on every save. For 100 logs with multiple exercises and sets each, this involves JSON.parse and JSON.stringify of a moderately large object on every session save.
+
+The FFT implementation (ppgFFT) is a pure JavaScript Cooley-Tukey radix-2 algorithm. While adequate for the current 15-second window at approximately 30fps (450 samples), longer sampling windows or higher frame rates could cause UI jank on lower-end devices.
+
+There is no error boundary. A rendering error in any component crashes the entire application.
+
+### Potential Improvements
+
+- Wrap UI components in React.memo to prevent unnecessary re-renders.
+- Add a React error boundary around the App to catch rendering errors and display a recovery screen.
+- Consider Web Workers for the PPG signal processing pipeline to keep the main thread responsive.
+- Debounce localStorage writes to avoid serialization on every keystroke.
+
+---
+
+## 5. Data Management and Storage Security
+
+### Strengths
+
+The data model is well-defined with documented localStorage keys (wk-st, wk-lg, wk-wt, wk-vd, wk-cr, wk-rs, wk-at). The separation of concerns is clear: cycle state, logs, weights, and videos each have their own key, avoiding a single monolithic storage entry.
+
+The export/import system includes versioning (version: 20) and metadata (exportDate), enabling future migration logic. The import flow uses a staged confirmation dialog that shows the user exactly what will be overwritten before applying changes.
+
+The logs array is capped at 100 entries, providing a natural bound on storage consumption. localStorage typically has a 5-10MB limit per origin, and 100 workout logs with full exercise data should stay well within this.
+
+### Weaknesses
+
+There is no data migration system. If the data schema changes between versions, existing localStorage data could become incompatible. The version field exists in exports but there is no on-load migration function that upgrades older schemas.
+
+All data lives in a single storage mechanism (localStorage) with no redundancy. If a user clears their browser data, all training history is permanently lost. The export feature mitigates this but relies on the user proactively creating backups.
+
+The log cap of 100 entries silently drops older entries. There is no notification to the user that historical data is being discarded. For a user training 4-5 times per week, 100 sessions covers approximately 5 months.
+
+Exercise grouping (EX_GROUP) maps exercise IDs to canonical groups, but if an exercise ID is not in the map, it falls through to using the raw ID. This could create orphaned data points if exercise IDs are renamed in future versions.
+
+### Potential Improvements
+
+- Add a data migration system that runs on app load, checking the stored version and applying sequential upgrades.
+- Implement automatic periodic export to a user-specified location or cloud backup integration.
+- Alert the user when logs approach the 100-entry cap, or archive older logs to a separate localStorage key.
+- Add a data integrity check on load that validates the stored data matches the expected schema.
+
+---
+
+## 6. Maintainability, Flexibility, and Future Growth
+
+### Strengths
+
+The 10-section organization with a table of contents creates a navigable structure within the single-file constraint. Named screen renderer functions (renderHome, renderHistory, etc.) make the routing and screen structure explicit.
+
+The progression engine configuration (PROG object) externalizes exercise-specific progression rules (target reps, increment size, RPE threshold) from the progression logic itself. Adding a new exercise to the progression system requires adding one entry to PROG, one to EX_GROUP, and the exercise definition to SESSIONS.
+
+The theme token system (T object) enables centralized color changes. Updating the accent color from amber to blue would require changing a single value in the T object, and all code referencing T.acc would update accordingly.
+
+The separation of analytics functions as pure functions in Section 4 means they could be extracted to a separate file or tested in isolation with minimal refactoring.
+
+### Weaknesses
+
+The single-file architecture, while intentional, creates a ceiling on maintainability as the codebase grows. At 1,080 lines it remains manageable, but adding features like the trend dashboard (Roadmap item 33) or screen transitions (item 31) could push it past the point where single-file navigation is practical.
+
+The absence of JSX (using React.createElement directly) makes the UI code roughly 2-3x more verbose than equivalent JSX. Complex nested components like ExerciseCard and SettingsSheet are difficult to read and modify because the component tree structure is obscured by function call nesting.
+
+There is no automated testing. The TESTING.md file documents manual testing procedures, but there are no unit tests for the analytics or progression functions, which are the most logic-dense parts of the codebase.
+
+CSS is entirely inline, meaning design system changes beyond color (spacing, border radius, typography scale) require touching every component.
+
+### Potential Improvements
+
+- Split the single file into modules if a bundler is ever adopted, starting with analytics, data, and components as separate files.
+- Add unit tests for the pure analytics and recommendation functions. These could run with a simple test runner without needing a DOM.
+- Create reusable style utility functions (card(), button(), input()) that encapsulate common layout patterns.
+- Document the progression engine rules in code comments or a separate reference, as the 2-session rule and RPE gating are core to the product.
+
+---
+
+## 7. Potential Risks and Areas for Improvement
+
+### Risk: Single Point of Failure for Data
+
+All user data exists only in localStorage on a single device. There is no cloud sync, no automatic backup, and no recovery mechanism if the data is lost. For a fitness tracking application where historical data has high personal value, this is the most significant risk.
+
+Recommendation: Implement an automatic export-to-file or cloud backup mechanism. At minimum, prompt the user to export after every N sessions.
+
+### Risk: CDN Dependency Without Fallback
+
+The application will not render if cdnjs.cloudflare.com is unreachable. While CDN outages are rare, they do occur.
+
+Recommendation: Add a service worker that caches the React scripts on first load, enabling offline operation and CDN resilience.
+
+### Risk: No Error Recovery
+
+A JavaScript error in any part of the render tree crashes the entire application with a white screen. There is no error boundary, no fallback UI, and no way for the user to recover without manually clearing state.
+
+Recommendation: Add a React error boundary at the App level that catches rendering errors and offers a "Return to Home" action. Add a try-catch around localStorage reads on mount.
+
+### Risk: Browser API Compatibility
+
+The PPG heart rate feature depends on getUserMedia, AudioContext, and Canvas 2D. While these are broadly supported, the torch constraint (used to illuminate the finger for PPG) is not available in all browsers and fails silently if unsupported.
+
+Recommendation: Add explicit capability detection before offering the HR feature, and display a clear message if torch is unavailable.
+
+### Risk: Progression Engine Edge Cases
+
+The progression engine requires exactly 2 sessions of history to evaluate. If a user logs a manual entry (which is excluded from session count) between two regular sessions, the progression evaluation could use non-adjacent sessions. The carry advisory logic depends on detecting double-day patterns, which requires accurate date tracking.
+
+Recommendation: Add explicit test cases documenting expected progression behavior for edge cases: first session, manual logs between sessions, timezone changes, and double-day boundaries.
+
+### Risk: State Corruption
+
+The App component manages 35+ state variables with direct useState calls. Complex interactions between screens (starting a workout, navigating to readiness, then warmup, then workout, then completion) create many state transition paths. A bug in one transition could leave the app in an inconsistent state with no way to recover except resetting.
+
+Recommendation: Consider a state machine or finite state automaton for screen navigation to enforce valid transitions. Add a "Reset Current Session" escape hatch accessible from any screen.
+
+---
+
+## Summary
+
+The ABC Workout PWA is a well-architected single-purpose application that successfully delivers a comprehensive workout tracking experience within its self-imposed constraints of zero build tools and a single-file structure. The pure-function approach to analytics and recommendations creates a clean and testable core logic layer. The primary architectural risks center around data durability (localStorage as sole storage), resilience (no error boundaries or offline support), and maintainability scaling (monolithic component with extensive inline state). The recommended priorities for architectural improvement are: adding a service worker for offline support, implementing error boundaries, introducing a data migration system, and splitting the App component state into organized custom hooks.
