@@ -63,6 +63,10 @@ var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.naviga
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(x){}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft"};
 
+function clampSet(s){if(!s||typeof s!=="object")return{weight:0,reps:0,rpe:0,completed:false};return{weight:Math.max(0,Math.min(Number(s.weight)||0,2000)),reps:Math.max(0,Math.min(Number(s.reps)||0,500)),rpe:Math.max(0,Math.min(Number(s.rpe)||0,10)),completed:!!s.completed}}
+function validateLogs(raw){if(!Array.isArray(raw))return[];return raw.filter(function(l){return l&&typeof l==="object"&&typeof l.date==="string"&&typeof l.session==="string"&&(!l.exercises||Array.isArray(l.exercises))}).map(function(l){if(!l.exercises)return l;return Object.assign({},l,{exercises:l.exercises.map(function(ex){if(!ex||!Array.isArray(ex.sets))return ex;return Object.assign({},ex,{sets:ex.sets.map(clampSet)})})})})}
+function validateState(raw){var def={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};if(!raw||typeof raw!=="object")return def;return{lastSession:typeof raw.lastSession==="string"?raw.lastSession:null,lastDate:raw.lastDate||null,isDoubleDay:!!raw.isDoubleDay,completedToday:Array.isArray(raw.completedToday)?raw.completedToday:[],preTgu:raw.preTgu||undefined}}
+
 // ========================================================================
 // 2. THEME TOKENS
 //    Centralized color palette — use T.xxx throughout
@@ -673,12 +677,12 @@ e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:16}},e("but
 
 function App(){
 var _scr=useState("home"),screen=_scr[0],setScreen=_scr[1];
-var _cs=useState(function(){return S.get(KEYS.state)||{lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]}}),cycleState=_cs[0],setCycleState=_cs[1];
+var _cs=useState(function(){return validateState(S.get(KEYS.state))}),cycleState=_cs[0],setCycleState=_cs[1];
 var _cur=useState(null),currentSession=_cur[0],setCurrent=_cur[1];
 var _wu=useState(null),warmup=_wu[0],setWarmup=_wu[1];
 var _ed=useState({}),exData=_ed[0],setExData=_ed[1];
 var _lw=useState(function(){return S.get(KEYS.weights)||{}}),lastWeights=_lw[0],setLastWeights=_lw[1];
-var _lg=useState(function(){return S.get(KEYS.logs)||[]}),logs=_lg[0],setLogs=_lg[1];
+var _lg=useState(function(){return validateLogs(S.get(KEYS.logs))}),logs=_lg[0],setLogs=_lg[1];
 var _vu=useState(function(){return S.get(KEYS.videos)||{}}),videoUrls=_vu[0],setVideoUrls=_vu[1];
 var _ct=useState(function(){return S.get(KEYS.carry)||"suitcase"}),carryType=_ct[0],setCarryType=_ct[1];
 var _tm=useState(null),timer=_tm[0],setTimer=_tm[1];
