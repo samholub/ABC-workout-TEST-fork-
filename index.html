@@ -60,7 +60,7 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 "use strict";
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
-var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(x){}}};
+var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft"};
 
 function clampSet(s){if(!s||typeof s!=="object")return{weight:0,reps:0,rpe:0,completed:false};return{weight:Math.max(0,Math.min(Number(s.weight)||0,2000)),reps:Math.max(0,Math.min(Number(s.reps)||0,500)),rpe:Math.max(0,Math.min(Number(s.rpe)||0,10)),completed:!!s.completed}}
@@ -745,12 +745,13 @@ var totalDone=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(
 if(totalDone===0){if(window.confirm("No sets completed. Discard this session?")){localStorage.removeItem(KEYS.draft);home()}return}
 var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
-setLastWeights(nw);S.set(KEYS.weights,nw);
 var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness,sessionRPE:sessionRPE||0,prs:sessionPRs.length>0?sessionPRs:undefined,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
-var nl=[log].concat(logs).slice(0,100);setLogs(nl);S.set(KEYS.logs,nl);
+var nl=[log].concat(logs).slice(0,100);
 var ct=(cycleState.completedToday||[]).concat([currentSession]);
 var ns={lastSession:currentSession,lastDate:new Date().toISOString(),isDoubleDay:ct.length>=2&&CYCLE.indexOf(currentSession)!==-1,completedToday:ct,preTgu:currentSession==="TGU"?(cycleState.preTgu||getRec()):undefined};
-setCycleState(ns);S.set(KEYS.state,ns);localStorage.removeItem(KEYS.draft);home()
+var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
+if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
+setLastWeights(nw);setLogs(nl);setCycleState(ns);localStorage.removeItem(KEYS.draft);home()
 };
 
 var saveVid=function(exId,url){var u=Object.assign({},videoUrls);u[exId]=url;setVideoUrls(u);S.set(KEYS.videos,u)};
