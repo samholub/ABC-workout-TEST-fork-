@@ -12,6 +12,7 @@ A single-file Progressive Web App (PWA) for tracking the ABC training program �
 
 ## Project Structure
 - `index.html` — The entire application (single file)
+- `sw.js` — Service Worker for offline app shell caching
 - `hr-debug.html` — Standalone diagnostic tool for PPG heart rate algorithm
 - `ARCHITECTURE.md` — Technical reference and design decisions
 - `ARCHITECTURE_REVIEW.md` — Detailed architecture review
