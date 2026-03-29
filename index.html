@@ -31,7 +31,7 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 </head>
 <body>
 <div id="root"></div>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js')})}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js')})}</script>
 <script>
 
 // ╔════════════════════════════════════════════════════════════════════════╗
@@ -68,6 +68,7 @@ var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
 function idbSet(k,v){initDB().then(function(db){var tx=db.transaction("keyval","readwrite");tx.objectStore("keyval").put(v,k)}).catch(function(){})}
 function idbGet(k){return initDB().then(function(db){return new Promise(function(resolve,reject){var req=db.transaction("keyval","readonly").objectStore("keyval").get(k);req.onsuccess=function(){resolve(req.result!==undefined?req.result:null)};req.onerror=function(){reject(req.error)}})})}
+function clearDraft(){localStorage.removeItem(KEYS.draft);initDB().then(function(db){var tx=db.transaction("keyval","readwrite");tx.objectStore("keyval").delete(KEYS.draft)}).catch(function(){})}
 
 var SCHEMA_VERSION=1;
 function runMigrations(){var stored=S.get(KEYS.schemaVersion)||0;if(stored<1){console.log("Migrating to schema v1")}S.set(KEYS.schemaVersion,SCHEMA_VERSION)}
@@ -192,6 +193,7 @@ function shouldDeload(logs){if(logs.length<6)return false;var recent=logs.slice(
 //   getAvgTime()       — Average duration for a session type
 //   getFatigueTrend()  — 3-session lookback for creeping fatigue (soft advisory)
 //   getBalanceAdvisory() — Detect neglected session types in recent history
+//   getPreSessionContext() — Consolidated pre-session intelligence (load, progression, fatigue)
 
 // Session count and training focus — based on sessions logged, not calendar
 function getSessionCount(logs){var c=0;for(var i=0;i<logs.length;i++){if(!logs[i].manual)c++}return c}
@@ -295,10 +297,7 @@ if(avgRPE>=7.5&&avgRd>0&&avgRd<=5)
 return{msg:"Avg RPE \u22657.5 with low readiness over last 3 sessions. Consider reducing load today."};
 return null}
 
-// Pattern-balance advisory — detects session-type drift over recent history.
-// Looks at the last 9 non-TGU, non-manual sessions. If any core type (A, B, C)
-// is completely absent, surfaces one calm recommendation for the most neglected.
-// modC counts toward C-family (both include vertical pulling).
+// Consolidated pre-session intelligence (load, progression, fatigue)
 function getPreSessionContext(sessionName,logs,readiness,lastWeights,cycleState){
 var sess=SESSIONS[sessionName];if(!sess)return null;
 var sesCount=getSessionCount(logs);var period=getPeriodPhase(sesCount);
@@ -317,6 +316,10 @@ suggestedReason:sug?sug.reason:null,
 progression:prog,lastSets:lastSets}});
 return{session:sess,exercises:exercises,readinessScore:rdScore,period:period,fatigue:fatigue,isDouble:isDouble}}
 
+// Pattern-balance advisory — detects session-type drift over recent history.
+// Looks at the last 9 non-TGU, non-manual sessions. If any core type (A, B, C)
+// is completely absent, surfaces one calm recommendation for the most neglected.
+// modC counts toward C-family (both include vertical pulling).
 function getBalanceAdvisory(logs,rec){
 var recent=[];
 for(var i=0;i<logs.length&&recent.length<9;i++){
@@ -812,7 +815,7 @@ setScreen("readiness")
 var saveAndFinish=function(){
 var sess=SESSIONS[currentSession];
 var totalDone=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(function(s){if(s.completed)totalDone++})});
-if(totalDone===0){if(window.confirm("No sets completed. Discard this session?")){localStorage.removeItem(KEYS.draft);home()}return}
+if(totalDone===0){if(window.confirm("No sets completed. Discard this session?")){clearDraft();home()}return}
 var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
 var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness,sessionRPE:sessionRPE||0,prs:sessionPRs.length>0?sessionPRs:undefined,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
@@ -822,15 +825,15 @@ var ns={lastSession:currentSession,lastDate:getLocalDateKey(),isDoubleDay:ct.len
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
 if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
 if(trimmed)alert("Oldest session removed to stay within storage limits.");
-setLastWeights(nw);setLogs(nl);setCycleState(ns);localStorage.removeItem(KEYS.draft);home()
+setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 };
 
 var saveVid=function(exId,url){var u=Object.assign({},videoUrls);u[exId]=url;setVideoUrls(u);S.set(KEYS.videos,u)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){if(currentSession)localStorage.removeItem(KEYS.draft);setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setSessionPRs([]);setCopied(false);setTimeAvail(25)};
+var home=function(){if(currentSession)clearDraft();setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setSessionPRs([]);setCopied(false);setTimeAvail(25)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
 var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,100);setLogs(nl);S.set(KEYS.logs,nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
-var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});localStorage.removeItem(KEYS.draft);setDraftSession(null);setShowSettings(false);setShowHist(false)};
+var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
 var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(ex){allEx[ex.id]=ex.name})});return allEx[id]||id};
 
 var rec=getRec();
@@ -861,7 +864,7 @@ e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},e("div
 e("div",{style:{fontSize:13,color:T.sec,marginBottom:10}},SESSIONS[draftSession.session].label+" \u2014 started "+new Date(draftSession.start).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})),
 e("div",{style:{display:"flex",gap:8}},
 e("button",{onClick:function(){var d=draftSession;if(!d||!SESSIONS[d.session])return;var sess=SESSIONS[d.session];var restoredEx=d.exData||{};sess.exercises.forEach(function(ex){if(!restoredEx[ex.id]||!Array.isArray(restoredEx[ex.id])){restoredEx[ex.id]=Array.from({length:ex.sets},function(){return{weight:0,reps:"",rpe:"",completed:false}})}});var validActiveEx=d.activeEx&&restoredEx[d.activeEx]?d.activeEx:sess.exercises[0].id;setCurrent(d.session);setExData(restoredEx);setStart(d.start||Date.now());setReadiness(d.readiness||{sleep:2,soreness:2,motivation:2});setWarmup(d.warmup||null);setNotes(d.notes||{notes:""});setTimeAvail(d.timeAvail||25);setSessionRPE(d.sessionRPE||0);setActiveEx(validActiveEx);setCircuitMode(!!d.circuitMode);setDraftSession(null);setScreen("workout")},style:{flex:1,padding:"12px",background:T.acc,border:"none",borderRadius:10,color:"#1C1917",fontSize:14,fontWeight:700,cursor:"pointer"}},"Resume"),
-e("button",{onClick:function(){localStorage.removeItem(KEYS.draft);setDraftSession(null)},style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.sec,fontSize:14,fontWeight:500,cursor:"pointer"}},"Discard"))),
+e("button",{onClick:function(){clearDraft();setDraftSession(null)},style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.sec,fontSize:14,fontWeight:500,cursor:"pointer"}},"Discard"))),
 logs.length>=90&&e("div",{style:{background:"#1a1a0a",border:"1px solid #854d0e",borderRadius:12,padding:"12px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}},e("div",{style:{fontSize:18}},"\u26A0\uFE0F"),e("div",{style:{fontSize:13,color:T.warn,lineHeight:1.4}},"Storage advisory: You have ",e("strong",null,logs.length)," saved sessions. Please export a backup soon.")),
 e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}},
 [{l:"Last",v:cycleState.lastSession?(SESSIONS[cycleState.lastSession]?SESSIONS[cycleState.lastSession].label.replace("Session ",""):cycleState.lastSession):"\u2014",s:daysSince!==null?(daysSince===0?"Today":daysSince+"d ago"):""},
