@@ -761,8 +761,15 @@ var label=SESSIONS[ls]?SESSIONS[ls].label:ls;
 return"Last completed: "+label};
 
 var startSession=function(key){
-var sess=SESSIONS[key];var init={};
-sess.exercises.forEach(function(ex){init[ex.id]=Array.from({length:ex.sets},function(){return{weight:lastWeights[ex.id]||0,reps:"",rpe:"",completed:false}})});
+var sess=SESSIONS[key];var init={};var sesCount=getSessionCount(logs);var isDouble=(cycleState||{}).isDoubleDay;
+sess.exercises.forEach(function(ex){
+var sug=getSuggestedLoad(ex.id,logs,null,sesCount,isDouble&&ex.isCarry);
+var prefillW=sug?sug.weight:(lastWeights[ex.id]||0);
+var ghost=getGhostSets(ex.id,logs);
+init[ex.id]=Array.from({length:ex.sets},function(_,si){
+var prefillR="";if(ghost&&ghost[si]&&ghost[si].reps>0)prefillR=ghost[si].reps;
+else if(ghost&&ghost[0]&&ghost[0].reps>0)prefillR=ghost[0].reps;
+return{weight:prefillW,reps:prefillR,rpe:"",completed:false}})});
 var startTs=Date.now();
 setExData(init);setCurrent(key);setStart(startTs);setNotes({notes:""});setActiveEx(sess.exercises[0].id);setReadiness({sleep:2,soreness:2,motivation:2});if(timeAvail<=15)setCircuitMode(true);
 S.set(KEYS.draft,{session:key,exData:init,start:startTs,readiness:{sleep:2,soreness:2,motivation:2},warmup:null,notes:{notes:""},timeAvail:timeAvail,sessionRPE:0,activeEx:sess.exercises[0].id,circuitMode:timeAvail<=15,ts:Date.now()});
@@ -909,7 +916,10 @@ fatigueTrend&&e("div",{style:{marginTop:10,background:"#1a1a0a",border:"1px soli
 score<=4&&e("div",{style:{marginTop:8,fontSize:13,color:"#A8A29E",fontStyle:"italic"}},"Readiness \u22644/9. Progression paused \u2014 maintain loads."))),
 e("div",{style:{flexShrink:0,background:T.bg,borderTop:"1px solid "+T.inp,padding:"12px 14px 12px"}},
 e("div",{style:{display:"flex",gap:8}},
-e("button",{onClick:function(){setScreen("gameplan")},style:{width:"100%",padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"See Game Plan \u2192"))))
+e("button",{onClick:function(){var sesCount=getSessionCount(logs);var isDouble=(cycleState||{}).isDoubleDay;var updated=Object.assign({},exData);
+sess.exercises.forEach(function(ex){var sug=getSuggestedLoad(ex.id,logs,readiness,sesCount,isDouble&&ex.isCarry);var prefillW=sug?sug.weight:(lastWeights[ex.id]||0);var ghost=getGhostSets(ex.id,logs);var sets=updated[ex.id]||[];
+updated[ex.id]=sets.map(function(s,si){if(s.completed)return s;var prefillR=s.reps;if(!prefillR){if(ghost&&ghost[si]&&ghost[si].reps>0)prefillR=ghost[si].reps;else if(ghost&&ghost[0]&&ghost[0].reps>0)prefillR=ghost[0].reps;else prefillR=""}var newW=s.weight;if(!s.weight||s.weight===(lastWeights[ex.id]||0))newW=prefillW;return Object.assign({},s,{weight:newW,reps:prefillR})})});
+setExData(updated);setScreen("gameplan")},style:{width:"100%",padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"See Game Plan \u2192"))))
 }
 
 // ── Screen: Game Plan ──
