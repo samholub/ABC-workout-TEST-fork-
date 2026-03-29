@@ -266,6 +266,7 @@ else wu="standard";
 if(timeAvail&&timeAvail<=15){if(wu==="enhanced"||wu==="hip")wu="standard"}
 return wu}
 
+function getAdaptiveRest(baseRest,rpe){var r=parseFloat(rpe);if(isNaN(r))return baseRest;if(r>=9)return Math.min(baseRest+60,180);if(r>=7)return baseRest;if(r>=5)return Math.max(baseRest-15,45);return baseRest}
 function getAvgTime(sessionKey,logs){
 var t=0,c=0;logs.forEach(function(l){if(l.session===sessionKey&&l.duration>0){t+=l.duration;c++}});
 return c>=1?Math.round(t/c):0}
@@ -442,7 +443,7 @@ function ppgRgbToLab(r,g,b){var rl=r/255,gl=g/255,bl=b/255;rl=rl>0.04045?Math.po
 
 // ── RestTimer ──
 function RestTimer(props){
-var duration=props.duration||90,onDone=props.onDone,onHR=props.onHR,floating=props.floating;
+var duration=props.duration||90,onDone=props.onDone,onHR=props.onHR,floating=props.floating,adaptiveLabel=props.adaptiveLabel;
 var _r=useState(duration),rem=_r[0],setRem=_r[1];
 var _u=useState(true),run=_u[0],setRun=_u[1];
 var beeped=useRef(false);
@@ -452,13 +453,14 @@ var pct=((duration-rem)/duration)*100;var m=Math.floor(rem/60),s=rem%60;
 if(floating){return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 12px #0008"}},
 e("div",{style:{flex:1,display:"flex",alignItems:"center",gap:10}},
 e("div",{style:{fontFamily:MONO,fontSize:24,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),
+adaptiveLabel&&e("div",{style:{fontSize:10,color:T.mut,marginTop:1}},adaptiveLabel),
 e("div",{style:{flex:1,height:3,background:T.inp,borderRadius:2,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:5}},
 onHR&&e("button",{onClick:onHR,style:{background:"#1a0a1a",border:"1px solid "+T.pkD,borderRadius:8,color:T.pkL,padding:"5px 7px",fontSize:11,cursor:"pointer"}},"\u2764\uFE0F"),
 e("button",{onClick:function(){setRun(!run)},style:{background:T.inp,border:"1px solid "+T.brd,borderRadius:8,color:T.txt,padding:"5px 10px",fontSize:12,cursor:"pointer"}},run?"\u23F8":"\u25B6"),
 rem===0?e("button",{onClick:onDone,style:{background:T.ok,border:"none",borderRadius:8,color:"#fff",padding:"5px 10px",fontSize:12,fontWeight:600,cursor:"pointer"}},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:{background:T.brd,border:"none",borderRadius:8,color:T.sec,padding:"5px 10px",fontSize:12,cursor:"pointer"}},"Skip")))}
 return e("div",{style:{background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"12px 16px",marginTop:8,display:"flex",alignItems:"center",gap:12}},
-e("div",{style:{flex:1}},e("div",{style:{fontFamily:MONO,fontSize:28,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),e("div",{style:{height:3,background:T.inp,borderRadius:2,marginTop:4,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
+e("div",{style:{flex:1}},e("div",{style:{fontFamily:MONO,fontSize:28,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),adaptiveLabel&&e("div",{style:{fontSize:11,color:T.mut,marginTop:2}},adaptiveLabel),e("div",{style:{height:3,background:T.inp,borderRadius:2,marginTop:4,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
 onHR&&e("button",{onClick:onHR,style:{background:"#1a0a1a",border:"1px solid "+T.pkD,borderRadius:8,color:T.pkL,padding:"6px 8px",fontSize:12,cursor:"pointer"}},"\u{2764}\uFE0F"),
 e("button",{onClick:function(){setRun(!run)},style:{background:T.inp,border:"1px solid "+T.brd,borderRadius:8,color:T.txt,padding:"6px 12px",fontSize:13,cursor:"pointer"}},run?"Pause":"Resume"),rem===0?e("button",{onClick:onDone,style:{background:T.ok,border:"none",borderRadius:8,color:"#fff",padding:"6px 12px",fontSize:13,fontWeight:600,cursor:"pointer"}},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:{background:T.brd,border:"none",borderRadius:8,color:T.sec,padding:"6px 12px",fontSize:13,cursor:"pointer"}},"Skip")))
@@ -773,6 +775,7 @@ var _hr=useState(false),showHR=_hr[0],setShowHR=_hr[1];
 var _ch=useState(null),chartEx=_ch[0],setChartEx=_ch[1];
 var _srpe=useState(0),sessionRPE=_srpe[0],setSessionRPE=_srpe[1];
 var _ft=useState(null),floatTimer=_ft[0],setFloatTimer=_ft[1];
+var _arl=useState(null),adaptiveRestLabel=_arl[0],setAdaptiveRestLabel=_arl[1];
 var _sd=useState(""),screenDir=_sd[0],setScreenDir=_sd[1];
 var _spr=useState([]),sessionPRs=_spr[0],setSessionPRs=_spr[1];
 var _cp=useState(false),copied=_cp[0],setCopied=_cp[1];
@@ -830,7 +833,7 @@ setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 
 var saveVid=function(exId,url){var u=Object.assign({},videoUrls);u[exId]=url;setVideoUrls(u);S.set(KEYS.videos,u)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){if(currentSession)clearDraft();setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setSessionPRs([]);setCopied(false);setTimeAvail(25)};
+var home=function(){if(currentSession)clearDraft();setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setSessionPRs([]);setCopied(false);setTimeAvail(25)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
 var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,100);setLogs(nl);S.set(KEYS.logs,nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
 var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
@@ -1045,7 +1048,7 @@ e("div",{style:{display:"flex",gap:6}},warmupData&&e("button",{onClick:function(
 e("div",{style:{height:3,background:"#292524",borderRadius:2,marginTop:8,overflow:"hidden"}},e("div",{style:{height:"100%",width:(done/total*100)+"%",background:sess.color,transition:"width 0.3s"}}))),
 showWarmupRef&&warmupData&&e("div",{style:{padding:"8px 16px",background:"#1a1a14",borderBottom:"1px solid #3d3d00",flexShrink:0}},e("div",{style:{fontSize:12,fontWeight:600,color:"#FBBF24",marginBottom:6}},warmupData.icon+" "+warmupData.label),warmupData.steps.map(function(s,i){return e("div",{key:i,style:{fontSize:12,color:"#D4D4AA",lineHeight:1.5,marginBottom:3}},s)})),
 e("div",{style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScrolling:"touch"}},
-floatTimer&&e(RestTimer,{key:timerKey,duration:restDur,floating:true,onDone:function(){setFloatTimer(null);setTimer(null);
+floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,floating:true,adaptiveLabel:adaptiveRestLabel,onDone:function(){setFloatTimer(null);setTimer(null);setAdaptiveRestLabel(null);
 if(circuitMode){var sess2=SESSIONS[currentSession];var curIdx=sess2.exercises.findIndex(function(x){return x.id===floatTimer.exId});
 var nextEx=null;for(var ci=1;ci<=sess2.exercises.length;ci++){var ni=(curIdx+ci)%sess2.exercises.length;var nid=sess2.exercises[ni].id;var nsets=exData[nid]||[];if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
 if(nextEx)setTimeout(function(){setActiveEx(nextEx)},200)}},onHR:function(){setShowHR(true)}}),
@@ -1062,7 +1065,7 @@ return e(ExerciseCard,{key:ex.id,exercise:ex,setData:exSets,lastWeight:lastWeigh
 showTimer:timer,timerKey:timerKey,restDuration:restDur,progression:prog,floatingTimer:!!floatTimer,
 ghostSets:ghost,prs:prList,e1rmData:e1rm,carryAdvisory:carryWarn&&ex.isCarry,suggestedLoad:sugLoad,
 onHR:function(){setShowHR(true)},
-onTimerDone:function(){setTimer(null);setFloatTimer(null);
+onTimerDone:function(){setTimer(null);setFloatTimer(null);setAdaptiveRestLabel(null);
 if(circuitMode){var curIdx=sess.exercises.findIndex(function(x){return x.id===ex.id});
 var nextEx=null;for(var ci=1;ci<=sess.exercises.length;ci++){var ni=(curIdx+ci)%sess.exercises.length;var nid=sess.exercises[ni].id;var nsets=exData[nid]||[];if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
 if(nextEx)setTimeout(function(){setActiveEx(nextEx)},200)}},
@@ -1070,7 +1073,7 @@ carryType:carryType,onCarryTypeChange:changeCarry,videoUrls:videoUrls,onVideoSav
 isExpanded:isActive,onToggle:function(){setActiveEx(isActive?null:ex.id)},
 onUpdate:function(ns){var u=Object.assign({},exData);u[ex.id]=ns;setExData(u);
 var jd=ns.findIndex(function(s,i){return s.completed&&!(exData[ex.id]&&exData[ex.id][i]&&exData[ex.id][i].completed)});
-if(jd!==-1&&jd<ns.length-1){setTimerKey(Date.now());setTimer(ex.id+"-"+jd);setFloatTimer({exId:ex.id,setIdx:jd})}
+if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());setTimer(ex.id+"-"+jd);setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur})}
 // Check for new PRs on completion
 var newPRs=detectPRs(ex.id,ns,logs);if(newPRs.length>0){var existing=sessionPRs.filter(function(p){return p.exId!==ex.id});newPRs.forEach(function(p){existing.push({exId:ex.id,exName:ex.name,setIdx:p.setIdx,reasons:p.reasons})});setSessionPRs(existing)}
 var justDone=ns.every(function(s){return s.completed});
