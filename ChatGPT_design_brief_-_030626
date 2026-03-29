@@ -1,0 +1,88 @@
+ABC Workout App — Product Design Brief (V1.5)
+
+Purpose
+This app exists to make consistent, sustainable training easy to follow in real life. It should reduce thinking and friction, not increase them.
+
+Core Product Philosophy
+- Simplicity over maximum optimization
+- Sustainability over perfect programming
+- Consistency over idealized weekly structure
+- Recommendations over enforcement
+- Autoregulation over rigid rules
+- Flexibility over guilt or reset behavior
+- Something is better than nothing
+- Manual override must always remain available
+
+Training Philosophy
+- The core system is a continuous A → B → C rotation
+- The cycle should never reset based on calendar weeks
+- Missed days are normal and should not break the system
+- Double days are acceptable and should be handled gracefully
+- RPE and subjective readiness are valid inputs
+- Movement patterns matter more than chasing ideal volume targets
+- The app may suggest balance and recovery adjustments, but should not become a compliance engine
+
+What the App Should Do
+- Remember context and recent history
+- Recommend the next best workout based on existing context
+- Surface soft advisories when useful
+- Help compress training into real-life time constraints
+- Preserve continuity across imperfect schedules
+- Make logging and review easy
+- Keep important data safe with export/import
+
+What the App Should Not Do
+- Enforce rigid scheduling
+- Depend on weekly accounting
+- Require perfect adherence
+- Lock the user out of choices
+- Push unnecessary complexity in pursuit of theoretical optimization
+- Become a dashboard-heavy or quota-driven system
+- Require a backend, account, or cloud dependency
+
+Intelligence Rules
+- Intelligence should be soft, trustworthy, and relatively rare
+- Advisories should help, not nag
+- Recommendations should be easy to override
+- The app should not punish skipped days, unusual schedules, or manual choices
+- Warnings should be calm and minimal
+- If the app is already steering in the right direction, do not repeat yourself with extra advisories
+
+Current Product Direction
+- Base architecture is guided recommendation with manual override
+- This is closer to “B with a light C layer underneath”
+- The app can ask a few smart questions and adapt its recommendation
+- The app should not become a rigid automated program controller
+
+Architecture Principles
+- Keep the app static and easy to maintain
+- Prefer readable, low-risk code organization
+- Keep logic easy to locate and understand
+- Add features only when they clearly improve daily usability or system integrity
+- Avoid abstractions that make the project harder for a non-expert owner to maintain
+
+Feature Boundary
+Good additions:
+- readiness check
+- post-session RPE
+- fatigue advisories
+- double-day carry advisories
+- soft balance advisories
+- export/import safety
+- lightweight recommendation improvements
+
+Bad additions:
+- week-based enforcement
+- volume quotas
+- mandatory progression engines
+- hard lockouts
+- complex periodization systems
+- backend/cloud complexity unless truly needed
+
+Decision Standard
+Before adding or changing anything, ask:
+1. Does this reduce friction in real use?
+2. Does this preserve simplicity and sustainability?
+3. Does this make the app more helpful without making it more controlling?
+4. Would I still want this if my schedule gets messy?
+If not, do not add it.
