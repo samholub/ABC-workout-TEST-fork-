@@ -24,6 +24,7 @@ input,select,textarea,button{font-family:inherit}
 input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 input[type="number"]{-moz-appearance:textfield}
 input[type="range"]{width:100%;accent-color:#F59E0B}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 </style>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -60,7 +61,7 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(x){}}};
-var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at"};
+var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft"};
 
 // ========================================================================
 // 2. THEME TOKENS
@@ -705,11 +706,14 @@ var _ft=useState(null),floatTimer=_ft[0],setFloatTimer=_ft[1];
 var _sd=useState(""),screenDir=_sd[0],setScreenDir=_sd[1];
 var _spr=useState([]),sessionPRs=_spr[0],setSessionPRs=_spr[1];
 var _cp=useState(false),copied=_cp[0],setCopied=_cp[1];
+var _df=useState(function(){return S.get(KEYS.draft)||null}),draftSession=_df[0],setDraftSession=_df[1];
 
 var setRestDur=function(v){setRestDurState(v);S.set(KEYS.rest,v)};
 var setCarryPref=function(v){setCarryType(v);S.set(KEYS.carry,v)};
 
 useEffect(function(){var today=new Date().toDateString();if(cycleState.lastDate&&new Date(cycleState.lastDate).toDateString()!==today){var updated=Object.assign({},cycleState,{completedToday:[]});setCycleState(updated);S.set(KEYS.state,updated)}},[]);
+
+useEffect(function(){if(screen!=="workout")return;var id=setInterval(function(){var draft={session:currentSession,exData:exData,start:start,readiness:readiness,warmup:warmup,notes:notes,timeAvail:timeAvail,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()};S.set(KEYS.draft,draft)},5000);return function(){clearInterval(id)}},[screen,currentSession,exData,start,readiness,warmup,notes,timeAvail,sessionRPE,activeEx,circuitMode]);
 
 var getRec=useCallback(function(){var ls=cycleState.lastSession,ct=cycleState.completedToday;if(cycleState.isDoubleDay&&ct.length>=2)return "modC";if(!ls)return "A";if(ls==="TGU"){var i=CYCLE.indexOf(cycleState.preTgu||"A");return CYCLE[i%3]}if(ls==="modC")return "A";var i=CYCLE.indexOf(ls);return i===-1?"A":CYCLE[(i+1)%3]},[cycleState]);
 
@@ -724,7 +728,11 @@ return"Last completed: "+label};
 var startSession=function(key){
 var sess=SESSIONS[key];var init={};
 sess.exercises.forEach(function(ex){init[ex.id]=Array.from({length:ex.sets},function(){return{weight:lastWeights[ex.id]||0,reps:"",rpe:"",completed:false}})});
-setExData(init);setCurrent(key);setStart(Date.now());setNotes({notes:""});setActiveEx(sess.exercises[0].id);setReadiness({sleep:2,soreness:2,motivation:2});if(timeAvail<=15)setCircuitMode(true);setScreen("readiness")
+var startTs=Date.now();
+setExData(init);setCurrent(key);setStart(startTs);setNotes({notes:""});setActiveEx(sess.exercises[0].id);setReadiness({sleep:2,soreness:2,motivation:2});if(timeAvail<=15)setCircuitMode(true);
+S.set(KEYS.draft,{session:key,exData:init,start:startTs,readiness:{sleep:2,soreness:2,motivation:2},warmup:null,notes:{notes:""},timeAvail:timeAvail,sessionRPE:0,activeEx:sess.exercises[0].id,circuitMode:timeAvail<=15,ts:Date.now()});
+setDraftSession(null);
+setScreen("readiness")
 };
 
 var saveAndFinish=function(){
@@ -735,15 +743,15 @@ var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,dura
 var nl=[log].concat(logs).slice(0,100);setLogs(nl);S.set(KEYS.logs,nl);
 var ct=(cycleState.completedToday||[]).concat([currentSession]);
 var ns={lastSession:currentSession,lastDate:new Date().toISOString(),isDoubleDay:ct.length>=2&&CYCLE.indexOf(currentSession)!==-1,completedToday:ct,preTgu:currentSession==="TGU"?(cycleState.preTgu||getRec()):undefined};
-setCycleState(ns);S.set(KEYS.state,ns);home()
+setCycleState(ns);S.set(KEYS.state,ns);localStorage.removeItem(KEYS.draft);home()
 };
 
 var saveVid=function(exId,url){var u=Object.assign({},videoUrls);u[exId]=url;setVideoUrls(u);S.set(KEYS.videos,u)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setSessionPRs([]);setCopied(false);setTimeAvail(25)};
+var home=function(){if(currentSession)localStorage.removeItem(KEYS.draft);setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setSessionPRs([]);setCopied(false);setTimeAvail(25)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
 var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,100);setLogs(nl);S.set(KEYS.logs,nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
-var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});setShowSettings(false);setShowHist(false)};
+var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});localStorage.removeItem(KEYS.draft);setDraftSession(null);setShowSettings(false);setShowHist(false)};
 var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(ex){allEx[ex.id]=ex.name})});return allEx[id]||id};
 
 var rec=getRec();
@@ -769,6 +777,12 @@ e("div",{style:{padding:"calc(14px + env(safe-area-inset-top,0px)) 16px 10px",di
 e("div",null,e("div",{style:{fontSize:12,color:T.mut,textTransform:"uppercase",letterSpacing:2.5,fontWeight:600}},"ABC Cycle Tracker",e("span",{style:{fontSize:9,color:T.brdL,marginLeft:6,letterSpacing:1,textTransform:"none"}},"v20")),e("div",{style:{fontSize:26,fontWeight:700,color:T.hi,marginTop:3}},todayN>0?todayN+" session"+(todayN>1?"s":"")+" today":"Ready to train")),
 e("button",{onClick:function(){setShowSettings(true)},style:{background:T.inp,border:"1px solid "+T.brd,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:T.sec,fontSize:16}},"\u2699")),
 e("div",{style:{flex:1,padding:"0 14px",display:"flex",flexDirection:"column",minHeight:0,overflowY:"auto",WebkitOverflowScrolling:"touch"}},
+draftSession&&SESSIONS[draftSession.session]&&e("div",{style:{background:"#1a1a0a",border:"2px solid "+T.acc,borderRadius:14,padding:"14px 16px",marginBottom:10}},
+e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},e("div",{style:{width:10,height:10,borderRadius:"50%",background:T.acc,animation:"pulse 1.5s infinite"}}),e("div",{style:{fontSize:15,fontWeight:700,color:T.accL}},"Unfinished session found")),
+e("div",{style:{fontSize:13,color:T.sec,marginBottom:10}},SESSIONS[draftSession.session].label+" \u2014 started "+new Date(draftSession.start).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})),
+e("div",{style:{display:"flex",gap:8}},
+e("button",{onClick:function(){var d=draftSession;if(!d||!SESSIONS[d.session])return;var sess=SESSIONS[d.session];var restoredEx=d.exData||{};sess.exercises.forEach(function(ex){if(!restoredEx[ex.id]||!Array.isArray(restoredEx[ex.id])){restoredEx[ex.id]=Array.from({length:ex.sets},function(){return{weight:0,reps:"",rpe:"",completed:false}})}});var validActiveEx=d.activeEx&&restoredEx[d.activeEx]?d.activeEx:sess.exercises[0].id;setCurrent(d.session);setExData(restoredEx);setStart(d.start||Date.now());setReadiness(d.readiness||{sleep:2,soreness:2,motivation:2});setWarmup(d.warmup||null);setNotes(d.notes||{notes:""});setTimeAvail(d.timeAvail||25);setSessionRPE(d.sessionRPE||0);setActiveEx(validActiveEx);setCircuitMode(!!d.circuitMode);setDraftSession(null);setScreen("workout")},style:{flex:1,padding:"12px",background:T.acc,border:"none",borderRadius:10,color:"#1C1917",fontSize:14,fontWeight:700,cursor:"pointer"}},"Resume"),
+e("button",{onClick:function(){localStorage.removeItem(KEYS.draft);setDraftSession(null)},style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.sec,fontSize:14,fontWeight:500,cursor:"pointer"}},"Discard"))),
 e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}},
 [{l:"Last",v:cycleState.lastSession?(SESSIONS[cycleState.lastSession]?SESSIONS[cycleState.lastSession].label.replace("Session ",""):cycleState.lastSession):"\u2014",s:daysSince!==null?(daysSince===0?"Today":daysSince+"d ago"):""},
 {l:"Next Up",v:rec,s:SESSIONS[rec].time},{l:"Last 7 Days",v:weekLogs.length,s:"sessions"}
