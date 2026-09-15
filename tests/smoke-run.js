@@ -23,11 +23,22 @@ function rowOneIsOpen() {
 }
 
 var expectedFail = rowOneIsOpen();
+
+// Run Playwright's CLI with this node binary rather than shelling out to npx.
+// On Windows, spawnSync('npx.cmd', ...) without a shell fails with EINVAL, and
+// a failed spawn is indistinguishable from a failed test run -- which silently
+// turned every smoke run into a no-op that reported the expected failure.
 var result = spawnSync(
-  process.platform === 'win32' ? 'npx.cmd' : 'npx',
-  ['playwright', 'test', '--config=tests/playwright.config.js'],
+  process.execPath,
+  [require.resolve('@playwright/test/cli'), 'test',
+    '--config=tests/playwright.config.js'],
   { cwd: ROOT, stdio: 'inherit' }
 );
+if (result.error) {
+  console.error('\nsmoke FAILED: could not start Playwright -- ' +
+    result.error.message);
+  process.exit(1);
+}
 var ok = result.status === 0;
 
 console.log('');

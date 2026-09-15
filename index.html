@@ -845,6 +845,7 @@ var label=SESSIONS[ls]?SESSIONS[ls].label:ls;
 return"Last completed: "+label};
 
 var startSession=function(key){
+if(draftSession&&SESSIONS[draftSession.session]){if(!window.confirm("You have an unfinished "+SESSIONS[draftSession.session].label+" session. Discard it and start "+SESSIONS[key].label+" instead?"))return;clearDraft();setDraftSession(null)}
 var sess=SESSIONS[key];var init={};var sesCount=getSessionCount(logs);var isDouble=(cycleState||{}).isDoubleDay;
 sess.exercises.forEach(function(ex){
 var sug=getSuggestedLoad(ex.id,logs,null,sesCount,isDouble&&ex.isCarry);
@@ -879,7 +880,7 @@ setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 
 var saveVid=function(exId,url){var u=Object.assign({},videoUrls);u[exId]=url;setVideoUrls(u);S.set(KEYS.videos,u)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){if(currentSession)clearDraft();setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setSessionPRs([]);setCopied(false);setTimeAvail(25);setEditingLogIdx(null)};
+var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setSessionPRs([]);setCopied(false);setTimeAvail(25);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
@@ -1039,7 +1040,7 @@ var opts=[
 ];
 return e("div",{style:STYLES.screen},
 e("div",{style:STYLES.headerPad},
-e("button",{onClick:home,style:STYLES.backBtn},"\u2190 Cancel"),
+e("button",{onClick:function(){clearDraft();home()},style:STYLES.backBtn},"\u2190 Cancel"),
 e("div",{style:Object.assign({},STYLES.sessionLabel,{color:sess.color})},sess.label),
 e("div",{style:STYLES.screenTitle},"Quick Check-In")),
 e("div",{style:{flex:1,padding:"0 14px",display:"flex",flexDirection:"column",justifyContent:"center"}},

@@ -36,6 +36,15 @@ var cases = [
   ['ALLOW', bash(G + ' push -u origin auto/2026-09-15'), 'push auto branch'],
   ['ALLOW', bash(G + ' checkout -- .'), 'checkout -- . (the revert path)'],
   ['ALLOW', bash('gh pr create --base ma' + 'in --head auto/x'), 'gh pr --base main'],
+  // Prose about the rule is not a violation of it.
+  ['ALLOW', bash(G + ' commit -m "never push to ma' + 'in from a branch"'),
+    'commit message mentioning main'],
+  ['ALLOW', bash(G + ' commit -F msg.txt'), 'commit -F'],
+  ['DENY', bash(G + ' commit -m x && ' + G + ' push origin ma' + 'in'),
+    'chained real push to main'],
+  ['DENY', bash(G + ' -C . push origin ma' + 'in'), 'push main via -C'],
+  ['ALLOW', bash(G + ' push origin auto/x:auto/x'), 'refspec without main'],
+  ['DENY', bash(G + ' push origin auto/x:ma' + 'in'), 'refspec onto main'],
 
   // destructive
   ['DENY', bash(G + ' reset --hard HEAD~1'), 'reset --hard'],
