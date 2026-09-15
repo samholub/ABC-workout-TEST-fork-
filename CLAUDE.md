@@ -33,6 +33,11 @@ newest-first — read index 0, not the last element.
 Nothing else ships. `manifest` and icons are inlined as data URIs in
 `index.html`.
 
+## `reference/`
+
+History and rationale, not instructions or current state. The loop does not
+read this folder.
+
 ## Deploy fact
 
 `main` is production. GitHub Pages serves it, so **any commit pushed to `main`
@@ -77,3 +82,30 @@ saying what changed and how to verify it on a phone:
    free of DOM and React references.
 6. **Preserve newest-first log ordering** in anything that writes `KEYS.logs`.
 7. When a change touches a data-loss token, say so in the commit body.
+
+## Decision block
+
+When a row is ambiguous, work through these in order. They bind tighter than
+anything the session prompt says.
+
+1. **Ship the smallest change that fixes the row.** The row names a defect;
+   the fix is the least code that makes that defect stop happening. A larger
+   change that is also correct is still the wrong change.
+2. **Do not refactor past the row's lines.** Touch the lines the row is
+   about. Adjacent code that is ugly, duplicated, or wrong in some other
+   way is a different row, not part of this one — leave it as it is. The
+   review session already collects anything that belongs in `BACKLOG.md`
+   and is not there yet. Renaming, reordering, extracting helpers and
+   reformatting all count as refactoring.
+3. **If the fix needs a choice the user would notice and `npm run check`
+   cannot check, do not guess.** Mark the row `BLOCKED` and put one line in
+   the Title column: the question, phrased so it can be answered yes/no or
+   with a single value. Then stop. A guessed answer that passes the gate is
+   worse than a blocked row, because it ships as though it were decided.
+
+A choice is user-noticeable when it changes what appears on screen, what is
+stored, what is thrown away, or what the app does without asking — copy,
+defaults, thresholds, ordering, how many items are shown, which of two
+plausible behaviours a control gets. The gate checks syntax, the pure
+analytics fixtures and one smoke journey; it has no opinion about any of
+these.

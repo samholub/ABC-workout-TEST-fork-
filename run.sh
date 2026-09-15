@@ -52,6 +52,21 @@ if [ -n "$(git status --porcelain)" ]; then
   die "working tree is dirty. Commit or stash before running the loop."
 fi
 
+# main is the base for both the working branch and the pull request. If the
+# local copy has drifted from the remote, every row is worked against a stale
+# base and the PR diff describes code that main does not actually hold.
+log "checking $PROD_BRANCH against origin"
+git fetch origin --quiet \
+  || die "git fetch origin failed -- cannot verify $PROD_BRANCH is current"
+LOCAL_MAIN=$(git rev-parse --verify --quiet "$PROD_BRANCH") \
+  || die "no local $PROD_BRANCH branch to check"
+REMOTE_MAIN=$(git rev-parse --verify --quiet "origin/$PROD_BRANCH") \
+  || die "no origin/$PROD_BRANCH -- is the remote configured?"
+if [ "$LOCAL_MAIN" != "$REMOTE_MAIN" ]; then
+  die "local $PROD_BRANCH is $LOCAL_MAIN but origin/$PROD_BRANCH is $REMOTE_MAIN.
+Fast-forward $PROD_BRANCH first; the loop will not build on a stale base."
+fi
+
 # --- lock ------------------------------------------------------------------
 if [ -e "$LOCK" ]; then
   die "another loop is running (or died holding $LOCK). Remove it to continue."
@@ -145,9 +160,19 @@ if [ -f .firebaserc ] && command -v firebase >/dev/null 2>&1; then
   log "deploying to preview channel '$CHANNEL'"
   DEPLOY_OUT=$(firebase hosting:channel:deploy "$CHANNEL" --expires 7d 2>&1) || true
   printf '%s\n' "$DEPLOY_OUT"
+  # A channel deploy prints two URLs: the live hosting site and the preview
+  # channel just created. The live URL is main, not this branch -- putting it
+  # in the PR body would show a reviewer production and call it the preview.
+  # The channel URL is the one whose host carries "--<channel>-", so match
+  # that literally instead of taking the first *.web.app on the page.
   PREVIEW_URL=$(printf '%s\n' "$DEPLOY_OUT" \
-    | grep -oE 'https://[a-zA-Z0-9.-]*web\.app[^ ]*' | head -1)
-  [ -n "$PREVIEW_URL" ] && log "preview: $PREVIEW_URL"
+    | grep -oE "https://[a-zA-Z0-9.-]+--${CHANNEL}-[a-zA-Z0-9.-]+\.web\.app[^ ]*" \
+    | head -1)
+  if [ -n "$PREVIEW_URL" ]; then
+    log "preview: $PREVIEW_URL"
+  else
+    log "no URL matching '--$CHANNEL-' in the deploy output; the PR will say the deploy was skipped rather than link the live site"
+  fi
 else
   log "no .firebaserc or no firebase CLI -- skipping preview deploy"
 fi

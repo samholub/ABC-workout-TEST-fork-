@@ -8,9 +8,14 @@ tree is reverted.
 Status is one of `OPEN`, `DONE`, `BLOCKED`. No feature rows — this list is
 defects only.
 
+Rows are worked in the order they appear, not by number: the top `OPEN` row
+is next. The `#` is a stable id used in commit subjects, so a row inserted
+later keeps its own number rather than renumbering the rows below it.
+
 | #  | Status | Commit | Title |
 |----|--------|--------|-------|
 | 1  | DONE   | 8d18721 | The X button silently discards the session: remove `clearDraft()` from `home()`, add it to the Readiness Cancel path (both `saveAndFinish` paths already call it), re-hydrate `draftSession` after `home()` so the banner shows without a cold boot, and make `startSession` refuse to overwrite an existing draft (offer resume or discard instead). |
+| 9  | OPEN   |        | In-progress drafts are only persisted by a 5s `setInterval` (`index.html` ~835), so a crash, an OS kill or a tab discard loses up to 5 seconds of logged sets — the user re-enters weight and reps they already confirmed. Write the draft through on set completion as well as on the interval. **Size: HOURS.** |
 | 2  | OPEN   |        | `ExerciseCard` reads `getExE1RM` backwards: the array is newest-first, but the card takes `e1rmData[length-1]` as current, so the displayed e1RM and the trend arrow both describe the oldest entries. |
 | 3  | OPEN   |        | The dashboard frequency grid fills column-major (`grid[weekIdx*7+dow]`) but the CSS grid renders row-major, so every day lands in the wrong cell. |
 | 4  | OPEN   |        | `tryIDBRecovery` only looks for `localStorage.getItem(k) === null`, so a key that is present but holds corrupt JSON never triggers recovery and the app boots empty while a good IndexedDB copy sits unused. |

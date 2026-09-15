@@ -1,4 +1,7 @@
-// Table test for guard.js. Run: node .claude/hooks/guard.test.js
+// Table test for the harness boundary. Run: node .claude/hooks/guard.test.js
+//
+// Two suites: the guard's permission decisions, and the smoke runner's rule
+// that a spawn which never ran is not an expected failure.
 //
 // Kept out of tests/ on purpose: the loop may edit tests/, and the loop must
 // not be able to edit its own boundary or the test that proves it works.
@@ -84,7 +87,14 @@ var cases = [
   ['ALLOW', bash('npm run check 2>&1 | tail -20'), 'npm run check'],
   ['ALLOW', bash('node tests/gate.js > /dev/null'), 'redirect to /dev/null'],
   ['ALLOW', bash('cp index.html tests/fixture.html'), 'cp into tests/'],
-  ['ALLOW', bash('node -e "console.log(1)"'), 'node -e without writes']
+  ['ALLOW', bash('node -e "console.log(1)"'), 'node -e without writes'],
+
+  // unexpanded shell variables
+  ['ALLOW', bash('cat REPORT.md >> "$BODY"'), 'append to $BODY (run.sh does this)'],
+  ['ALLOW', bash('printf x > $BODY'), 'unquoted $BODY'],
+  ['ALLOW', bash('printf x > ${BODY}'), 'braced ${BODY}'],
+  ['DENY', bash('echo x > $PWD/run.sh'), 'variable with a literal path still checked'],
+  ['DENY', bash('echo x > "$PWD/package.json"'), 'quoted variable with literal path']
 ];
 
 var bad = 0;
@@ -95,9 +105,54 @@ cases.forEach(function (c) {
   console.log((ok ? '  ok   ' : '  FAIL ') + got.padEnd(6) +
     '(want ' + c[0] + ') ' + c[2]);
 });
+
+// --- smoke runner: a spawn that never ran is not an expected failure -------
+//
+// Not a guard case, but it belongs in this file for the same reason this file
+// sits outside tests/: the loop may edit tests/, and this is the assertion
+// that keeps the smoke gate honest. Commit d74fd38 fixed spawnSync('npx.cmd')
+// failing with EINVAL on Windows. What made that bug expensive was not the
+// failed spawn, it was that the failure read as "smoke XFAIL (expected)" and
+// exited 0 -- so npm run check reported success without ever launching a
+// browser, and the loop committed on the strength of a gate that never ran.
+//
+// A spawn that produced no exit status is not a test result. It must exit 1
+// and must not claim XFAIL, whatever BACKLOG row 1 says.
+var classify = require(path.join(ROOT, 'tests', 'smoke-run.js')).classify;
+
+var smokeCases = [
+  // want, spawnSync result, row 1 still open?, label
+  [1, { error: new Error('spawn npx.cmd EINVAL'), status: null }, true,
+    'spawn error, row 1 OPEN'],
+  [1, { error: new Error('spawn npx.cmd EINVAL'), status: null }, false,
+    'spawn error, row 1 DONE'],
+  [1, { status: null, signal: 'SIGTERM' }, true,
+    'killed by a signal, row 1 OPEN'],
+  [1, { status: null, signal: null }, true,
+    'null status with no error, row 1 OPEN'],
+  [1, {}, true, 'undefined status, row 1 OPEN'],
+  // Real runs are untouched: while row 1 is open a genuine failure is advisory.
+  [0, { status: 1, signal: null }, true, 'real failing run is still XFAIL'],
+  [0, { status: 0, signal: null }, true, 'real passing run is XPASS'],
+  [0, { status: 0, signal: null }, false, 'real passing run, enforcing'],
+  [1, { status: 1, signal: null }, false, 'real failing run, enforcing']
+];
+
+smokeCases.forEach(function (c) {
+  var v = classify(c[1], c[2]);
+  var ok = v.code === c[0];
+  // The regression itself: a non-result reported as an expected failure.
+  if (ok && c[0] === 1 && /XFAIL/.test(v.msg)) ok = false;
+  if (!ok) bad++;
+  console.log((ok ? '  ok   ' : '  FAIL ') + ('exit ' + v.code).padEnd(6) +
+    '(want exit ' + c[0] + ') ' + c[3]);
+});
+
+var total = cases.length + smokeCases.length;
 console.log('');
 if (bad) {
-  console.error(bad + ' of ' + cases.length + ' guard cases wrong');
+  console.error(bad + ' of ' + total + ' cases wrong');
   process.exit(1);
 }
-console.log(cases.length + ' guard cases passed');
+console.log(total + ' cases passed (' + cases.length + ' guard, ' +
+  smokeCases.length + ' smoke-runner)');
