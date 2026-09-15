@@ -1,0 +1,5 @@
+node_modules/
+.firebase/
+REPORT.md
+test-results/
+playwright-report/
