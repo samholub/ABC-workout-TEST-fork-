@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>HR Debug Tool</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0a0a0f;--surface:#13131a;--border:#1e1e2a;--text:#e8e8f0;--dim:#6b6b80;
+--red:#ff4466;--green:#22dd88;--blue:#4488ff;--yellow:#ffcc33;--purple:#aa66ff;--cyan:#44ddee;--orange:#ff8844;
+}
+body{background:var(--bg);color:var(--text);font-family:'SF Mono','Fira Code','JetBrains Mono',monospace;-webkit-text-size-adjust:100%}
+.container{max-width:420px;margin:0 auto;padding:12px;min-height:100dvh;display:flex;flex-direction:column}
+h1{font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin-bottom:2px}
+.subtitle{font-size:11px;color:var(--dim);margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:10px;font-weight:600}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;font-size:13px;font-weight:600;padding:12px 20px;transition:all 0.15s}
+.btn-primary{background:var(--red);color:#fff;width:100%}
+.btn-primary:active{transform:scale(0.98);opacity:0.9}
+.btn-primary:disabled{opacity:0.4;cursor:default;transform:none}
+.btn-sm{padding:6px 12px;font-size:11px;background:var(--border);color:var(--dim)}
+.btn-sm.active{background:var(--red);color:#fff}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin:10px 0}
+.progress-fill{height:100%;background:var(--red);transition:width 0.3s}
+.status{font-size:12px;color:var(--dim);text-align:center;margin:6px 0}
+.bpm-display{text-align:center;padding:10px 0}
+.bpm-num{font-size:52px;font-weight:800;line-height:1}
+.bpm-label{font-size:11px;color:var(--dim);margin-top:4px}
+.graph-container{position:relative;width:100%;background:#0d0d14;border-radius:8px;overflow:hidden;margin-bottom:8px}
+.graph-container canvas{display:block;width:100%;height:auto}
+.graph-label{position:absolute;top:6px;left:8px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 3px #000}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--dim)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.channel-toggles{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.stat{background:var(--bg);border-radius:6px;padding:8px}
+.stat-val{font-size:18px;font-weight:700}
+.stat-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.tabs{display:flex;gap:2px;background:var(--bg);border-radius:8px;padding:2px;margin-bottom:10px}
+.tab{flex:1;text-align:center;padding:8px;border-radius:6px;font-size:11px;font-weight:600;color:var(--dim);background:transparent;transition:all 0.15s}
+.tab.active{background:var(--surface);color:var(--text)}
+.info-row{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border:none}
+.info-key{color:var(--dim)}
+.info-val{color:var(--text);font-weight:600}
+video,canvas.hidden-util{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px}
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+var e=React.createElement;
+var useState=React.useState,useEffect=React.useEffect,useRef=React.useRef,useCallback=React.useCallback;
+
+function App(){
+var _phase=useState("ready"),phase=_phase[0],setPhase=_phase[1];
+var _progress=useState(0),progress=_progress[0],setProgress=_progress[1];
+var _bpm=useState(0),bpm=_bpm[0],setBpm=_bpm[1];
+var _msg=useState(""),msg=_msg[0],setMsg=_msg[1];
+var _samples=useState(null),samples=_samples[0],setSamples=_samples[1];
+var _analysis=useState(null),analysis=_analysis[0],setAnalysis=_analysis[1];
+var _tab=useState("signals"),tab=_tab[0],setTab=_tab[1];
+var _channels=useState({red:true,green:false,blue:false,labL:false,labA:true,labB:false}),channels=_channels[0],setChannels=_channels[1];
+var _duration=useState(15),duration=_duration[0],setDuration=_duration[1];
+var _allSessions=useState([]),allSessions=_allSessions[0],setAllSessions=_allSessions[1];
+
+var vidRef=useRef(null);
+var canRef=useRef(null);
+var samplesRef=useRef([]);
+var streamRef=useRef(null);
+var rafRef=useRef(null);
+var startRef=useRef(0);
+
+var cleanup=function(){
+if(streamRef.current){streamRef.current.getVideoTracks().forEach(function(t){
+try{t.applyConstraints({advanced:[{torch:false}]})}catch(ex){}
+t.stop()});streamRef.current=null}
+if(rafRef.current)cancelAnimationFrame(rafRef.current)};
+
+useEffect(function(){return cleanup},[]);
+
+// RGB to LAB conversion
+function rgbToLab(r,g,b){
+// RGB to XYZ (sRGB D65)
+var rl=r/255,gl=g/255,bl=b/255;
+rl=rl>0.04045?Math.pow((rl+0.055)/1.055,2.4):rl/12.92;
+gl=gl>0.04045?Math.pow((gl+0.055)/1.055,2.4):gl/12.92;
+bl=bl>0.04045?Math.pow((bl+0.055)/1.055,2.4):bl/12.92;
+var x=(rl*0.4124564+gl*0.3575761+bl*0.1804375)/0.95047;
+var y=(rl*0.2126729+gl*0.7151522+bl*0.0721750)/1.00000;
+var z=(rl*0.0193339+gl*0.1191920+bl*0.9503041)/1.08883;
+var fx=x>0.008856?Math.pow(x,1/3):(903.3*x+16)/116;
+var fy=y>0.008856?Math.pow(y,1/3):(903.3*y+16)/116;
+var fz=z>0.008856?Math.pow(z,1/3):(903.3*z+16)/116;
+return{L:116*fy-16,a:500*(fx-fy),b:200*(fy-fz)}}
+
+var startMeasure=function(){
+setPhase("measuring");setProgress(0);setBpm(0);setMsg("");setSamples(null);setAnalysis(null);
+samplesRef.current=[];startRef.current=Date.now();
+var DUR=duration*1000;
+
+navigator.mediaDevices.getUserMedia({video:true}).then(function(tempStream){
+tempStream.getTracks().forEach(function(t){t.stop()});
+return navigator.mediaDevices.enumerateDevices();
+}).then(function(devices){
+var cameras=devices.filter(function(d){return d.kind==="videoinput"});
+var rear=cameras.find(function(d){return /back|rear|environment/i.test(d.label)});
+if(!rear&&cameras.length>1)rear=cameras[cameras.length-1];
+var constraints={video:{width:{ideal:64},height:{ideal:64}}};
+if(rear){constraints.video.deviceId={exact:rear.deviceId}}else{constraints.video.facingMode="environment"}
+return navigator.mediaDevices.getUserMedia(constraints);
+}).then(function(stream){
+streamRef.current=stream;
+var v=vidRef.current;v.srcObject=stream;v.play().then(function(){
+var track=stream.getVideoTracks()[0];
+setTimeout(function(){try{track.applyConstraints({advanced:[{torch:true}]}).catch(function(){})}catch(ex){}},300);
+var canvas=canRef.current;canvas.width=32;canvas.height=32;
+var ctx=canvas.getContext("2d",{willReadFrequently:true});
+
+var processFrame=function(){
+var elapsed=Date.now()-startRef.current;
+setProgress(Math.min(elapsed/DUR,1));
+if(elapsed>=DUR){
+cleanup();
+var data=samplesRef.current;
+setSamples(data);
+runAnalysis(data);
+return}
+ctx.drawImage(v,0,0,32,32);
+var d=ctx.getImageData(0,0,32,32).data;
+var rSum=0,gSum=0,bSum=0,px=32*32;
+for(var i=0;i<d.length;i+=4){rSum+=d[i];gSum+=d[i+1];bSum+=d[i+2]}
+var avgR=rSum/px,avgG=gSum/px,avgB=bSum/px;
+var lab=rgbToLab(avgR,avgG,avgB);
+samplesRef.current.push({t:elapsed,r:avgR,g:avgG,b:avgB,L:lab.L,a:lab.a,lb:lab.b});
+rafRef.current=requestAnimationFrame(processFrame)};
+rafRef.current=requestAnimationFrame(processFrame)})
+}).catch(function(err){setMsg("Camera error: "+err.message);setPhase("done");cleanup()})};
+
+function runAnalysis(raw){
+if(raw.length<60){setMsg("Not enough samples ("+raw.length+")");setPhase("done");return}
+var stable=raw.filter(function(s){return s.t>=2000});
+if(stable.length<40){setMsg("Not enough stable data after 2s skip");setPhase("done");return}
+
+var totalTime=stable[stable.length-1].t-stable[0].t;
+var sampleRate=stable.length/(totalTime/1000);
+
+// Extract all channels
+var chData={
+red:stable.map(function(s){return s.r}),
+green:stable.map(function(s){return s.g}),
+blue:stable.map(function(s){return s.b}),
+labL:stable.map(function(s){return s.L}),
+labA:stable.map(function(s){return s.a}),
+labB:stable.map(function(s){return s.lb})
+};
+
+// Bandpass filter function
+function bandpass(vals){
+var winSize=Math.max(3,Math.floor(vals.length/8));
+var trend=[];
+for(var i=0;i<vals.length;i++){
+var s=0,c=0;
+for(var j=Math.max(0,i-winSize);j<=Math.min(vals.length-1,i+winSize);j++){s+=vals[j];c++}
+trend.push(s/c)}
+var det=vals.map(function(v,i){return v-trend[i]});
+// Light smooth
+var sm=[];
+for(var i=0;i<det.length;i++){
+var s=0,c=0;
+for(var j=Math.max(0,i-1);j<=Math.min(det.length-1,i+1);j++){s+=det[j];c++}
+sm.push(s/c)}
+return sm}
+
+// Autocorrelation function
+function autoCorr(vals){
+var mean=vals.reduce(function(a,b){return a+b},0)/vals.length;
+var normed=vals.map(function(v){return v-mean});
+var minLag=Math.floor(sampleRate*60/180);
+var maxLag=Math.floor(sampleRate*60/40);
+if(maxLag>=normed.length/2)maxLag=Math.floor(normed.length/2)-1;
+if(minLag<2)minLag=2;
+var corrs=[];
+for(var lag=minLag;lag<=maxLag;lag++){
+var sum=0,n=normed.length-lag;
+for(var i=0;i<n;i++)sum+=normed[i]*normed[i+lag];
+corrs.push({lag:lag,bpm:Math.round(sampleRate*60/lag),corr:sum/n})}
+return corrs}
+
+// Find peaks in autocorrelation
+function findPeaks(corrs){
+var maxCorr=Math.max.apply(null,corrs.map(function(c){return c.corr}));
+if(maxCorr<=0)return{peaks:[],maxCorr:0,fundamental:null,bpm:0};
+var peaks=[];
+for(var i=1;i<corrs.length-1;i++){
+if(corrs[i].corr>corrs[i-1].corr&&corrs[i].corr>corrs[i+1].corr&&corrs[i].corr>maxCorr*0.3){
+peaks.push(corrs[i])}}
+peaks.sort(function(a,b){return b.lag-a.lag});
+var fundamental=null;
+for(var i=0;i<peaks.length;i++){
+var p=peaks[i];var hasHarmonic=false;
+for(var j=0;j<peaks.length;j++){
+if(i===j)continue;
+var ratio=p.lag/peaks[j].lag;
+if(Math.abs(ratio-2)<0.15||Math.abs(ratio-3)<0.15){hasHarmonic=true;break}}
+if(hasHarmonic||p.corr>maxCorr*0.6){fundamental=p;break}}
+if(!fundamental&&peaks.length)fundamental=peaks[peaks.length-1];
+return{peaks:peaks,maxCorr:maxCorr,fundamental:fundamental,bpm:fundamental?fundamental.bpm:0}}
+
+// Process all channels
+var filtered={};var corrData={};var peakData={};var bpmResults={};
+var channelKeys=["red","green","blue","labL","labA","labB"];
+channelKeys.forEach(function(k){
+filtered[k]=bandpass(chData[k]);
+corrData[k]=autoCorr(filtered[k]);
+peakData[k]=findPeaks(corrData[k]);
+bpmResults[k]=peakData[k].bpm});
+
+// Signal quality per channel: range of raw values
+var ranges={};
+channelKeys.forEach(function(k){
+var vals=chData[k];
+var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+ranges[k]={min:mn,max:mx,range:mx-mn}});
+
+// Pick best channel: strongest autocorrelation confidence in physiological range
+var bestCh="red",bestConf=0;
+channelKeys.forEach(function(k){
+var pd=peakData[k];
+if(pd.fundamental&&pd.maxCorr>0){
+var conf=pd.fundamental.corr/pd.maxCorr;
+var b=pd.bpm;
+if(b>=45&&b<=170&&conf>bestConf){bestConf=conf;bestCh=k}}});
+
+var finalBpm=bpmResults[bestCh]||0;
+setBpm(finalBpm);
+setMsg(finalBpm>=45&&finalBpm<=170?"Best channel: "+bestCh+" ("+Math.round(bestConf*100)+"% confidence)":"Could not determine reliable BPM");
+
+setAnalysis({
+raw:chData,filtered:filtered,corr:corrData,peaks:peakData,bpms:bpmResults,
+ranges:ranges,bestChannel:bestCh,bestConf:bestConf,sampleRate:sampleRate,
+sampleCount:stable.length,duration:totalTime/1000,timestamps:stable.map(function(s){return s.t})
+});
+// Save to session log
+setAllSessions(function(prev){return prev.concat([{id:Date.now(),bpm:finalBpm,bestChannel:bestCh,confidence:Math.round(bestConf*100),samples:raw,bpms:bpmResults,time:new Date().toLocaleTimeString()}])});
+setPhase("done")}
+
+// ===== GRAPH RENDERING =====
+function SignalGraph(props){
+var data=props.data,channels=props.channels,title=props.title,height=props.height||120;
+var canvasRef=useRef(null);
+var W=380,H=height;
+
+useEffect(function(){
+var canvas=canvasRef.current;if(!canvas||!data)return;
+canvas.width=W*2;canvas.height=H*2;
+var ctx=canvas.getContext("2d");
+ctx.scale(2,2);ctx.clearRect(0,0,W,H);
+
+var colors={red:"#ff4466",green:"#22dd88",blue:"#4488ff",labL:"#ffffff",labA:"#aa66ff",labB:"#ffcc33"};
+var activeKeys=Object.keys(channels).filter(function(k){return channels[k]&&data[k]});
+if(!activeKeys.length)return;
+
+// Grid
+ctx.strokeStyle="#1a1a28";ctx.lineWidth=0.5;
+for(var i=0;i<5;i++){var y=H*i/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+activeKeys.forEach(function(key){
+var vals=data[key];if(!vals||!vals.length)return;
+var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+var range=mx-mn||1;
+ctx.strokeStyle=colors[key]||"#888";ctx.lineWidth=1.2;ctx.globalAlpha=0.85;
+ctx.beginPath();
+for(var i=0;i<vals.length;i++){
+var x=W*i/(vals.length-1);
+var y=H-((vals[i]-mn)/range)*H*0.85-H*0.075;
+if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
+ctx.stroke();ctx.globalAlpha=1});
+},[data,channels]);
+
+return e("div",{className:"graph-container"},
+e("canvas",{ref:canvasRef,style:{width:W/2+"px",height:H/2+"px"}}),
+e("div",{className:"graph-label",style:{color:"#888"}},title))}
+
+function CorrGraph(props){
+var corrData=props.corrData,peakData=props.peakData,channels=props.channels;
+var canvasRef=useRef(null);
+var W=380,H=140;
+
+useEffect(function(){
+var canvas=canvasRef.current;if(!canvas||!corrData)return;
+canvas.width=W*2;canvas.height=H*2;
+var ctx=canvas.getContext("2d");ctx.scale(2,2);ctx.clearRect(0,0,W,H);
+
+var colors={red:"#ff4466",green:"#22dd88",blue:"#4488ff",labL:"#ffffff",labA:"#aa66ff",labB:"#ffcc33"};
+var activeKeys=Object.keys(channels).filter(function(k){return channels[k]&&corrData[k]});
+if(!activeKeys.length)return;
+
+// Grid
+ctx.strokeStyle="#1a1a28";ctx.lineWidth=0.5;
+var midY=H/2;
+ctx.beginPath();ctx.moveTo(0,midY);ctx.lineTo(W,midY);ctx.stroke();
+// BPM labels along bottom
+ctx.fillStyle="#444";ctx.font="9px monospace";
+[40,60,80,100,120,140,160,180].forEach(function(bpm){
+var first=corrData[activeKeys[0]];
+if(!first||!first.length)return;
+var minBpm=first[first.length-1].bpm,maxBpm=first[0].bpm;
+var x=W*(1-(bpm-minBpm)/(maxBpm-minBpm));
+if(x>0&&x<W){ctx.fillText(bpm+"",x-8,H-3);
+ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H-12);ctx.strokeStyle="#1a1a28";ctx.stroke()}});
+
+activeKeys.forEach(function(key){
+var corrs=corrData[key];if(!corrs||!corrs.length)return;
+var vals=corrs.map(function(c){return c.corr});
+var maxV=Math.max.apply(null,vals.map(function(v){return Math.abs(v)}))||1;
+ctx.strokeStyle=colors[key]||"#888";ctx.lineWidth=1.2;ctx.globalAlpha=0.85;
+ctx.beginPath();
+for(var i=0;i<vals.length;i++){
+var x=W*i/(vals.length-1);
+var y=midY-(vals[i]/maxV)*midY*0.8;
+if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
+ctx.stroke();
+
+// Mark peaks
+var peaks=peakData[key]?peakData[key].peaks:[];
+peaks.forEach(function(p){
+var idx=corrs.findIndex(function(c){return c.lag===p.lag});
+if(idx<0)return;
+var x=W*idx/(vals.length-1);
+var y=midY-(p.corr/maxV)*midY*0.8;
+ctx.fillStyle=colors[key];ctx.globalAlpha=0.9;
+ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill()});
+
+// Mark fundamental
+var fund=peakData[key]?peakData[key].fundamental:null;
+if(fund){
+var idx=corrs.findIndex(function(c){return c.lag===fund.lag});
+if(idx>=0){
+var x=W*idx/(vals.length-1);
+var y=midY-(fund.corr/maxV)*midY*0.8;
+ctx.strokeStyle=colors[key];ctx.lineWidth=2;ctx.globalAlpha=1;
+ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.stroke();
+ctx.fillStyle=colors[key];ctx.font="bold 10px monospace";
+ctx.fillText(fund.bpm+" BPM",x+9,y+3)}}
+ctx.globalAlpha=1});
+},[corrData,peakData,channels]);
+
+return e("div",{className:"graph-container"},
+e("canvas",{ref:canvasRef,style:{width:W/2+"px",height:H/2+"px"}}),
+e("div",{className:"graph-label",style:{color:"#888"}},"AUTOCORRELATION (peaks = detected periods)"))}
+
+// Toggle channel
+var toggleCh=function(key){
+var n=Object.assign({},channels);n[key]=!n[key];setChannels(n)};
+
+var chColors={red:"#ff4466",green:"#22dd88",blue:"#4488ff",labL:"#ffffff",labA:"#aa66ff",labB:"#ffcc33"};
+var chLabels={red:"Red",green:"Green",blue:"Blue",labL:"L*",labA:"a*",labB:"b*"};
+
+// ===== RENDER =====
+return e("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
+e("video",{ref:vidRef,playsInline:true,muted:true,style:{position:"absolute",width:1,height:1,opacity:0}}),
+e("canvas",{ref:canRef,className:"hidden-util"}),
+
+e("div",{style:{flexShrink:0,marginBottom:8}},
+e("h1",null,"\u2764\uFE0F HR Debug Tool"),
+e("div",{className:"subtitle"},"Signal analysis & visualization")),
+
+phase==="ready"&&e("div",null,
+e("div",{className:"card"},
+e("div",{className:"card-title"},"Instructions"),
+e("div",{style:{fontSize:12,color:"#6b6b80",lineHeight:1.6}},
+"Cover the ",e("span",{style:{color:"var(--red)",fontWeight:700}},"flashlight + ONE camera lens")," with your thumb. Leave the other lens uncovered. Hold very still.")),
+e("div",{className:"card"},
+e("div",{className:"card-title"},"Duration"),
+e("div",{style:{display:"flex",gap:6}},
+[10,15,20,30].map(function(d){return e("button",{key:d,className:"btn-sm"+(duration===d?" active":""),onClick:function(){setDuration(d)}},d+"s")}))),
+e("button",{className:"btn-primary",onClick:startMeasure},"Start Recording")),
+
+phase==="measuring"&&e("div",{style:{textAlign:"center",padding:"40px 0"}},
+e("div",{style:{fontSize:14,color:"var(--red)",marginBottom:8}},"Recording..."),
+e("div",{className:"progress-bar"},e("div",{className:"progress-fill",style:{width:progress*100+"%"}})),
+e("div",{className:"status"},Math.round(progress*duration)+"s / "+duration+"s"),
+e("div",{style:{fontSize:11,color:"var(--dim)",marginTop:16}},"Hold thumb firmly and still")),
+
+phase==="done"&&e("div",{className:"scroll-area"},
+// BPM result
+e("div",{className:"card"},
+e("div",{className:"bpm-display"},
+e("div",{className:"bpm-num",style:{color:bpm>=45&&bpm<=170?"var(--green)":"var(--yellow)"}},bpm||"--"),
+e("div",{className:"bpm-label"},"BPM")),
+e("div",{style:{fontSize:11,color:"var(--dim)",textAlign:"center"}},msg)),
+
+// Sample info
+analysis&&e("div",{className:"card"},
+e("div",{className:"card-title"},"Recording Info"),
+e("div",{className:"stats"},
+e("div",{className:"stat"},e("div",{className:"stat-val",style:{color:"var(--cyan)"}},analysis.sampleCount),e("div",{className:"stat-label"},"Samples")),
+e("div",{className:"stat"},e("div",{className:"stat-val",style:{color:"var(--cyan)"}},Math.round(analysis.sampleRate)),e("div",{className:"stat-label"},"Hz")),
+e("div",{className:"stat"},e("div",{className:"stat-val",style:{color:"var(--cyan)"}},Math.round(analysis.duration*10)/10+"s"),e("div",{className:"stat-label"},"Duration")))),
+
+// Channel toggles
+e("div",{className:"card"},
+e("div",{className:"card-title"},"Channels"),
+e("div",{className:"channel-toggles"},
+Object.keys(chLabels).map(function(k){return e("button",{key:k,className:"btn-sm"+(channels[k]?" active":""),
+style:channels[k]?{background:chColors[k],color:k==="labL"?"#000":"#fff",borderColor:chColors[k]}:{},
+onClick:function(){toggleCh(k)}},chLabels[k])})),
+
+// Signal ranges
+analysis&&e("div",null,
+e("div",{style:{fontSize:10,color:"var(--dim)",marginBottom:4}},"SIGNAL RANGES:"),
+Object.keys(chLabels).map(function(k){
+var r=analysis.ranges[k];
+return e("div",{key:k,style:{display:"flex",justifyContent:"space-between",fontSize:10,padding:"2px 0",color:chColors[k]}},
+e("span",null,chLabels[k]),
+e("span",null,"range: "+Math.round(r.range*100)/100+" ("+Math.round(r.min*10)/10+" \u2013 "+Math.round(r.max*10)/10+")"))}))),
+
+// Tabs
+e("div",{className:"tabs"},
+["signals","filtered","correlation","bpm-compare"].map(function(t){
+var labels={signals:"Raw",filtered:"Filtered",correlation:"Autocorr","bpm-compare":"BPM"};
+return e("div",{key:t,className:"tab"+(tab===t?" active":""),onClick:function(){setTab(t)}},labels[t])})),
+
+// Graphs
+analysis&&tab==="signals"&&e("div",null,
+e(SignalGraph,{data:analysis.raw,channels:channels,title:"RAW SIGNAL",height:140}),
+e("div",{className:"legend"},Object.keys(chLabels).filter(function(k){return channels[k]}).map(function(k){
+return e("div",{key:k,className:"legend-item"},e("div",{className:"legend-dot",style:{background:chColors[k]}}),chLabels[k])}))),
+
+analysis&&tab==="filtered"&&e("div",null,
+e(SignalGraph,{data:analysis.filtered,channels:channels,title:"FILTERED (detrended + smoothed)",height:140}),
+e("div",{className:"legend"},Object.keys(chLabels).filter(function(k){return channels[k]}).map(function(k){
+return e("div",{key:k,className:"legend-item"},e("div",{className:"legend-dot",style:{background:chColors[k]}}),chLabels[k])}))),
+
+analysis&&tab==="correlation"&&e("div",null,
+e(CorrGraph,{corrData:analysis.corr,peakData:analysis.peaks,channels:channels}),
+e("div",{className:"legend"},Object.keys(chLabels).filter(function(k){return channels[k]}).map(function(k){
+var pd=analysis.peaks[k];
+return e("div",{key:k,className:"legend-item"},
+e("div",{className:"legend-dot",style:{background:chColors[k]}}),
+chLabels[k]+(pd&&pd.fundamental?" \u2192 "+pd.bpm+" BPM":""))}))),
+
+analysis&&tab==="bpm-compare"&&e("div",{className:"card"},
+e("div",{className:"card-title"},"BPM by Channel"),
+Object.keys(chLabels).map(function(k){
+var b=analysis.bpms[k]||0;
+var pd=analysis.peaks[k];
+var conf=pd&&pd.fundamental&&pd.maxCorr>0?Math.round(pd.fundamental.corr/pd.maxCorr*100):0;
+var isBest=k===analysis.bestChannel;
+return e("div",{key:k,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid var(--border)"}},
+e("div",{style:{width:8,height:8,borderRadius:"50%",background:chColors[k],flexShrink:0}}),
+e("div",{style:{flex:1}},
+e("div",{style:{fontSize:12,fontWeight:600,color:isBest?"var(--green)":"var(--text)"}},chLabels[k]+(isBest?" \u2605":"")),
+e("div",{style:{fontSize:10,color:"var(--dim)"}},"Range: "+Math.round((analysis.ranges[k]||{}).range*100)/100)),
+e("div",{style:{textAlign:"right"}},
+e("div",{style:{fontSize:18,fontWeight:700,color:b>=45&&b<=170?chColors[k]:"var(--dim)"}},b||"--"),
+e("div",{style:{fontSize:9,color:"var(--dim)"}},conf+"% conf")))})),
+
+// Session log
+allSessions.length>1&&e("div",{className:"card"},
+e("div",{className:"card-title"},"Session Log ("+allSessions.length+" recordings)"),
+allSessions.map(function(s,i){return e("div",{key:s.id,style:{display:"flex",justifyContent:"space-between",fontSize:11,padding:"4px 0",borderBottom:i<allSessions.length-1?"1px solid #1e1e2a":"none"}},
+e("span",{style:{color:"#6b6b80"}},"#"+(i+1)+" \u00b7 "+s.time),
+e("span",{style:{color:s.bpm>=45&&s.bpm<=170?"#22dd88":"#ffcc33",fontWeight:600}},s.bpm+" BPM"),
+e("span",{style:{color:"#6b6b80"}},s.bestChannel+" "+s.confidence+"%"))})),
+
+// Actions
+e("div",{style:{display:"flex",gap:8,marginTop:12}},
+e("button",{className:"btn-primary",onClick:function(){setPhase("ready");setBpm(0);setMsg("");setSamples(null);setAnalysis(null)}},"New Recording")),
+e("div",{style:{display:"flex",gap:8,marginTop:6}},
+samples&&e("button",{className:"btn-sm",style:{flex:1},onClick:function(){
+var csv="time_ms,red,green,blue,L,a,b\n";
+samples.forEach(function(s){csv+=s.t+","+s.r.toFixed(4)+","+s.g.toFixed(4)+","+s.b.toFixed(4)+","+s.L.toFixed(4)+","+s.a.toFixed(4)+","+s.lb.toFixed(4)+"\n"});
+var blob=new Blob([csv],{type:"text/csv"});
+var url=URL.createObjectURL(blob);
+var a=document.createElement("a");a.href=url;a.download="hr_last_"+Date.now()+".csv";a.click();URL.revokeObjectURL(url);
+}},"Export Last"),
+allSessions.length>0&&e("button",{className:"btn-sm",style:{flex:1},onClick:function(){
+var csv="session,time_ms,red,green,blue,L,a,b\n";
+allSessions.forEach(function(sess,si){
+sess.samples.forEach(function(s){csv+=(si+1)+","+s.t+","+s.r.toFixed(4)+","+s.g.toFixed(4)+","+s.b.toFixed(4)+","+s.L.toFixed(4)+","+s.a.toFixed(4)+","+s.lb.toFixed(4)+"\n"})});
+var blob=new Blob([csv],{type:"text/csv"});
+var url=URL.createObjectURL(blob);
+var a=document.createElement("a");a.href=url;a.download="hr_all_"+allSessions.length+"sessions_"+Date.now()+".csv";a.click();URL.revokeObjectURL(url);
+}},"Export All ("+allSessions.length+")")),
+allSessions.length>0&&e("div",{style:{marginTop:6}},e("button",{className:"btn-sm",style:{width:"100%"},onClick:function(){setAllSessions([])}},"Clear Session Log"))))}
+
+ReactDOM.render(e(App),document.getElementById("app"));
+</script>
+</body>
+</html>

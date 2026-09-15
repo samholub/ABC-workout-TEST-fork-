@@ -33,6 +33,11 @@ newest-first — read index 0, not the last element.
 Nothing else ships. `manifest` and icons are inlined as data URIs in
 `index.html`.
 
+## `reference/`
+
+History and rationale, not instructions or current state. The loop does not
+read this folder.
+
 ## Deploy fact
 
 `main` is production. GitHub Pages serves it, so **any commit pushed to `main`

@@ -11,6 +11,7 @@
       "package.json",
       "package-lock.json",
       "run.sh",
+      "reference/**",
       "**/*.md"
     ],
     "cleanUrls": true,
