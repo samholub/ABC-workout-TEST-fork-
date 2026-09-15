@@ -173,6 +173,11 @@ process.stdin.on('end', function () {
   for (var i = 0; i < targets.length; i++) {
     var t = unquote(targets[i]);
     if (t === '/dev/null' || t === 'NUL' || t.charAt(0) === '&' || t === '') continue;
+    // A target that is nothing but an unexpanded variable ($BODY, ${BODY})
+    // resolves only in the shell, so there is no path here to judge -- and
+    // guessing makes the guard refuse run.sh's own `>> "$BODY"`. A variable
+    // with a literal part ($PWD/run.sh) is still checked below.
+    if (/^\$(\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)$/.test(t)) continue;
     if (!writable(t)) deny('Blocked: shell write to "' + t + '". ' + SCOPE);
   }
 
