@@ -31,10 +31,26 @@ N=${N:-5}
 DATE=$(date +%Y-%m-%d)
 BRANCH="auto/$DATE"
 CHANNEL="${CHANNEL:-test}"
+PROD_BRANCH="main"
 LOCK="$ROOT/.loop.lock"
 
 log() { printf '\n[loop %s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 die() { printf '\n[loop] FATAL: %s\n' "$*" >&2; exit 1; }
+
+# --- preflight -------------------------------------------------------------
+# Runs BEFORE the lock is taken: the lockfile lives in the repo root, so
+# creating it first would make the dirty-tree check trip over the loop's own
+# artifact every single time.
+command -v claude >/dev/null 2>&1 || die "claude CLI not on PATH"
+command -v node   >/dev/null 2>&1 || die "node not on PATH"
+
+CURRENT=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT" = "$PROD_BRANCH" ]; then
+  die "refusing to run from $PROD_BRANCH. Check out a working branch first."
+fi
+if [ -n "$(git status --porcelain)" ]; then
+  die "working tree is dirty. Commit or stash before running the loop."
+fi
 
 # --- lock ------------------------------------------------------------------
 if [ -e "$LOCK" ]; then
@@ -43,18 +59,6 @@ fi
 echo "$$ started $(date)" > "$LOCK"
 cleanup() { rm -f "$LOCK"; }
 trap cleanup EXIT INT TERM
-
-# --- preflight -------------------------------------------------------------
-command -v claude >/dev/null 2>&1 || die "claude CLI not on PATH"
-command -v node   >/dev/null 2>&1 || die "node not on PATH"
-
-CURRENT=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT" = "main" ]; then
-  die "refusing to run from main. Check out a working branch first."
-fi
-if [ -n "$(git status --porcelain)" ]; then
-  die "working tree is dirty. Commit or stash before running the loop."
-fi
 
 log "branch $BRANCH, up to $N row(s), preview channel '$CHANNEL'"
 

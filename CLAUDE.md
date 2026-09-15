@@ -65,8 +65,12 @@ saying what changed and how to verify it on a phone:
    and exit non-zero. Do not "fix" a failing check by weakening the test.
 4. **Only these paths are writable**: `index.html`, `sw.js`, `BACKLOG.md`,
    `REPORT.md`, `tests/`. A `PreToolUse` hook in `.claude/settings.json`
-   enforces this, along with denying any git command that names `main`,
-   `git reset --hard`, `rm -rf`, and unscoped `firebase deploy`.
+   enforces this, along with denying any branch-moving git command that names
+   `main`, `git reset --hard`, `rm -rf`, and unscoped `firebase deploy`.
+   The harness files themselves — `run.sh`, `.claude/`, `.gitignore`,
+   `.gitattributes`, `package.json`, `firebase.json`, `CLAUDE.md` — are edited
+   **only in a supervised session with the hook parked**. The loop never edits
+   its own boundary.
 5. **Do not restructure `index.html` to make testing easier.** The test
    harness slices the inline script by its section-header comments
    (`// 4.`, `// 6.`); keep those headers intact and keep sections 4 and 5

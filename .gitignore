@@ -3,3 +3,4 @@ node_modules/
 REPORT.md
 test-results/
 playwright-report/
+.loop.lock

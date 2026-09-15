@@ -1,0 +1,8 @@
+# Shell scripts must keep LF: core.autocrlf is true on the author's machine,
+# and Git Bash will not run a CRLF script.
+*.sh text eol=lf
+
+# The two deployed files are CRLF in this repo; the gate checks that they stay
+# internally consistent, so pin them rather than letting autocrlf decide.
+index.html text eol=crlf
+sw.js      text eol=crlf
