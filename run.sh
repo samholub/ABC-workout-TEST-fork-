@@ -224,37 +224,40 @@ REVIEW
 
 # --- preview deploy --------------------------------------------------------
 PREVIEW_URL=""
-if [ -f .firebaserc ] && command -v firebase >/dev/null 2>&1; then
-  log "deploying to preview channel '$CHANNEL'"
-  DEPLOY_OUT=$(firebase hosting:channel:deploy "$CHANNEL" --expires 7d 2>&1) || true
-  printf '%s\n' "$DEPLOY_OUT"
-  # A channel deploy prints two URLs: the live hosting site and the preview
-  # channel just created. The live URL is main, not this branch -- putting it
-  # in the PR body would show a reviewer production and call it the preview.
-  # The channel URL is the one whose host carries "--<channel>-", so match
-  # that literally instead of taking the first *.web.app on the page.
-  PREVIEW_URL=$(printf '%s\n' "$DEPLOY_OUT" \
-    | grep -oE "https://[a-zA-Z0-9.-]+--${CHANNEL}-[a-zA-Z0-9.-]+\.web\.app[^ ]*" \
-    | head -1)
-  if [ -n "$PREVIEW_URL" ]; then
-    log "preview: $PREVIEW_URL"
-  else
-    log "no URL matching '--$CHANNEL-' in the deploy output; the PR will say the deploy was skipped rather than link the live site"
-  fi
-else
-  log "no .firebaserc or no firebase CLI -- skipping preview deploy"
+[ -f .firebaserc ] || die "no .firebaserc -- cannot deploy a preview, and a PR
+without one asks the user to review a change they cannot open. Stopping before
+push and PR."
+command -v firebase >/dev/null 2>&1 || die "firebase CLI not on PATH -- cannot
+deploy a preview. Stopping before push and PR."
+
+log "deploying to preview channel '$CHANNEL'"
+DEPLOY_OUT=$(firebase hosting:channel:deploy "$CHANNEL" --expires 7d 2>&1) || true
+# A channel deploy prints two URLs: the live hosting site and the preview
+# channel just created. The live URL is main, not this branch -- putting it
+# in the PR body would show a reviewer production and call it the preview.
+# The channel URL is the one whose host carries "--<channel>-", so match
+# that literally instead of taking the first *.web.app on the page.
+PREVIEW_URL=$(printf '%s\n' "$DEPLOY_OUT" \
+  | grep -oE "https://[a-zA-Z0-9.-]+--${CHANNEL}-[a-zA-Z0-9.-]+\.web\.app[^ ]*" \
+  | head -1)
+
+# No channel URL means the deploy did not happen, whatever its exit status.
+# There is nothing to review against, so the run stops here -- before the push
+# and before the PR -- and prints what firebase actually said.
+if [ -z "$PREVIEW_URL" ]; then
+  printf '\n[loop] firebase output:\n%s\n\n' "$DEPLOY_OUT" >&2
+  die "no URL matching '--$CHANNEL-' in the deploy output (above). The preview
+deploy failed, so $BRANCH has NOT been pushed and no pull request was opened.
+Row work is committed locally on $BRANCH. Logs: $LOGDIR"
 fi
+log "preview: $PREVIEW_URL"
 
 # --- pull request ----------------------------------------------------------
 log "pushing $BRANCH"
 git push -u origin "$BRANCH"
 
 BODY=$(mktemp)
-if [ -n "$PREVIEW_URL" ]; then
-  printf 'Preview: %s\n\n' "$PREVIEW_URL" >> "$BODY"
-else
-  printf 'Preview: _deploy skipped_\n\n' >> "$BODY"
-fi
+printf 'Preview: %s\n\n' "$PREVIEW_URL" >> "$BODY"
 cat REPORT.md >> "$BODY"
 printf '\n---\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n' >> "$BODY"
 
