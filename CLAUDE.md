@@ -78,10 +78,14 @@ saying what changed and how to verify it on a phone:
    `REPORT.md`, `tests/`. A `PreToolUse` hook in `.claude/settings.json`
    enforces this, along with denying any branch-moving git command that names
    `main`, `git reset --hard`, `rm -rf`, and unscoped `firebase deploy`.
-   The harness files themselves — `run.sh`, `.claude/`, `.gitignore`,
-   `.gitattributes`, `package.json`, `firebase.json`, `CLAUDE.md` — are edited
-   **only in a supervised session with the hook parked**. The loop never edits
-   its own boundary.
+   The harness files themselves — `run.sh`, `sup.sh`, `.claude/`,
+   `.gitignore`, `.gitattributes`, `package.json`, `firebase.json`,
+   `CLAUDE.md` — are edited **only in a supervised session with the hook
+   parked**, which is what `sh sup.sh` sets up: it refuses unless `main` is
+   checked out clean, parks the hook, runs an interactive Claude in the repo
+   root, restores the hook on every exit path, and exits non-zero if
+   `.claude/` no longer matches `main`. The loop never edits its own
+   boundary.
 5. **Do not restructure `index.html` to make testing easier.** The test
    harness slices the inline script by its section-header comments
    (`// 4.`, `// 6.`); keep those headers intact and keep sections 4 and 5
