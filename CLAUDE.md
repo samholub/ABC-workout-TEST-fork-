@@ -61,6 +61,12 @@ saying what changed and how to verify it on a phone:
 
 1. **Never write to `main`.** Work happens on `auto/<date>` branches; `main`
    only changes through a reviewed pull request that the user merges.
+   `run.sh` cuts `auto/<date>` from `main` itself, after checking that local
+   `main` matches `origin/main`, and starting the loop from `main` is the
+   normal case. A worker session is already on that branch when it starts and
+   must not create, switch or delete branches. `run.sh` refuses to start only
+   when `auto/<date>` already exists carrying commits that are not on `main` —
+   that is a previous run's work, and it needs merging or deleting first.
 2. **One backlog row per commit.** Take the top `OPEN` row in `BACKLOG.md`,
    fix exactly that, and stop. No feature work, no drive-by refactors, no
    reformatting of untouched lines.

@@ -25,7 +25,14 @@
 set -e
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
-cd "$ROOT"
+cd "$ROOT" || exit 1
+
+# Every claude -p in this script is preceded by "cd $ROOT". A session inherits
+# the loop's working directory, and it decides which repo it edits, which
+# .claude/settings.json hook guards it and whether ./BACKLOG.md resolves at
+# all. run.sh cds once at the top and nothing here changes directory, so the
+# repeats are redundant today -- they are there so that adding a step that
+# does cd cannot silently launch a session somewhere else.
 
 N=${N:-5}
 DATE=$(date +%Y-%m-%d)
@@ -33,6 +40,10 @@ BRANCH="auto/$DATE"
 CHANNEL="${CHANNEL:-test}"
 PROD_BRANCH="main"
 LOCK="$ROOT/.loop.lock"
+# Session transcripts live OUTSIDE the repo on purpose: the preflight
+# dirty-tree check and the worker sessions' own commits must not see them,
+# and .gitignore is not ours to edit from the loop.
+LOGDIR="$(cd "$ROOT/.." && pwd)/abc-loop-logs/$DATE"
 
 log() { printf '\n[loop %s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 die() { printf '\n[loop] FATAL: %s\n' "$*" >&2; exit 1; }
@@ -44,10 +55,6 @@ die() { printf '\n[loop] FATAL: %s\n' "$*" >&2; exit 1; }
 command -v claude >/dev/null 2>&1 || die "claude CLI not on PATH"
 command -v node   >/dev/null 2>&1 || die "node not on PATH"
 
-CURRENT=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT" = "$PROD_BRANCH" ]; then
-  die "refusing to run from $PROD_BRANCH. Check out a working branch first."
-fi
 if [ -n "$(git status --porcelain)" ]; then
   die "working tree is dirty. Commit or stash before running the loop."
 fi
@@ -75,7 +82,38 @@ echo "$$ started $(date)" > "$LOCK"
 cleanup() { rm -f "$LOCK"; }
 trap cleanup EXIT INT TERM
 
+# --- working branch --------------------------------------------------------
+# The loop owns its branch. Being on main is the normal starting state, not an
+# error: main is the base, so the loop cuts $BRANCH from it and works there.
+# (It previously refused to start from main and left branch creation to the
+# worker session, which meant the branch was cut from whatever happened to be
+# checked out.)
+#
+# The one thing worth refusing is an existing $BRANCH that already carries
+# commits main does not have: that is a previous run's work, and continuing on
+# top of it would fold two runs into one pull request.
+if git rev-parse --verify --quiet "refs/heads/$BRANCH" >/dev/null; then
+  EXISTING=$(git rev-list --count "$PROD_BRANCH..$BRANCH")
+  if [ "$EXISTING" -gt 0 ]; then
+    die "$BRANCH already exists with $EXISTING commit(s) not on $PROD_BRANCH.
+Merge or delete it before starting another run."
+  fi
+  # Zero commits ahead, so nothing of its own is lost by re-pointing it at
+  # main -- which also stops a leftover branch from yesterday being worked
+  # against a stale base.
+  log "reusing existing empty $BRANCH, re-cut from $PROD_BRANCH"
+  git checkout --quiet -B "$BRANCH" "$PROD_BRANCH" \
+    || die "could not re-cut $BRANCH from $PROD_BRANCH"
+else
+  log "creating $BRANCH from $PROD_BRANCH"
+  git checkout --quiet -b "$BRANCH" "$PROD_BRANCH" \
+    || die "could not create $BRANCH from $PROD_BRANCH"
+fi
+
+mkdir -p "$LOGDIR" || die "cannot create log directory $LOGDIR"
+
 log "branch $BRANCH, up to $N row(s), preview channel '$CHANNEL'"
+log "session logs: $LOGDIR"
 
 # --- worker instruction ----------------------------------------------------
 # One row per session. The session is told the rules; the hook enforces them.
@@ -85,9 +123,9 @@ Work exactly one row of the backlog in this repository.
 
 1. Read CLAUDE.md first. It describes the app, the two deployed files, and the
    rules you are working under. Follow them.
-2. Make sure you are on branch $BRANCH. Create it from the current branch if it
-   does not exist (git checkout -b $BRANCH). Never check out, merge, push,
-   reset or otherwise move main -- main is production.
+2. You are already on branch $BRANCH, cut from main by the loop. Stay on it: do
+   not create, switch, merge, rebase or delete branches. Never check out, merge,
+   push, reset or otherwise move main -- main is production.
 3. Open BACKLOG.md and take the TOPMOST row whose status is OPEN. That row is
    your entire scope. Do not touch any other row, and do not add features.
 4. Fix it in index.html, sw.js or tests/ only.
@@ -115,24 +153,63 @@ while [ "$i" -le "$N" ]; do
     break
   fi
 
-  log "row $i of $N"
-  if read_instruction | claude -p --model sonnet --dangerously-skip-permissions; then
-    worked=$((worked + 1))
-    log "row $i done"
+  cd "$ROOT" || die "cannot cd to $ROOT"
+  ROWLOG="$LOGDIR/row-$i.log"
+  HEAD_BEFORE=$(git rev-parse HEAD)
+  log "row $i of $N -- log: $ROWLOG"
+  # Both streams go to the log, then the log is echoed back. Without this the
+  # only trace of a session that died on launch is a blank gap in the console.
+  if read_instruction | claude -p --model sonnet --dangerously-skip-permissions \
+       >"$ROWLOG" 2>&1; then
+    STATUS=0
   else
-    log "row $i failed -- the session marked the row BLOCKED and exited non-zero"
-    break
+    STATUS=$?
   fi
+  cat "$ROWLOG"
+
+  # A launch failure is not a worked row. Three things have to hold before the
+  # row counts, and any one of them failing stops the loop dead -- it does not
+  # advance, review, deploy or push.
+  #
+  #   1. claude exited zero.
+  #   2. the transcript is not one of the CLI's own failure banners. "claude -p"
+  #      can print "Execution error" and still exit 0, which is how the last run
+  #      marked five dead sessions as done.
+  #   3. HEAD actually moved. A session that ran but committed nothing has not
+  #      fixed a row, whatever it said.
+  if [ "$STATUS" -ne 0 ]; then
+    die "row $i: session exited $STATUS. Log: $ROWLOG"
+  fi
+  if grep -qiE '^[[:space:]]*(Execution error|Error: |API Error|Invalid API key|Credit balance)' "$ROWLOG"; then
+    die "row $i: session reported a launch/execution error and never worked the row.
+Log: $ROWLOG"
+  fi
+  HEAD_AFTER=$(git rev-parse HEAD)
+  if [ "$HEAD_AFTER" = "$HEAD_BEFORE" ]; then
+    die "row $i: session exited 0 but committed nothing (HEAD still $HEAD_BEFORE).
+Log: $ROWLOG"
+  fi
+
+  worked=$((worked + 1))
+  log "row $i done ($(git rev-parse --short HEAD))"
   i=$((i + 1))
 done
 
 if [ "$worked" -eq 0 ]; then
-  log "no rows completed, skipping review, deploy and PR"
-  exit 1
+  die "no rows completed -- skipping review, deploy and PR. Logs: $LOGDIR"
+fi
+
+# Belt and braces: even with a non-zero $worked, never take an empty branch
+# any further. A pushed branch with no commits makes a PR with an empty diff.
+AHEAD=$(git rev-list --count "$PROD_BRANCH..$BRANCH")
+if [ "$AHEAD" -eq 0 ]; then
+  die "$BRANCH has no commits ahead of $PROD_BRANCH -- refusing to review, deploy
+or push an empty branch. Logs: $LOGDIR"
 fi
 
 # --- review ----------------------------------------------------------------
 log "reviewing $BRANCH against CLAUDE.md"
+cd "$ROOT" || die "cannot cd to $ROOT"
 claude -p --model opus --dangerously-skip-permissions <<REVIEW
 Review the work on branch $BRANCH and write REPORT.md.
 
@@ -156,37 +233,42 @@ REVIEW
 
 # --- preview deploy --------------------------------------------------------
 PREVIEW_URL=""
-if [ -f .firebaserc ] && command -v firebase >/dev/null 2>&1; then
-  log "deploying to preview channel '$CHANNEL'"
-  DEPLOY_OUT=$(firebase hosting:channel:deploy "$CHANNEL" --expires 7d 2>&1) || true
-  printf '%s\n' "$DEPLOY_OUT"
-  # A channel deploy prints two URLs: the live hosting site and the preview
-  # channel just created. The live URL is main, not this branch -- putting it
-  # in the PR body would show a reviewer production and call it the preview.
-  # The channel URL is the one whose host carries "--<channel>-", so match
-  # that literally instead of taking the first *.web.app on the page.
-  PREVIEW_URL=$(printf '%s\n' "$DEPLOY_OUT" \
-    | grep -oE "https://[a-zA-Z0-9.-]+--${CHANNEL}-[a-zA-Z0-9.-]+\.web\.app[^ ]*" \
-    | head -1)
-  if [ -n "$PREVIEW_URL" ]; then
-    log "preview: $PREVIEW_URL"
-  else
-    log "no URL matching '--$CHANNEL-' in the deploy output; the PR will say the deploy was skipped rather than link the live site"
-  fi
-else
-  log "no .firebaserc or no firebase CLI -- skipping preview deploy"
+[ -f .firebaserc ] || die "no .firebaserc -- cannot deploy a preview, and a PR
+without one asks the user to review a change they cannot open. Stopping before
+push and PR."
+command -v firebase >/dev/null 2>&1 || die "firebase CLI not on PATH -- cannot
+deploy a preview. Stopping before push and PR."
+
+log "deploying to preview channel '$CHANNEL'"
+DEPLOY_OUT=$(firebase hosting:channel:deploy "$CHANNEL" --expires 7d 2>&1) || true
+# A channel deploy prints two URLs: the live hosting site and the preview
+# channel just created. The live URL is main, not this branch -- putting it
+# in the PR body would show a reviewer production and call it the preview.
+# The channel URL is the one whose host carries "--<channel>-", so match
+# that literally instead of taking the first *.web.app on the page.
+# The "|| true" matters: under "set -e" a no-match grep would abort the script
+# here, silently, before the check below could print the firebase output.
+PREVIEW_URL=$(printf '%s\n' "$DEPLOY_OUT" \
+  | grep -oE "https://[a-zA-Z0-9.-]+--${CHANNEL}-[a-zA-Z0-9.-]+\.web\.app[^ ]*" \
+  | head -1) || true
+
+# No channel URL means the deploy did not happen, whatever its exit status.
+# There is nothing to review against, so the run stops here -- before the push
+# and before the PR -- and prints what firebase actually said.
+if [ -z "$PREVIEW_URL" ]; then
+  printf '\n[loop] firebase output:\n%s\n\n' "$DEPLOY_OUT" >&2
+  die "no URL matching '--$CHANNEL-' in the deploy output (above). The preview
+deploy failed, so $BRANCH has NOT been pushed and no pull request was opened.
+Row work is committed locally on $BRANCH. Logs: $LOGDIR"
 fi
+log "preview: $PREVIEW_URL"
 
 # --- pull request ----------------------------------------------------------
 log "pushing $BRANCH"
 git push -u origin "$BRANCH"
 
 BODY=$(mktemp)
-if [ -n "$PREVIEW_URL" ]; then
-  printf 'Preview: %s\n\n' "$PREVIEW_URL" >> "$BODY"
-else
-  printf 'Preview: _deploy skipped_\n\n' >> "$BODY"
-fi
+printf 'Preview: %s\n\n' "$PREVIEW_URL" >> "$BODY"
 cat REPORT.md >> "$BODY"
 printf '\n---\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n' >> "$BODY"
 
