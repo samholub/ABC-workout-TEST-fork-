@@ -1180,6 +1180,7 @@ carryType:carryType,onCarryTypeChange:changeCarry,videoUrls:videoUrls,onVideoSav
 isExpanded:isActive,onToggle:function(){setActiveEx(isActive?null:ex.id)},
 onUpdate:function(ns){var u=Object.assign({},exData);u[ex.id]=ns;setExData(u);
 var jd=ns.findIndex(function(s,i){return s.completed&&!(exData[ex.id]&&exData[ex.id][i]&&exData[ex.id][i].completed)});
+if(jd!==-1)S.set(KEYS.draft,{session:currentSession,exData:u,start:start,readiness:readiness,warmup:warmup,notes:notes,timeAvail:timeAvail,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()});
 if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());setTimer(ex.id+"-"+jd);setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur})}
 // Check for new PRs on completion
 var newPRs=detectPRs(ex.id,ns,logs);if(newPRs.length>0){var existing=sessionPRs.filter(function(p){return p.exId!==ex.id});newPRs.forEach(function(p){existing.push({exId:ex.id,exName:ex.name,setIdx:p.setIdx,reasons:p.reasons})});setSessionPRs(existing)}
