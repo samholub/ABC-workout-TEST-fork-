@@ -36,16 +36,15 @@ self.addEventListener('fetch', function(event) {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       caches.open(CACHE_NAME).then(function(cache) {
-        return cache.match(event.request).then(function(cached) {
-          var networkFetch = fetch(event.request).then(function(response) {
-            if (response.ok) cache.put(event.request, response.clone());
-            return response;
-          }).catch(function() {
+        return fetch(event.request).then(function(response) {
+          if (response.ok) cache.put(event.request, response.clone());
+          return response;
+        }).catch(function() {
+          return cache.match(event.request).then(function(cached) {
             return cached || new Response('Offline', {
               status: 503, statusText: 'Service Unavailable'
             });
           });
-          return cached || networkFetch;
         });
       })
     );

@@ -723,8 +723,8 @@ var weightSummary="";
 if(done>0){var ws=setData.filter(function(s){return s.completed&&s.weight}).map(function(s){return s.weight});if(ws.length>0)weightSummary=ws[ws.length-1]+" lbs"}
 // e1RM trend arrow
 var trendArrow="",trendClr=T.mut;
-if(e1rmData&&e1rmData.length>=2){var last=e1rmData[e1rmData.length-1].e1rm,prev=e1rmData[e1rmData.length-2].e1rm;if(last>prev){trendArrow="\u2197";trendClr=T.ok}else if(last<prev){trendArrow="\u2198";trendClr=T.err}else{trendArrow="\u2192";trendClr=T.warn}}
-var curE1RM=e1rmData&&e1rmData.length>0?e1rmData[e1rmData.length-1].e1rm:0;
+if(e1rmData&&e1rmData.length>=2){var last=e1rmData[0].e1rm,prev=e1rmData[1].e1rm;if(last>prev){trendArrow="\u2197";trendClr=T.ok}else if(last<prev){trendArrow="\u2198";trendClr=T.err}else{trendArrow="\u2192";trendClr=T.warn}}
+var curE1RM=e1rmData&&e1rmData.length>0?e1rmData[0].e1rm:0;
 // Ghost summary for collapsed
 var ghostStr="";if(ghostSets&&ghostSets.length>0){var gs=ghostSets[0];ghostStr=(gs.weight?gs.weight+"lb":"")+(gs.weight&&gs.reps?" \u00d7 ":"")+((gs.reps||"")+(gs.rpe?" @"+gs.rpe:""))}
 var hasPR=prs&&prs.length>0;
@@ -973,7 +973,7 @@ e("div",{style:Object.assign({},STYLES.headerPad,{display:"flex",alignItems:"cen
 e("div",{style:{flex:1,overflowY:"auto",padding:"0 12px",paddingBottom:"calc(20px + env(safe-area-inset-bottom,0px))",WebkitOverflowScrolling:"touch"}},
 showAddLog&&e("div",{style:{background:"#1C1917",border:"1px solid #44403C",borderRadius:14,padding:"14px",marginBottom:12}},e("div",{style:{fontSize:15,fontWeight:600,color:"#F5F5F4",marginBottom:10}},"Log Past Session"),e("div",{style:{marginBottom:8}},e("div",{style:{fontSize:12,color:"#78716C",marginBottom:4}},"Date"),e("input",{type:"date",value:newLog.date,onChange:function(ev){setNewLog(Object.assign({},newLog,{date:ev.target.value}))},style:{width:"100%",background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#F5F5F4",padding:"10px 12px",fontSize:14,outline:"none",colorScheme:"dark"}})),e("div",{style:{marginBottom:8}},e("div",{style:{fontSize:12,color:"#78716C",marginBottom:4}},"Session"),e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];return e("button",{key:k,onClick:function(){setNewLog(Object.assign({},newLog,{session:k}))},style:{padding:"5px 10px",borderRadius:8,fontSize:12,cursor:"pointer",fontWeight:newLog.session===k?600:400,background:newLog.session===k?s.color+"33":"#292524",border:"1px solid "+(newLog.session===k?s.color:"#44403C"),color:newLog.session===k?s.color:"#A8A29E"}},s.label)}))),e("textarea",{value:newLog.notes,onChange:function(ev){setNewLog(Object.assign({},newLog,{notes:ev.target.value}))},placeholder:"Notes (optional)...",rows:2,style:{width:"100%",background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#E7E5E4",padding:"10px 12px",fontSize:14,resize:"none",outline:"none",marginBottom:8,lineHeight:1.5}}),e("div",{style:{display:"flex",gap:8}},e("button",{onClick:function(){setShowAddLog(false)},style:{flex:1,padding:"10px",background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#A8A29E",fontSize:14,cursor:"pointer"}},"Cancel"),e("button",{onClick:addManualLog,style:{flex:1,padding:"10px",background:newLog.date?"#F59E0B":"#44403C",border:"none",borderRadius:8,color:newLog.date?"#1C1917":"#78716C",fontSize:14,fontWeight:600,cursor:newLog.date?"pointer":"default"}},"Save"))),
 logs.length===0?e("div",{style:{color:"#78716C",textAlign:"center",padding:40,fontSize:14}},"No sessions yet. Get after it!"):
-logs.slice(0,50).map(function(l,i){var s=SESSIONS[l.session];var d=new Date(l.date);var isExp=expandedLog===i;
+logs.map(function(l,i){var s=SESSIONS[l.session];var d=new Date(l.date);var isExp=expandedLog===i;
 var hasDetail=l.exercises&&l.exercises.length>0&&l.exercises.some(function(ex){return ex.sets&&ex.sets.length>0});
 return e("div",{key:i,style:{background:"#1C1917",border:"1px solid "+(isExp?"#44403C":"#292524"),borderRadius:12,padding:"12px 14px",marginBottom:6,cursor:hasDetail?"pointer":"default"},onClick:function(){if(hasDetail&&editingLogIdx===null)setExpandedLog(isExp?null:i)}},
 e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("span",{style:{width:8,height:8,borderRadius:"50%",background:s?s.color:"#78716C"}}),e("span",{style:{fontSize:15,fontWeight:600,color:"#F5F5F4"}},s?s.label:l.session),l.manual&&e("span",{style:{fontSize:10,color:"#78716C",background:"#292524",borderRadius:4,padding:"1px 6px"}},"manual")),e("div",{style:{display:"flex",alignItems:"center",gap:6}},l.duration>0&&e("span",{style:{fontSize:12,color:"#78716C"}},l.duration+"m"),hasDetail&&e("span",{style:{fontSize:10,color:"#57534E"}},isExp?"\u25B2":"\u25BC"),e("button",{onClick:function(ev){ev.stopPropagation();setConfirmDel(i)},style:{background:"transparent",border:"none",color:"#57534E",fontSize:14,cursor:"pointer",padding:"2px 4px"}},"\u{1F5D1}"))),
@@ -1370,7 +1370,7 @@ var weekIdx=Math.floor((d+startDow)/7);
 var key=day.getFullYear()+"-"+String(day.getMonth()+1).padStart(2,"0")+"-"+String(day.getDate()).padStart(2,"0");
 var match=null;
 for(var li=0;li<logs.length;li++){var ld=logs[li].date?logs[li].date.substring(0,10):"";if(ld===key){var s=SESSIONS[logs[li].session];match=s?s.color:"#44403C";break}}
-grid[weekIdx*7+dow]={key:key,color:match}}
+grid[dow*totalCols+weekIdx]={key:key,color:match}}
 var dayLabels=["S","M","T","W","T","F","S"];
 return e("div",{style:{display:"flex",gap:2}},
 e("div",{style:{display:"flex",flexDirection:"column",gap:2,marginRight:2}},
@@ -1475,7 +1475,7 @@ e("button",{onClick:function(){window.location.reload()},style:{padding:"14px 20
 function bootApp(){RD.createRoot(document.getElementById("root")).render(e(AppBoundary,null,e(App)))}
 function tryIDBRecovery(){
 var critical=[KEYS.logs,KEYS.state,KEYS.weights];
-var missing=critical.filter(function(k){return localStorage.getItem(k)===null});
+var missing=critical.filter(function(k){var v=localStorage.getItem(k);if(v===null)return true;try{JSON.parse(v)}catch(e){return true}return false});
 if(missing.length===0){bootApp();return}
 console.log("localStorage missing keys:",missing,". Attempting IDB recovery...");
 Promise.all(missing.map(function(k){return idbGet(k).then(function(v){if(v!=null){try{localStorage.setItem(k,JSON.stringify(v));console.log("Recovered",k,"from IndexedDB")}catch(e){}}}).catch(function(){})})).then(bootApp).catch(bootApp)}
