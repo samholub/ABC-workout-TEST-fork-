@@ -79,7 +79,37 @@ if [ -e "$LOCK" ]; then
   die "another loop is running (or died holding $LOCK). Remove it to continue."
 fi
 echo "$$ started $(date)" > "$LOCK"
-cleanup() { rm -f "$LOCK"; }
+
+# Drop the lock and hand the repo back on main, on every exit path.
+#
+# The next run's preflight refuses a dirty tree and compares local main to
+# origin/main, then cuts $BRANCH from main. A run that died mid-row used to
+# leave $BRANCH checked out, so the next one started from a branch that
+# already carried commits -- which the branch check reads as "a previous
+# run's work" and refuses. Returning to main means the normal starting state
+# is restored whether the run succeeded or failed.
+#
+# The exit status is captured first and re-raised last: nothing in here may
+# turn a failed run into a successful one, or the reverse.
+cleanup() {
+  CLEAN_STATUS=$?
+  trap - EXIT INT TERM
+  rm -f "$LOCK"
+  CUR=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')
+  if [ -n "$CUR" ] && [ "$CUR" != "$PROD_BRANCH" ]; then
+    if git checkout --quiet "$PROD_BRANCH" 2>/dev/null; then
+      printf '\n[loop] returned to %s\n' "$PROD_BRANCH"
+    else
+      # Uncommitted changes from a session that died mid-edit. Say so rather
+      # than discarding them -- the next run will refuse on the dirty tree.
+      printf '\n[loop] WARNING: could not return to %s from %s.\n' \
+        "$PROD_BRANCH" "$CUR" >&2
+      printf '[loop] Commit or discard the work there, then: git checkout %s\n' \
+        "$PROD_BRANCH" >&2
+    fi
+  fi
+  exit "$CLEAN_STATUS"
+}
 trap cleanup EXIT INT TERM
 
 # --- working branch --------------------------------------------------------
