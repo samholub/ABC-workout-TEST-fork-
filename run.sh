@@ -79,7 +79,37 @@ if [ -e "$LOCK" ]; then
   die "another loop is running (or died holding $LOCK). Remove it to continue."
 fi
 echo "$$ started $(date)" > "$LOCK"
-cleanup() { rm -f "$LOCK"; }
+
+# Drop the lock and hand the repo back on main, on every exit path.
+#
+# The next run's preflight refuses a dirty tree and compares local main to
+# origin/main, then cuts $BRANCH from main. A run that died mid-row used to
+# leave $BRANCH checked out, so the next one started from a branch that
+# already carried commits -- which the branch check reads as "a previous
+# run's work" and refuses. Returning to main means the normal starting state
+# is restored whether the run succeeded or failed.
+#
+# The exit status is captured first and re-raised last: nothing in here may
+# turn a failed run into a successful one, or the reverse.
+cleanup() {
+  CLEAN_STATUS=$?
+  trap - EXIT INT TERM
+  rm -f "$LOCK"
+  CUR=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')
+  if [ -n "$CUR" ] && [ "$CUR" != "$PROD_BRANCH" ]; then
+    if git checkout --quiet "$PROD_BRANCH" 2>/dev/null; then
+      printf '\n[loop] returned to %s\n' "$PROD_BRANCH"
+    else
+      # Uncommitted changes from a session that died mid-edit. Say so rather
+      # than discarding them -- the next run will refuse on the dirty tree.
+      printf '\n[loop] WARNING: could not return to %s from %s.\n' \
+        "$PROD_BRANCH" "$CUR" >&2
+      printf '[loop] Commit or discard the work there, then: git checkout %s\n' \
+        "$PROD_BRANCH" >&2
+    fi
+  fi
+  exit "$CLEAN_STATUS"
+}
 trap cleanup EXIT INT TERM
 
 # --- working branch --------------------------------------------------------
@@ -146,6 +176,13 @@ INSTRUCTION
 # --- the loop --------------------------------------------------------------
 i=1
 worked=0
+blocked_stop=0
+# grep -c prints 0 and exits 1 when nothing matches, so "|| true" keeps set -e
+# out of it; the ${n:-0} covers BACKLOG.md having gone missing entirely.
+count_blocked() {
+  n=$(grep -cE '^\|[^|]*\|\s*BLOCKED\s*\|' BACKLOG.md 2>/dev/null || true)
+  printf '%s' "${n:-0}"
+}
 while [ "$i" -le "$N" ]; do
   # Any OPEN rows left?
   if ! grep -qE '^\|[^|]*\|\s*OPEN\s*\|' BACKLOG.md; then
@@ -156,6 +193,7 @@ while [ "$i" -le "$N" ]; do
   cd "$ROOT" || die "cannot cd to $ROOT"
   ROWLOG="$LOGDIR/row-$i.log"
   HEAD_BEFORE=$(git rev-parse HEAD)
+  BLOCKED_BEFORE=$(count_blocked)
   log "row $i of $N -- log: $ROWLOG"
   # Both streams go to the log, then the log is echoed back. Without this the
   # only trace of a session that died on launch is a blank gap in the console.
@@ -167,27 +205,46 @@ while [ "$i" -le "$N" ]; do
   fi
   cat "$ROWLOG"
 
-  # A launch failure is not a worked row. Three things have to hold before the
-  # row counts, and any one of them failing stops the loop dead -- it does not
-  # advance, review, deploy or push.
+  # Two failure shapes have to be told apart here.
   #
-  #   1. claude exited zero.
-  #   2. the transcript is not one of the CLI's own failure banners. "claude -p"
-  #      can print "Execution error" and still exit 0, which is how the last run
-  #      marked five dead sessions as done.
-  #   3. HEAD actually moved. A session that ran but committed nothing has not
+  # A LAUNCH failure -- the session never ran, or died before working the row
+  # -- is a hard stop: the run does not advance, review, deploy or push. Two
+  # signals catch it, and they are checked first because a session that never
+  # started cannot have decided anything:
+  #
+  #   1. the transcript carries one of the CLI's own failure banners. "claude
+  #      -p" can print "Execution error" and still exit 0, which is how an
+  #      earlier run marked five dead sessions as done.
+  #   2. HEAD did not move. A session that ran but committed nothing has not
   #      fixed a row, whatever it said.
-  if [ "$STATUS" -ne 0 ]; then
-    die "row $i: session exited $STATUS. Log: $ROWLOG"
-  fi
+  #
+  # A BLOCKED row is the opposite: the worker ran, judged the row unfixable or
+  # ambiguous, recorded that judgement in BACKLOG.md, committed it and exited
+  # non-zero on purpose. That stops the LOOP -- no further rows, since the next
+  # one may depend on this -- but it does not abort the RUN. Rows that already
+  # passed are finished work and still deserve their review, preview and PR.
   if grep -qiE '^[[:space:]]*(Execution error|Error: |API Error|Invalid API key|Credit balance)' "$ROWLOG"; then
     die "row $i: session reported a launch/execution error and never worked the row.
 Log: $ROWLOG"
   fi
   HEAD_AFTER=$(git rev-parse HEAD)
   if [ "$HEAD_AFTER" = "$HEAD_BEFORE" ]; then
-    die "row $i: session exited 0 but committed nothing (HEAD still $HEAD_BEFORE).
+    die "row $i: session exited $STATUS and committed nothing (HEAD still $HEAD_BEFORE).
 Log: $ROWLOG"
+  fi
+
+  if [ "$STATUS" -ne 0 ]; then
+    BLOCKED_AFTER=$(count_blocked)
+    if [ "$BLOCKED_AFTER" -gt "$BLOCKED_BEFORE" ]; then
+      log "row $i: worker marked a row BLOCKED and stopped by design (exit $STATUS).
+Not counted as a worked row. Log: $ROWLOG"
+      blocked_stop=1
+      break
+    fi
+    # Non-zero, HEAD moved, but no new BLOCKED row: the session failed in some
+    # way it did not record. Nothing here knows what state it left behind.
+    die "row $i: session exited $STATUS without marking a row BLOCKED.
+Its commit(s) are on $BRANCH but unexplained. Log: $ROWLOG"
   fi
 
   worked=$((worked + 1))
@@ -196,7 +253,16 @@ Log: $ROWLOG"
 done
 
 if [ "$worked" -eq 0 ]; then
+  if [ "$blocked_stop" -eq 1 ]; then
+    die "the first row was marked BLOCKED, so nothing passed -- skipping review,
+deploy and PR. The BLOCKED row is committed on $BRANCH; read it, decide, and
+run again. Logs: $LOGDIR"
+  fi
   die "no rows completed -- skipping review, deploy and PR. Logs: $LOGDIR"
+fi
+
+if [ "$blocked_stop" -eq 1 ]; then
+  log "continuing with the $worked row(s) that passed before the BLOCKED row"
 fi
 
 # Belt and braces: even with a non-zero $worked, never take an empty branch
@@ -269,6 +335,11 @@ git push -u origin "$BRANCH"
 
 BODY=$(mktemp)
 printf 'Preview: %s\n\n' "$PREVIEW_URL" >> "$BODY"
+if [ "$blocked_stop" -eq 1 ]; then
+  printf '> **The run stopped early.** A worker marked a backlog row `BLOCKED`
+> rather than guessing, so the rows below it were not attempted. The reason is
+> in the `BACKLOG.md` diff; it needs an answer before the next run.\n\n' >> "$BODY"
+fi
 cat REPORT.md >> "$BODY"
 printf '\n---\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n' >> "$BODY"
 
@@ -280,4 +351,9 @@ gh pr create \
   --body-file "$BODY"
 
 rm -f "$BODY"
-log "done -- $worked row(s), PR open against main"
+if [ "$blocked_stop" -eq 1 ]; then
+  log "done -- $worked row(s), PR open against main.
+A row is BLOCKED and needs an answer before the next run: see BACKLOG.md."
+else
+  log "done -- $worked row(s), PR open against main"
+fi
