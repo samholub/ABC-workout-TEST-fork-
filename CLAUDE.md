@@ -27,11 +27,11 @@ newest-first — read index 0, not the last element.
 ## The two deployed files
 
 - `index.html` — the entire application.
-- `sw.js` — the service worker: cache-first for assets, and for navigations
-  stale-while-revalidate — `sw.js:48` returns `cached || networkFetch`, so a
-  cached page is served immediately and the network copy only refreshes the
-  cache for next time. A deploy therefore reaches the phone one launch late.
-  (`BACKLOG.md` row 10 is open against this; the description follows the fix.)
+- `sw.js` — the service worker: cache-first for assets, network-first for
+  navigations. A navigation goes to the network, stores the response in the
+  cache when it is `ok`, and reads the cache only if the fetch throws —
+  falling back to the cached page, or a 503 if there is none. A deploy is
+  therefore live on the next open rather than the one after it.
 
 Nothing else ships. `manifest` and icons are inlined as data URIs in
 `index.html`.
