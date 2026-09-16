@@ -246,9 +246,11 @@ DEPLOY_OUT=$(firebase hosting:channel:deploy "$CHANNEL" --expires 7d 2>&1) || tr
 # in the PR body would show a reviewer production and call it the preview.
 # The channel URL is the one whose host carries "--<channel>-", so match
 # that literally instead of taking the first *.web.app on the page.
+# The "|| true" matters: under "set -e" a no-match grep would abort the script
+# here, silently, before the check below could print the firebase output.
 PREVIEW_URL=$(printf '%s\n' "$DEPLOY_OUT" \
   | grep -oE "https://[a-zA-Z0-9.-]+--${CHANNEL}-[a-zA-Z0-9.-]+\.web\.app[^ ]*" \
-  | head -1)
+  | head -1) || true
 
 # No channel URL means the deploy did not happen, whatever its exit status.
 # There is nothing to review against, so the run stops here -- before the push
