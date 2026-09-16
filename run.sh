@@ -33,6 +33,10 @@ BRANCH="auto/$DATE"
 CHANNEL="${CHANNEL:-test}"
 PROD_BRANCH="main"
 LOCK="$ROOT/.loop.lock"
+# Session transcripts live OUTSIDE the repo on purpose: the preflight
+# dirty-tree check and the worker sessions' own commits must not see them,
+# and .gitignore is not ours to edit from the loop.
+LOGDIR="$(cd "$ROOT/.." && pwd)/abc-loop-logs/$DATE"
 
 log() { printf '\n[loop %s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 die() { printf '\n[loop] FATAL: %s\n' "$*" >&2; exit 1; }
@@ -75,7 +79,10 @@ echo "$$ started $(date)" > "$LOCK"
 cleanup() { rm -f "$LOCK"; }
 trap cleanup EXIT INT TERM
 
+mkdir -p "$LOGDIR" || die "cannot create log directory $LOGDIR"
+
 log "branch $BRANCH, up to $N row(s), preview channel '$CHANNEL'"
+log "session logs: $LOGDIR"
 
 # --- worker instruction ----------------------------------------------------
 # One row per session. The session is told the rules; the hook enforces them.
@@ -115,12 +122,23 @@ while [ "$i" -le "$N" ]; do
     break
   fi
 
-  log "row $i of $N"
-  if read_instruction | claude -p --model sonnet --dangerously-skip-permissions; then
+  ROWLOG="$LOGDIR/row-$i.log"
+  log "row $i of $N -- log: $ROWLOG"
+  # Both streams go to the log, then the log is echoed back. Without this the
+  # only trace of a session that died on launch is a blank gap in the console.
+  if read_instruction | claude -p --model sonnet --dangerously-skip-permissions \
+       >"$ROWLOG" 2>&1; then
+    STATUS=0
+  else
+    STATUS=$?
+  fi
+  cat "$ROWLOG"
+
+  if [ "$STATUS" -eq 0 ]; then
     worked=$((worked + 1))
     log "row $i done"
   else
-    log "row $i failed -- the session marked the row BLOCKED and exited non-zero"
+    log "row $i failed (exit $STATUS) -- see $ROWLOG"
     break
   fi
   i=$((i + 1))
