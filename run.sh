@@ -123,6 +123,7 @@ while [ "$i" -le "$N" ]; do
   fi
 
   ROWLOG="$LOGDIR/row-$i.log"
+  HEAD_BEFORE=$(git rev-parse HEAD)
   log "row $i of $N -- log: $ROWLOG"
   # Both streams go to the log, then the log is echoed back. Without this the
   # only trace of a session that died on launch is a blank gap in the console.
@@ -134,19 +135,44 @@ while [ "$i" -le "$N" ]; do
   fi
   cat "$ROWLOG"
 
-  if [ "$STATUS" -eq 0 ]; then
-    worked=$((worked + 1))
-    log "row $i done"
-  else
-    log "row $i failed (exit $STATUS) -- see $ROWLOG"
-    break
+  # A launch failure is not a worked row. Three things have to hold before the
+  # row counts, and any one of them failing stops the loop dead -- it does not
+  # advance, review, deploy or push.
+  #
+  #   1. claude exited zero.
+  #   2. the transcript is not one of the CLI's own failure banners. "claude -p"
+  #      can print "Execution error" and still exit 0, which is how the last run
+  #      marked five dead sessions as done.
+  #   3. HEAD actually moved. A session that ran but committed nothing has not
+  #      fixed a row, whatever it said.
+  if [ "$STATUS" -ne 0 ]; then
+    die "row $i: session exited $STATUS. Log: $ROWLOG"
   fi
+  if grep -qiE '^[[:space:]]*(Execution error|Error: |API Error|Invalid API key|Credit balance)' "$ROWLOG"; then
+    die "row $i: session reported a launch/execution error and never worked the row.
+Log: $ROWLOG"
+  fi
+  HEAD_AFTER=$(git rev-parse HEAD)
+  if [ "$HEAD_AFTER" = "$HEAD_BEFORE" ]; then
+    die "row $i: session exited 0 but committed nothing (HEAD still $HEAD_BEFORE).
+Log: $ROWLOG"
+  fi
+
+  worked=$((worked + 1))
+  log "row $i done ($(git rev-parse --short HEAD))"
   i=$((i + 1))
 done
 
 if [ "$worked" -eq 0 ]; then
-  log "no rows completed, skipping review, deploy and PR"
-  exit 1
+  die "no rows completed -- skipping review, deploy and PR. Logs: $LOGDIR"
+fi
+
+# Belt and braces: even with a non-zero $worked, never take an empty branch
+# any further. A pushed branch with no commits makes a PR with an empty diff.
+AHEAD=$(git rev-list --count "$PROD_BRANCH..$BRANCH")
+if [ "$AHEAD" -eq 0 ]; then
+  die "$BRANCH has no commits ahead of $PROD_BRANCH -- refusing to review, deploy
+or push an empty branch. Logs: $LOGDIR"
 fi
 
 # --- review ----------------------------------------------------------------
