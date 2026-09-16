@@ -25,7 +25,14 @@
 set -e
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
-cd "$ROOT"
+cd "$ROOT" || exit 1
+
+# Every claude -p in this script is preceded by "cd $ROOT". A session inherits
+# the loop's working directory, and it decides which repo it edits, which
+# .claude/settings.json hook guards it and whether ./BACKLOG.md resolves at
+# all. run.sh cds once at the top and nothing here changes directory, so the
+# repeats are redundant today -- they are there so that adding a step that
+# does cd cannot silently launch a session somewhere else.
 
 N=${N:-5}
 DATE=$(date +%Y-%m-%d)
@@ -146,6 +153,7 @@ while [ "$i" -le "$N" ]; do
     break
   fi
 
+  cd "$ROOT" || die "cannot cd to $ROOT"
   ROWLOG="$LOGDIR/row-$i.log"
   HEAD_BEFORE=$(git rev-parse HEAD)
   log "row $i of $N -- log: $ROWLOG"
@@ -201,6 +209,7 @@ fi
 
 # --- review ----------------------------------------------------------------
 log "reviewing $BRANCH against CLAUDE.md"
+cd "$ROOT" || die "cannot cd to $ROOT"
 claude -p --model opus --dangerously-skip-permissions <<REVIEW
 Review the work on branch $BRANCH and write REPORT.md.
 
