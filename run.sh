@@ -48,10 +48,6 @@ die() { printf '\n[loop] FATAL: %s\n' "$*" >&2; exit 1; }
 command -v claude >/dev/null 2>&1 || die "claude CLI not on PATH"
 command -v node   >/dev/null 2>&1 || die "node not on PATH"
 
-CURRENT=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT" = "$PROD_BRANCH" ]; then
-  die "refusing to run from $PROD_BRANCH. Check out a working branch first."
-fi
 if [ -n "$(git status --porcelain)" ]; then
   die "working tree is dirty. Commit or stash before running the loop."
 fi
@@ -79,6 +75,34 @@ echo "$$ started $(date)" > "$LOCK"
 cleanup() { rm -f "$LOCK"; }
 trap cleanup EXIT INT TERM
 
+# --- working branch --------------------------------------------------------
+# The loop owns its branch. Being on main is the normal starting state, not an
+# error: main is the base, so the loop cuts $BRANCH from it and works there.
+# (It previously refused to start from main and left branch creation to the
+# worker session, which meant the branch was cut from whatever happened to be
+# checked out.)
+#
+# The one thing worth refusing is an existing $BRANCH that already carries
+# commits main does not have: that is a previous run's work, and continuing on
+# top of it would fold two runs into one pull request.
+if git rev-parse --verify --quiet "refs/heads/$BRANCH" >/dev/null; then
+  EXISTING=$(git rev-list --count "$PROD_BRANCH..$BRANCH")
+  if [ "$EXISTING" -gt 0 ]; then
+    die "$BRANCH already exists with $EXISTING commit(s) not on $PROD_BRANCH.
+Merge or delete it before starting another run."
+  fi
+  # Zero commits ahead, so nothing of its own is lost by re-pointing it at
+  # main -- which also stops a leftover branch from yesterday being worked
+  # against a stale base.
+  log "reusing existing empty $BRANCH, re-cut from $PROD_BRANCH"
+  git checkout --quiet -B "$BRANCH" "$PROD_BRANCH" \
+    || die "could not re-cut $BRANCH from $PROD_BRANCH"
+else
+  log "creating $BRANCH from $PROD_BRANCH"
+  git checkout --quiet -b "$BRANCH" "$PROD_BRANCH" \
+    || die "could not create $BRANCH from $PROD_BRANCH"
+fi
+
 mkdir -p "$LOGDIR" || die "cannot create log directory $LOGDIR"
 
 log "branch $BRANCH, up to $N row(s), preview channel '$CHANNEL'"
@@ -92,9 +116,9 @@ Work exactly one row of the backlog in this repository.
 
 1. Read CLAUDE.md first. It describes the app, the two deployed files, and the
    rules you are working under. Follow them.
-2. Make sure you are on branch $BRANCH. Create it from the current branch if it
-   does not exist (git checkout -b $BRANCH). Never check out, merge, push,
-   reset or otherwise move main -- main is production.
+2. You are already on branch $BRANCH, cut from main by the loop. Stay on it: do
+   not create, switch, merge, rebase or delete branches. Never check out, merge,
+   push, reset or otherwise move main -- main is production.
 3. Open BACKLOG.md and take the TOPMOST row whose status is OPEN. That row is
    your entire scope. Do not touch any other row, and do not add features.
 4. Fix it in index.html, sw.js or tests/ only.
