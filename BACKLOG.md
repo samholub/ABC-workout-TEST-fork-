@@ -5,8 +5,9 @@ runs `npm run check`, and marks the row `DONE` with the commit hash. On a
 failing check the row is marked `BLOCKED` with the reason and the working
 tree is reverted.
 
-Status is one of `OPEN`, `DONE`, `BLOCKED`. No feature rows — this list is
-defects only.
+Status is one of `OPEN`, `DONE`, `BLOCKED`. This list is defects first;
+feature rows only with Sam's explicit approval and a one-line why, placed
+after all OPEN defect rows.
 
 Rows are worked in the order they appear, not by number: the top `OPEN` row
 is next. The `#` is a stable id used in commit subjects, so a row inserted
