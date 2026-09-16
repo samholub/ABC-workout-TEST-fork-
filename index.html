@@ -723,8 +723,8 @@ var weightSummary="";
 if(done>0){var ws=setData.filter(function(s){return s.completed&&s.weight}).map(function(s){return s.weight});if(ws.length>0)weightSummary=ws[ws.length-1]+" lbs"}
 // e1RM trend arrow
 var trendArrow="",trendClr=T.mut;
-if(e1rmData&&e1rmData.length>=2){var last=e1rmData[e1rmData.length-1].e1rm,prev=e1rmData[e1rmData.length-2].e1rm;if(last>prev){trendArrow="\u2197";trendClr=T.ok}else if(last<prev){trendArrow="\u2198";trendClr=T.err}else{trendArrow="\u2192";trendClr=T.warn}}
-var curE1RM=e1rmData&&e1rmData.length>0?e1rmData[e1rmData.length-1].e1rm:0;
+if(e1rmData&&e1rmData.length>=2){var last=e1rmData[0].e1rm,prev=e1rmData[1].e1rm;if(last>prev){trendArrow="\u2197";trendClr=T.ok}else if(last<prev){trendArrow="\u2198";trendClr=T.err}else{trendArrow="\u2192";trendClr=T.warn}}
+var curE1RM=e1rmData&&e1rmData.length>0?e1rmData[0].e1rm:0;
 // Ghost summary for collapsed
 var ghostStr="";if(ghostSets&&ghostSets.length>0){var gs=ghostSets[0];ghostStr=(gs.weight?gs.weight+"lb":"")+(gs.weight&&gs.reps?" \u00d7 ":"")+((gs.reps||"")+(gs.rpe?" @"+gs.rpe:""))}
 var hasPR=prs&&prs.length>0;
