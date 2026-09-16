@@ -1475,7 +1475,7 @@ e("button",{onClick:function(){window.location.reload()},style:{padding:"14px 20
 function bootApp(){RD.createRoot(document.getElementById("root")).render(e(AppBoundary,null,e(App)))}
 function tryIDBRecovery(){
 var critical=[KEYS.logs,KEYS.state,KEYS.weights];
-var missing=critical.filter(function(k){return localStorage.getItem(k)===null});
+var missing=critical.filter(function(k){var v=localStorage.getItem(k);if(v===null)return true;try{JSON.parse(v)}catch(e){return true}return false});
 if(missing.length===0){bootApp();return}
 console.log("localStorage missing keys:",missing,". Attempting IDB recovery...");
 Promise.all(missing.map(function(k){return idbGet(k).then(function(v){if(v!=null){try{localStorage.setItem(k,JSON.stringify(v));console.log("Recovered",k,"from IndexedDB")}catch(e){}}}).catch(function(){})})).then(bootApp).catch(bootApp)}
