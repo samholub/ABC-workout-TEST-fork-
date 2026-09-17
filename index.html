@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=22;
+var APP_VERSION=23;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -718,8 +718,8 @@ var vidId=extractId(videoUrl);
 var done=setData.filter(function(s){return s.completed}).length;
 var allDone=done===setData.length;
 var displayName=exercise.isCarry&&carryType==="farmer"?exercise.name.replace("Suitcase Carry","Farmer's Carry").replace("Carries","Farmer's Carry"):exercise.name;
-var updateSet=function(i,f,v){var u=setData.slice();u[i]=Object.assign({},u[i]);u[i][f]=v;onUpdate(u)};
-var toggleDone=function(i){var u=setData.slice();u[i]=Object.assign({},u[i]);u[i].completed=!u[i].completed;onUpdate(u)};
+var updateSet=function(i,f,v){var u=setData.slice();u[i]=Object.assign({},u[i]);u[i][f]=v;u[i].prefilled=false;onUpdate(u)};
+var toggleDone=function(i){var u=setData.slice();u[i]=Object.assign({},u[i]);var completing=!u[i].completed;if(completing&&u[i].prefilled&&((exercise.hasWeight&&u[i].weight>0)||u[i].reps)){var msg="Log "+(exercise.hasWeight?u[i].weight+" lbs x ":"")+u[i].reps+(exercise.hasWeight?" reps":"")+" as shown? You haven't changed these from the suggested values.";if(!window.confirm(msg))return}u[i].completed=completing;if(completing)u[i].prefilled=false;onUpdate(u)};
 var weightSummary="";
 if(done>0){var ws=setData.filter(function(s){return s.completed&&s.weight}).map(function(s){return s.weight});if(ws.length>0)weightSummary=ws[ws.length-1]+" lbs"}
 // e1RM trend arrow
@@ -855,7 +855,7 @@ var ghost=getGhostSets(ex.id,logs);
 init[ex.id]=Array.from({length:ex.sets},function(_,si){
 var prefillR="";if(ghost&&ghost[si]&&ghost[si].reps>0)prefillR=ghost[si].reps;
 else if(ghost&&ghost[0]&&ghost[0].reps>0)prefillR=ghost[0].reps;
-return{weight:prefillW,reps:prefillR,rpe:"",completed:false}})});
+return{weight:prefillW,reps:prefillR,rpe:"",completed:false,prefilled:true}})});
 var startTs=Date.now();
 setExData(init);setCurrent(key);setStart(startTs);setNotes({notes:""});setActiveEx(sess.exercises[0].id);setReadiness({sleep:2,soreness:2,motivation:2});if(timeAvail<=15)setCircuitMode(true);
 S.set(KEYS.draft,{session:key,exData:init,start:startTs,readiness:{sleep:2,soreness:2,motivation:2},warmup:null,notes:{notes:""},timeAvail:timeAvail,sessionRPE:0,activeEx:sess.exercises[0].id,circuitMode:timeAvail<=15,ts:Date.now()});
