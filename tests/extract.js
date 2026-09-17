@@ -49,7 +49,8 @@ var EXPORTS = [
   'shouldDeload', 'getFatigueTrend', 'detectPRs', 'getAllTimePRs',
   // supporting functions the fixtures lean on
   'getWorkingWeight', 'getExE1RM', 'getPeriodPhase', 'getSessionCount',
-  'calcTotalVolume'
+  'calcTotalVolume', 'computeNextSession', 'nextCycleState',
+  'countTrainingToday'
 ];
 
 function buildPureModule() {
@@ -64,11 +65,16 @@ function buildPureModule() {
   var gidLine = script.split(/\r?\n/).find(function (l) {
     return /^function getGroupIds/.test(l);
   });
+  // The cycle helpers in section 5 read CYCLE, which is also in section 3.
+  var cycleLine = script.split(/\r?\n/).find(function (l) {
+    return /^var CYCLE=/.test(l);
+  });
   var body = sliceBetween(script, /^\/\/ 4\./, /^\/\/ 6\./, 'sections 4-5');
   return [
     '"use strict";',
     config,
     gidLine,
+    cycleLine,
     body,
     'module.exports = {' + EXPORTS.map(function (n) {
       return n + ': ' + n;
