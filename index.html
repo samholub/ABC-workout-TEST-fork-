@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=31;
+var APP_VERSION=32;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -210,6 +210,11 @@ function shouldDeload(logs){if(logs.length<6)return false;var recent=logs.slice(
 //   getBalanceAdvisory()  — Detect neglected session types in recent history
 //   getPreSessionContext() — Consolidated pre-session intelligence (load, progression, fatigue)
 //   getAdaptiveRest()     — RPE-adjusted rest timer duration
+//   computeNextSession()  — Which session comes after a given cycle state
+
+// Which session (A/B/C/modC) follows from a cycle state -- pure so it can be
+// evaluated against a state that has not been saved yet, not just the live one.
+function computeNextSession(state){var ls=state.lastSession;if(state.isDoubleDay)return "modC";if(!ls)return "A";if(ls==="TGU"){var i=CYCLE.indexOf(state.preTgu||"A");return CYCLE[i%3]}if(ls==="modC")return "A";var i=CYCLE.indexOf(ls);return i===-1?"A":CYCLE[(i+1)%3]}
 
 // Session count and training focus — based on sessions logged, not calendar
 function getSessionCount(logs){var c=0;for(var i=0;i<logs.length;i++){if(!logs[i].manual)c++}return c}
@@ -835,7 +840,7 @@ useEffect(function(){var today=getLocalDateKey();var ld=cycleState.lastDate;var 
 
 useEffect(function(){if(screen!=="workout")return;var id=setInterval(function(){var draft={session:currentSession,exData:exData,start:start,readiness:readiness,warmup:warmup,notes:notes,timeAvail:timeAvail,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()};S.set(KEYS.draft,draft)},5000);return function(){clearInterval(id)}},[screen,currentSession,exData,start,readiness,warmup,notes,timeAvail,sessionRPE,activeEx,circuitMode]);
 
-var getRec=useCallback(function(){var ls=cycleState.lastSession;if(cycleState.isDoubleDay)return "modC";if(!ls)return "A";if(ls==="TGU"){var i=CYCLE.indexOf(cycleState.preTgu||"A");return CYCLE[i%3]}if(ls==="modC")return "A";var i=CYCLE.indexOf(ls);return i===-1?"A":CYCLE[(i+1)%3]},[cycleState]);
+var getRec=useCallback(function(){return computeNextSession(cycleState)},[cycleState]);
 
 var getRecReason=function(){var ls=cycleState.lastSession;
 if(cycleState.isDoubleDay)return"Double day \u2192 Modified C";
@@ -1202,7 +1207,11 @@ function renderSessionComplete(){
 var sess=SESSIONS[currentSession];
 var dur=start?Math.round((Date.now()-start)/60000):0;
 var totalDone=sess.exercises.reduce(function(a,x){return a+(exData[x.id]||[]).filter(function(s){return s.completed}).length},0);
-var next=getRec();
+// Debrief is shown before saveAndFinish runs, so derive Next from the cycle
+// state it is about to write, not the stale pre-save cycleState (row 18).
+var pendingCt=(cycleState.completedToday||[]).concat([currentSession]);
+var pendingState={lastSession:currentSession,isDoubleDay:pendingCt.length>=2&&CYCLE.indexOf(currentSession)!==-1,completedToday:pendingCt,preTgu:currentSession==="TGU"?(cycleState.preTgu||getRec()):undefined};
+var next=computeNextSession(pendingState);
 var fatigue=classifyFatigue(sess.exercises,exData);
 var acwr=calcACWR(logs);
 var deload=shouldDeload(logs);
