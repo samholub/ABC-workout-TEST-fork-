@@ -49,7 +49,8 @@ var EXPORTS = [
   'shouldDeload', 'getFatigueTrend', 'detectPRs', 'getAllTimePRs',
   // supporting functions the fixtures lean on
   'getWorkingWeight', 'getExE1RM', 'getPeriodPhase', 'getSessionCount',
-  'calcTotalVolume', 'computeNextSession', 'nextCycleState'
+  'calcTotalVolume', 'computeNextSession', 'nextCycleState',
+  'countTrainingToday'
 ];
 
 function buildPureModule() {

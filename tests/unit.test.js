@@ -278,6 +278,20 @@ t('nextCycleState: isDoubleDay expires on the first save after the day rolls ove
   A.strictEqual(M.computeNextSession(tgu), 'modC');
 });
 
+// --- countTrainingToday ------------------------------------------------
+t('countTrainingToday: counts A, B, C and Modified C, not TGU', function () {
+  A.strictEqual(M.countTrainingToday(['A', 'B', 'C', 'modC']), 4);
+  A.strictEqual(M.countTrainingToday(['TGU']), 0, 'a TGU alone is not a first session');
+  A.strictEqual(M.countTrainingToday(['TGU', 'A']), 1);
+  A.strictEqual(M.countTrainingToday(undefined), 0);
+});
+t('nextCycleState: TGU then A on one day is not a double day', function () {
+  var s = M.nextCycleState({ lastSession: null, lastDate: null, completedToday: [] }, 'TGU', '2026-09-16');
+  s = M.nextCycleState(s, 'A', '2026-09-16');
+  A.strictEqual(s.isDoubleDay, false);
+  A.strictEqual(M.nextCycleState(s, 'B', '2026-09-16').isDoubleDay, true);
+});
+
 // --- summary -----------------------------------------------------------
 console.log('');
 if (failed.length) {
