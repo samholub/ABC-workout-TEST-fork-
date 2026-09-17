@@ -37,7 +37,12 @@ self.addEventListener('fetch', function(event) {
     event.respondWith(
       caches.open(CACHE_NAME).then(function(cache) {
         return fetch(event.request).then(function(response) {
-          if (response.ok) cache.put(event.request, response.clone());
+          if (!response.ok) {
+            return cache.match(event.request).then(function(cached) {
+              return cached || response;
+            });
+          }
+          if (response.type === 'basic') cache.put(event.request, response.clone());
           return response;
         }).catch(function() {
           return cache.match(event.request).then(function(cached) {
