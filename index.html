@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=28;
+var APP_VERSION=29;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -831,7 +831,7 @@ var _df=useState(function(){return S.get(KEYS.draft)||null}),draftSession=_df[0]
 var setRestDur=function(v){setRestDurState(v);S.set(KEYS.rest,v)};
 var setCarryPref=function(v){setCarryType(v);S.set(KEYS.carry,v)};
 
-useEffect(function(){var today=getLocalDateKey();if(cycleState.lastDate&&getLocalDateKey(new Date(cycleState.lastDate))!==today){var updated=Object.assign({},cycleState,{completedToday:[]});setCycleState(updated);S.set(KEYS.state,updated)}},[]);
+useEffect(function(){var today=getLocalDateKey();var ld=cycleState.lastDate;var ldKey=ld?(ld.length===10?ld:getLocalDateKey(new Date(ld))):null;if(ldKey&&ldKey!==today){var updated=Object.assign({},cycleState,{completedToday:[]});setCycleState(updated);S.set(KEYS.state,updated)}},[]);
 
 useEffect(function(){if(screen!=="workout")return;var id=setInterval(function(){var draft={session:currentSession,exData:exData,start:start,readiness:readiness,warmup:warmup,notes:notes,timeAvail:timeAvail,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()};S.set(KEYS.draft,draft)},5000);return function(){clearInterval(id)}},[screen,currentSession,exData,start,readiness,warmup,notes,timeAvail,sessionRPE,activeEx,circuitMode]);
 
