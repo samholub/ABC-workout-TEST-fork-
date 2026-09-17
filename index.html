@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=32;
+var APP_VERSION=33;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -1217,6 +1217,10 @@ var acwr=calcACWR(logs);
 var deload=shouldDeload(logs);
 var showExportPrompt=(getSessionCount(logs)+1)%10===0;
 var sessVol=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(function(s){if(s.completed)sessVol+=(s.weight||0)*(s.reps||0)})});
+// Progression should reflect today's just-completed sets, not just history
+// saved before this session started (row 19), without writing anything.
+var todayLog={date:new Date().toISOString(),session:currentSession,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
+var logsWithToday=[todayLog].concat(logs);
 
 // Build coached debrief — 1 line per exercise + next session
 var debrief=[];
@@ -1225,7 +1229,7 @@ sess.exercises.forEach(function(ex){
 var sets=(exData[ex.id]||[]).filter(function(s){return s.completed});
 if(!sets.length){if(ex.isCarry&&isDouble)debrief.push(ex.name+": skipped (double-day grip management)");return}
 var maxW=Math.max.apply(null,sets.map(function(s){return s.weight||0}));
-var prog=getProgression(ex.id,logs,readiness,getSessionCount(logs));
+var prog=getProgression(ex.id,logsWithToday,readiness,getSessionCount(logs));
 var cfg=PROG[ex.id];
 if(prog&&prog.type==="progress")debrief.push(ex.name+": start at "+prog.weight+" next session");
 else if(prog&&prog.type==="caution")debrief.push(ex.name+": "+prog.msg);
@@ -1264,7 +1268,7 @@ var e1=calcE1RM(s.weight||0,s.reps||0);
 lines.push("  Set "+(i+1)+": "+(s.weight?s.weight+"lb":"BW")+" x "+(s.reps||"-")+" reps"+(s.rpe?" @RPE "+s.rpe:"")+(e1?" (e1RM: "+e1+")":""))});
 var e1hist=getExE1RM(ex.id,logs);
 if(e1hist.length>0)lines.push("  e1RM history (recent first): "+e1hist.map(function(p){return p.e1rm}).join(", "));
-var prog=getProgression(ex.id,logs,readiness,getSessionCount(logs));
+var prog=getProgression(ex.id,logsWithToday,readiness,getSessionCount(logs));
 if(prog)lines.push("  Progression status: "+prog.type+" - "+prog.msg)});
 lines.push("");
 lines.push("=== FLAGS ===");
