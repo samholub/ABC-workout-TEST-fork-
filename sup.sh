@@ -31,6 +31,16 @@ PARKED="$SETTINGS.off"
 log() { printf '\n[sup] %s\n' "$*"; }
 die() { printf '\n[sup] FATAL: %s\n' "$*" >&2; exit 1; }
 
+# --- recover a parked hook ---------------------------------------------------
+# Closing the terminal window with the X kills this script without running the
+# EXIT trap, leaving the hook parked. If only the parked copy exists, put it
+# back before anything else runs. (Both present is still refused below.)
+if [ -e "$PARKED" ] && [ ! -e "$SETTINGS" ]; then
+  mv "$PARKED" "$SETTINGS" || die "could not restore the parked hook:
+  mv \"$PARKED\" \"$SETTINGS\""
+  log "found a parked hook from a session that did not exit cleanly -- restored it"
+fi
+
 # --- preflight -------------------------------------------------------------
 # All of this runs BEFORE the hook is parked. There is no window in which the
 # guard is off and the repo is in a state nobody checked.
