@@ -257,6 +257,27 @@ t('computeNextSession edge: unrecognised values fall back to A, never undefined'
   A.strictEqual(next({ lastSession: 'bogus' }), 'A');
 });
 
+// --- nextCycleState ----------------------------------------------------
+t('nextCycleState: A then B on one day sets isDoubleDay', function () {
+  var s = M.nextCycleState({ lastSession: null, lastDate: null, completedToday: [] }, 'A', '2026-09-15');
+  s = M.nextCycleState(s, 'B', '2026-09-15');
+  A.strictEqual(s.isDoubleDay, true);
+  A.deepStrictEqual(s.completedToday, ['A', 'B']);
+});
+t('nextCycleState: isDoubleDay expires on the first save after the day rolls over', function () {
+  // completedToday deliberately not reset: the rollover effect has not run.
+  var dbl = { lastSession: 'B', lastDate: '2026-09-15', isDoubleDay: true, completedToday: ['A', 'B'] };
+  var s = M.nextCycleState(dbl, 'modC', '2026-09-16');
+  A.strictEqual(s.isDoubleDay, false);
+  A.deepStrictEqual(s.completedToday, ['modC']);
+  var cyc = M.nextCycleState(dbl, 'C', '2026-09-16');
+  A.strictEqual(cyc.isDoubleDay, false, 'a cycle session the next day is not a second session');
+  var tgu = M.nextCycleState(dbl, 'TGU', '2026-09-16');
+  A.strictEqual(tgu.isDoubleDay, false);
+  A.strictEqual(tgu.preTgu, 'modC', 'the owed Modified C survives the TGU');
+  A.strictEqual(M.computeNextSession(tgu), 'modC');
+});
+
 // --- summary -----------------------------------------------------------
 console.log('');
 if (failed.length) {
