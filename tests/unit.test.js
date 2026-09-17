@@ -234,6 +234,29 @@ t('getAllTimePRs: session variants fold into one group (bss-a + bss-c)', functio
   A.strictEqual(prs.bss.bestWeight, 45);
 });
 
+// --- computeNextSession ------------------------------------------------
+function next(s) { return M.computeNextSession(s); }
+t('computeNextSession: no history starts at A, then A -> B -> C -> A', function () {
+  A.strictEqual(next({ lastSession: null }), 'A');
+  A.strictEqual(next({ lastSession: 'A' }), 'B');
+  A.strictEqual(next({ lastSession: 'B' }), 'C');
+  A.strictEqual(next({ lastSession: 'C' }), 'A');
+});
+t('computeNextSession: Modified C restarts at A; a double day recommends it', function () {
+  A.strictEqual(next({ lastSession: 'modC' }), 'A');
+  A.strictEqual(next({ lastSession: 'B', isDoubleDay: true }), 'modC');
+});
+t('computeNextSession: TGU resumes whatever was recommended before it', function () {
+  ['A', 'B', 'C', 'modC'].forEach(function (p) {
+    A.strictEqual(next({ lastSession: 'TGU', preTgu: p }), p, 'preTgu ' + p);
+  });
+  A.strictEqual(next({ lastSession: 'TGU' }), 'A', 'no preTgu');
+});
+t('computeNextSession edge: unrecognised values fall back to A, never undefined', function () {
+  A.strictEqual(next({ lastSession: 'TGU', preTgu: 'bogus' }), 'A');
+  A.strictEqual(next({ lastSession: 'bogus' }), 'A');
+});
+
 // --- summary -----------------------------------------------------------
 console.log('');
 if (failed.length) {
