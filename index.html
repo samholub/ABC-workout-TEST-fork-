@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=24;
+var APP_VERSION=25;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -1180,8 +1180,10 @@ if(nextEx)setTimeout(function(){setActiveEx(nextEx)},200)}},
 carryType:carryType,onCarryTypeChange:changeCarry,videoUrls:videoUrls,onVideoSave:saveVid,
 isExpanded:isActive,onToggle:function(){setActiveEx(isActive?null:ex.id)},
 onUpdate:function(ns){var u=Object.assign({},exData);u[ex.id]=ns;setExData(u);
-var jd=ns.findIndex(function(s,i){return s.completed&&!(exData[ex.id]&&exData[ex.id][i]&&exData[ex.id][i].completed)});
-if(jd!==-1)S.set(KEYS.draft,{session:currentSession,exData:u,start:start,readiness:readiness,warmup:warmup,notes:notes,timeAvail:timeAvail,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()});
+var old=exData[ex.id];
+var jd=ns.findIndex(function(s,i){return s.completed&&!(old&&old[i]&&old[i].completed)});
+var uncompletedOrEdited=old&&ns.some(function(s,i){return old[i]&&old[i].completed&&(s.completed!==old[i].completed||s.weight!==old[i].weight||s.reps!==old[i].reps)});
+if(jd!==-1||uncompletedOrEdited)S.set(KEYS.draft,{session:currentSession,exData:u,start:start,readiness:readiness,warmup:warmup,notes:notes,timeAvail:timeAvail,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()});
 if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());setTimer(ex.id+"-"+jd);setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur})}
 // Check for new PRs on completion
 var newPRs=detectPRs(ex.id,ns,logs);if(newPRs.length>0){var existing=sessionPRs.filter(function(p){return p.exId!==ex.id});newPRs.forEach(function(p){existing.push({exId:ex.id,exName:ex.name,setIdx:p.setIdx,reasons:p.reasons})});setSessionPRs(existing)}
