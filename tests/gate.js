@@ -90,7 +90,9 @@ FILES.forEach(function (f) {
   } catch (err) {
     prevIndex = null; // no prior commit to diff against
   }
-  if (prevIndex !== null && prevIndex !== indexSrc) {
+  // git hands back LF; the working copy may be CRLF under autocrlf.
+  var lf = function (s) { return s.replace(/\r\n/g, '\n'); };
+  if (prevIndex !== null && lf(prevIndex) !== lf(indexSrc)) {
     var prevVM = prevIndex.match(/var APP_VERSION\s*=\s*(\d+)/);
     if (prevVM && prevVM[1] === vIndex) {
       failures.push('index.html changed but APP_VERSION was not bumped (still v' + vIndex + ')');
