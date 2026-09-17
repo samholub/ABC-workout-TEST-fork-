@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=30;
+var APP_VERSION=31;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -331,7 +331,7 @@ function getPreSessionContext(sessionName,logs,readiness,lastWeights,cycleState)
 var sess=SESSIONS[sessionName];if(!sess)return null;
 var sesCount=getSessionCount(logs);var period=getPeriodPhase(sesCount);
 var fatigue=getFatigueTrend(logs);var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
-var isDouble=(cycleState||{}).isDoubleDay;
+var isDouble=((cycleState||{}).completedToday||[]).length>=1;
 var allPRs=getAllTimePRs(logs);
 var exercises=sess.exercises.map(function(ex){
 var prog=getProgression(ex.id,logs,readiness,sesCount);
@@ -847,7 +847,7 @@ return"Last completed: "+label};
 
 var startSession=function(key){
 if(draftSession&&SESSIONS[draftSession.session]){if(!window.confirm("You have an unfinished "+SESSIONS[draftSession.session].label+" session. Discard it and start "+SESSIONS[key].label+" instead?"))return;clearDraft();setDraftSession(null)}
-var sess=SESSIONS[key];var init={};var sesCount=getSessionCount(logs);var isDouble=(cycleState||{}).isDoubleDay;
+var sess=SESSIONS[key];var init={};var sesCount=getSessionCount(logs);var isDouble=((cycleState||{}).completedToday||[]).length>=1;
 sess.exercises.forEach(function(ex){
 var sug=getSuggestedLoad(ex.id,logs,null,sesCount,isDouble&&ex.isCarry);
 var prefillW=sug?sug.weight:(lastWeights[ex.id]||0);
@@ -1060,7 +1060,7 @@ fatigueTrend&&e("div",{style:Object.assign({},STYLES.warnBannerCompact,{maxWidth
 score<=4&&e("div",{style:{marginTop:8,fontSize:13,color:"#A8A29E",fontStyle:"italic"}},"Readiness \u22644/9. Progression paused \u2014 maintain loads."))),
 e("div",{style:STYLES.footerBar},
 e("div",{style:{display:"flex",gap:8}},
-e("button",{onClick:function(){var sesCount=getSessionCount(logs);var isDouble=(cycleState||{}).isDoubleDay;var updated=Object.assign({},exData);
+e("button",{onClick:function(){var sesCount=getSessionCount(logs);var isDouble=((cycleState||{}).completedToday||[]).length>=1;var updated=Object.assign({},exData);
 sess.exercises.forEach(function(ex){var sug=getSuggestedLoad(ex.id,logs,readiness,sesCount,isDouble&&ex.isCarry);var prefillW=sug?sug.weight:(lastWeights[ex.id]||0);var ghost=getGhostSets(ex.id,logs);var sets=updated[ex.id]||[];
 updated[ex.id]=sets.map(function(s,si){if(s.completed)return s;var prefillR=s.reps;if(!prefillR){if(ghost&&ghost[si]&&ghost[si].reps>0)prefillR=ghost[si].reps;else if(ghost&&ghost[0]&&ghost[0].reps>0)prefillR=ghost[0].reps;else prefillR=""}var newW=s.weight;if(!s.weight||s.weight===(lastWeights[ex.id]||0))newW=prefillW;return Object.assign({},s,{weight:newW,reps:prefillR})})});
 setExData(updated);setScreen("gameplan")},style:{width:"100%",padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"See Game Plan \u2192"))))
