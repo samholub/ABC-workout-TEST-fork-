@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=33;
+var APP_VERSION=34;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -486,7 +486,20 @@ var _r=useState(duration),rem=_r[0],setRem=_r[1];
 var _u=useState(true),run=_u[0],setRun=_u[1];
 var beeped=useRef(false);
 var ref=useRef(null);
-useEffect(function(){if(run&&rem>0){ref.current=setInterval(function(){setRem(function(r){if(r<=1){clearInterval(ref.current);if(!beeped.current){playBeep();beeped.current=true}return 0}return r-1})},1000)}return function(){clearInterval(ref.current)}},[run,rem]);
+var endRef=useRef(Date.now()+duration*1000);
+useEffect(function(){
+if(!run)return;
+var tick=function(){
+var r=Math.max(0,Math.ceil((endRef.current-Date.now())/1000));
+setRem(r);
+if(r<=0){if(ref.current){clearInterval(ref.current);ref.current=null}if(!beeped.current){playBeep();beeped.current=true}}
+};
+tick();
+ref.current=setInterval(tick,1000);
+document.addEventListener("visibilitychange",tick);
+return function(){clearInterval(ref.current);document.removeEventListener("visibilitychange",tick)}
+},[run]);
+var toggleRun=function(){if(run){setRun(false)}else{endRef.current=Date.now()+rem*1000;setRun(true)}};
 var pct=((duration-rem)/duration)*100;var m=Math.floor(rem/60),s=rem%60;
 if(floating){return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 12px #0008"}},
 e("div",{style:{flex:1,display:"flex",alignItems:"center",gap:10}},
@@ -495,13 +508,13 @@ adaptiveLabel&&e("div",{style:{fontSize:10,color:T.mut,marginTop:1}},adaptiveLab
 e("div",{style:{flex:1,height:3,background:T.inp,borderRadius:2,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:5}},
 onHR&&e("button",{onClick:onHR,style:Object.assign({},STYLES.timerBtn,{background:"#1a0a1a",border:"1px solid "+T.pkD,color:T.pkL})},"\u2764\uFE0F"),
-e("button",{onClick:function(){setRun(!run)},style:Object.assign({},STYLES.timerBtn,{background:T.inp,border:"1px solid "+T.brd,color:T.txt})},run?"\u23F8":"\u25B6"),
+e("button",{onClick:toggleRun,style:Object.assign({},STYLES.timerBtn,{background:T.inp,border:"1px solid "+T.brd,color:T.txt})},run?"\u23F8":"\u25B6"),
 rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip")))}
 return e("div",{style:{background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"12px 16px",marginTop:8,display:"flex",alignItems:"center",gap:12}},
 e("div",{style:{flex:1}},e("div",{style:{fontFamily:MONO,fontSize:28,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),adaptiveLabel&&e("div",{style:{fontSize:11,color:T.mut,marginTop:2}},adaptiveLabel),e("div",{style:{height:3,background:T.inp,borderRadius:2,marginTop:4,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
 onHR&&e("button",{onClick:onHR,style:Object.assign({},STYLES.timerBtn,{background:"#1a0a1a",border:"1px solid "+T.pkD,color:T.pkL})},"\u{2764}\uFE0F"),
-e("button",{onClick:function(){setRun(!run)},style:Object.assign({},STYLES.timerBtn,{background:T.inp,border:"1px solid "+T.brd,color:T.txt})},run?"Pause":"Resume"),rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip")))
+e("button",{onClick:toggleRun,style:Object.assign({},STYLES.timerBtn,{background:T.inp,border:"1px solid "+T.brd,color:T.txt})},run?"Pause":"Resume"),rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip")))
 }
 
 // ── HRMonitor ──
