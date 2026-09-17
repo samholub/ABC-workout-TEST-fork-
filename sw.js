@@ -1,4 +1,9 @@
-var CACHE_NAME = 'abc-workout-v2';
+// Bumped alongside index.html's APP_VERSION -- no build step, so the two
+// files each carry their own literal copy of the number instead of sharing
+// a symbol. tests/gate.js fails the build if they disagree or if index.html
+// changed without this number moving.
+var APP_VERSION = 22;
+var CACHE_NAME = 'abc-workout-v' + APP_VERSION;
 self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {

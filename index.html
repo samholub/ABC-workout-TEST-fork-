@@ -35,7 +35,7 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 <script>
 
 // ╔════════════════════════════════════════════════════════════════════════╗
-// ║  ABC CYCLE TRACKER v21 — Premium Polish + Dashboard + PR Board      ║
+// ║  ABC CYCLE TRACKER v22 — Premium Polish + Dashboard + PR Board      ║
 // ║  Single-file React PWA  ·  No build tools  ·  localStorage only     ║
 // ╚════════════════════════════════════════════════════════════════════════╝
 //
@@ -63,6 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
+var APP_VERSION=22;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -922,7 +923,7 @@ var weekLogs=logs.filter(function(l){return new Date(l.date)>=new Date(Date.now(
 var balanceAdv=getBalanceAdvisory(logs,rec);
 return e("div",{style:STYLES.screen},
 e("div",{style:Object.assign({},STYLES.headerPad,{display:"flex",justifyContent:"space-between",alignItems:"flex-start"})},
-e("div",null,e("div",{style:{fontSize:12,color:T.mut,textTransform:"uppercase",letterSpacing:2.5,fontWeight:600}},"ABC Cycle Tracker",e("span",{style:{fontSize:9,color:T.brdL,marginLeft:6,letterSpacing:1,textTransform:"none"}},"v21")),e("div",{style:{fontSize:26,fontWeight:700,color:T.hi,marginTop:3}},todayN>0?todayN+" session"+(todayN>1?"s":"")+" today":"Ready to train")),
+e("div",null,e("div",{style:{fontSize:12,color:T.mut,textTransform:"uppercase",letterSpacing:2.5,fontWeight:600}},"ABC Cycle Tracker",e("span",{style:{fontSize:9,color:T.brdL,marginLeft:6,letterSpacing:1,textTransform:"none"}},"v"+APP_VERSION)),e("div",{style:{fontSize:26,fontWeight:700,color:T.hi,marginTop:3}},todayN>0?todayN+" session"+(todayN>1?"s":"")+" today":"Ready to train")),
 e("button",{onClick:function(){setShowSettings(true)},style:{background:T.inp,border:"1px solid "+T.brd,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:T.sec,fontSize:16}},"\u2699")),
 e("div",{style:STYLES.scrollBodyPx},
 draftSession&&SESSIONS[draftSession.session]&&e("div",{style:{background:"#1a1a0a",border:"2px solid "+T.acc,borderRadius:14,padding:"14px 16px",marginBottom:10}},
