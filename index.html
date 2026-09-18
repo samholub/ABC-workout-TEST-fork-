@@ -61,8 +61,8 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
-var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=51;
+var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",draft:"wk-draft",schemaVersion:"wk-schema-version"};
+var APP_VERSION=52;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -503,7 +503,7 @@ var _pi=useState(null),pendingImport=_pi[0],setPendingImport=_pi[1];
 var exportData=function(){onExport();setImportStatus("Backup saved!");setTimeout(function(){setImportStatus("")},2500)};
 var validateImport=function(data){if(!data||typeof data!=="object")return"File is not a valid JSON object";if(!Array.isArray(data.logs))return"Missing or invalid session logs";var vl=validateLogs(data.logs);if(vl.length===0&&data.logs.length>0)return"No valid log entries found (missing dates or sessions)";if(vl.length===0)return"Backup contains no session logs";data._validatedLogs=vl;data._validatedState=validateState(data.state);if(data.weights&&typeof data.weights!=="object")return"Invalid weights data";return null};
 var importData=function(){var input=document.createElement("input");input.type="file";input.accept=".json";input.onchange=function(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e2){try{var data=JSON.parse(e2.target.result);var err=validateImport(data);if(err){setImportStatus("Error: "+err);return}setPendingImport(data);setImportStatus("")}catch(ex){setImportStatus("Error: could not parse file")}};reader.readAsText(file)};input.click()};
-var applyImport=function(){var data=pendingImport;if(!data)return;var vLogs=(data._validatedLogs||validateLogs(data.logs)).slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)});var vState=data._validatedState||validateState(data.state);var ok=S.set(KEYS.logs,vLogs)&&S.set(KEYS.state,vState);if(data.weights&&typeof data.weights==="object")ok=ok&&S.set(KEYS.weights,data.weights);if(data.videos&&typeof data.videos==="object")ok=ok&&S.set(KEYS.videos,data.videos);if(data.carry)ok=ok&&S.set(KEYS.carry,data.carry);if(data.rest)ok=ok&&S.set(KEYS.rest,data.rest);if(data.analysisTs)ok=ok&&S.set(KEYS.analysisTs,data.analysisTs);if(!ok){alert("Storage error! Import failed. Please free up space on your device.");return}setPendingImport(null);setImportStatus("Imported! Reloading...");setTimeout(function(){window.location.reload()},1500)};
+var applyImport=function(){var data=pendingImport;if(!data)return;var vLogs=(data._validatedLogs||validateLogs(data.logs)).slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)});var vState=data._validatedState||validateState(data.state);var ok=S.set(KEYS.logs,vLogs)&&S.set(KEYS.state,vState);if(data.weights&&typeof data.weights==="object")ok=ok&&S.set(KEYS.weights,data.weights);if(data.videos&&typeof data.videos==="object")ok=ok&&S.set(KEYS.videos,data.videos);if(data.carry)ok=ok&&S.set(KEYS.carry,data.carry);if(data.rest)ok=ok&&S.set(KEYS.rest,data.rest);if(!ok){alert("Storage error! Import failed. Please free up space on your device.");return}setPendingImport(null);setImportStatus("Imported! Reloading...");setTimeout(function(){window.location.reload()},1500)};
 var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),e("div",{style:{marginTop:16,borderTop:"1px solid #292524",paddingTop:16}},
 e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:10}},"Data Management"),
 e("div",{style:{display:"flex",gap:8,marginBottom:8}},
@@ -549,7 +549,6 @@ var _srpe=useState(0),sessionRPE=_srpe[0],setSessionRPE=_srpe[1];
 var _ft=useState(null),floatTimer=_ft[0],setFloatTimer=_ft[1];
 var _arl=useState(null),adaptiveRestLabel=_arl[0],setAdaptiveRestLabel=_arl[1];
 var _sd=useState(""),screenDir=_sd[0],setScreenDir=_sd[1];
-var _cp=useState(false),copied=_cp[0],setCopied=_cp[1];
 var _df=useState(function(){return S.get(KEYS.draft)||null}),draftSession=_df[0],setDraftSession=_df[1];
 
 var setRestDur=function(v){setRestDurState(v);S.set(KEYS.rest,v)};
@@ -608,9 +607,9 @@ if(trimmed)alert("Oldest session removed to stay within storage limits.");
 setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 };
 
-var exportBackup=function(){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur,analysisTs:S.get(KEYS.analysisTs)};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url)};
+var exportBackup=function(){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setCopied(false);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
+var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
@@ -842,7 +841,6 @@ var totalDone=sess.exercises.reduce(function(a,x){return a+(exData[x.id]||[]).fi
 var pendingState=nextCycleState(cycleState,currentSession,getLocalDateKey());
 var next=computeNextSession(pendingState);
 var showExportPrompt=(getSessionCount(logs)+1)%10===0;
-var sessVol=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(function(s){if(s.completed)sessVol+=(s.weight||0)*(s.reps||0)})});
 // Progression should reflect today's just-completed sets, not just history
 // saved before this session started (row 19), without writing anything.
 var todayLog={date:new Date().toISOString(),session:currentSession,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
@@ -866,46 +864,6 @@ var balAdv=getBalanceAdvisory(logs,next);
 var nextLabel=SESSIONS[next]?SESSIONS[next].label:next;
 debrief.push("Next: "+nextLabel+(balAdv?" \u2014 "+balAdv.msg:""));
 
-var copySummary=function(){
-var lines=[];
-lines.push("I just finished a workout session in my ABC Cycle training program. Here's the structured data from my session. Please analyze it and give me:");
-lines.push("1. How the session went overall (effort, volume, pacing)");
-lines.push("2. Any exercises where form or load adjustments are needed based on RPE and rep trends");
-lines.push("3. Whether my e1RM trends suggest I'm progressing, plateauing, or regressing on each lift");
-lines.push("4. Any recovery or programming concerns (workload ratio, fatigue patterns, deload need)");
-lines.push("5. Specific recommendations for my next session");
-lines.push("");
-lines.push("---");
-lines.push("");
-lines.push("=== SESSION DATA ===");
-lines.push("Session: "+sess.label);
-lines.push("Date: "+new Date().toLocaleDateString());
-lines.push("Duration: "+dur+" min");
-lines.push("Readiness: "+(readiness?readiness.sleep+readiness.soreness+readiness.motivation+"/9":"not rated"));
-lines.push("Session RPE: "+(sessionRPE||"not rated")+"/10");
-lines.push("Session Volume: "+sessVol.toLocaleString()+" lbs total tonnage");
-lines.push("");
-lines.push("=== EXERCISES ===");
-sess.exercises.forEach(function(ex){var sets=(exData[ex.id]||[]).filter(function(s){return s.completed});if(!sets.length)return;
-lines.push("");
-lines.push(ex.name+":");
-sets.forEach(function(s,i){
-lines.push("  Set "+(i+1)+": "+(s.weight?s.weight+"lb":"BW")+" x "+(s.reps||"-")+" reps"+(s.rpe?" @RPE "+s.rpe:""))});
-var prog=getProgression(ex.id,logsWithToday,readiness,getSessionCount(logs));
-if(prog)lines.push("  Progression status: "+prog.type+" - "+prog.msg)});
-lines.push("");
-lines.push("=== FLAGS ===");
-
-var sesCount=getSessionCount(logs);
-if(sesCount>0){var phase=getPeriodPhase(sesCount);lines.push("Sessions logged: "+sesCount+" ("+phase.msg+")")}
-if(notes.notes)lines.push("\nUser notes: "+notes.notes);
-var lastTs=S.get(KEYS.analysisTs);
-if(lastTs)lines.push("\n(Previous analysis export: "+new Date(lastTs).toLocaleDateString()+")");
-lines.push("");
-lines.push("---");
-lines.push("Context: ABC Workout app. 3 rotating sessions (A: squats/push/carry, B: deadlifts/rows/carry, C: squats/pullups/deadlifts) with RPE-gated progression. Dumbbell home training.");
-S.set(KEYS.analysisTs,Date.now());
-navigator.clipboard.writeText(lines.join("\n")).then(function(){setCopied(true);setTimeout(function(){setCopied(false)},2500)}).catch(function(){})};
 
 return e("div",{style:STYLES.screen},
 e("div",{style:Object.assign({},STYLES.headerPad,{padding:"calc(14px + env(safe-area-inset-top,0px)) 16px 0"})},e("button",{onClick:function(){setScreen("workout")},style:STYLES.backBtnFlat},"\u2190 Back")),
@@ -930,9 +888,7 @@ e("div",{style:{display:"flex",gap:4}},
 [1,2,3,4,5,6,7,8,9,10].map(function(v){var clr=v<=4?T.ok:v<=6?T.warn:v<=8?"#F97316":T.err;return e("button",{key:v,onClick:function(){setSessionRPE(v)},style:{flex:1,padding:"8px 0",borderRadius:8,fontSize:13,fontWeight:sessionRPE===v?700:400,background:sessionRPE===v?clr+"33":"transparent",border:"1px solid "+(sessionRPE===v?clr:T.inp),color:sessionRPE===v?clr:T.mut,cursor:"pointer",fontFamily:MONO}},v)}))),
 // Notes
 e("div",{style:{width:"100%",maxWidth:380,margin:"0 auto",marginBottom:10}},
-e("div",{style:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,overflow:"hidden"}},e("textarea",{value:notes.notes,onChange:function(ev){setNotes({notes:ev.target.value})},placeholder:"Quick notes...",rows:2,style:{width:"100%",background:"transparent",border:"none",color:T.txt,padding:"12px 14px",fontSize:14,resize:"none",outline:"none",lineHeight:1.5}}))),
-// Copy for AI analysis
-e("button",{onClick:copySummary,style:{width:"100%",maxWidth:380,margin:"0 auto 10px",display:"block",padding:"12px",background:copied?"#052e1c":"#1a1a2e",border:"1px solid "+(copied?T.ok+"66":"#3B82F644"),borderRadius:10,color:copied?T.okL:"#93C5FD",fontSize:13,fontWeight:500,cursor:"pointer",transition:"all 0.3s"}},copied?"\u2705 Copied! Paste into Claude for analysis":"\u{1F4CB} Copy AI Analysis Prompt to Clipboard")),
+e("div",{style:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,overflow:"hidden"}},e("textarea",{value:notes.notes,onChange:function(ev){setNotes({notes:ev.target.value})},placeholder:"Quick notes...",rows:2,style:{width:"100%",background:"transparent",border:"none",color:T.txt,padding:"12px 14px",fontSize:14,resize:"none",outline:"none",lineHeight:1.5}})))),
 // Periodic backup reminder
 showExportPrompt&&e("button",{onClick:exportBackup,style:{width:"100%",maxWidth:380,margin:"0 auto 10px",display:"block",padding:"12px",background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:13,fontWeight:500,cursor:"pointer"}},"\u{1F4E5} Export Backup"),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 20px 12px"})},
