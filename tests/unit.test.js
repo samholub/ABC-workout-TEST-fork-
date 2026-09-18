@@ -44,18 +44,6 @@ function t(name, fn) {
   catch (err) { failed.push([name, err]); console.log('  FAIL ' + name); }
 }
 
-// --- calcE1RM ----------------------------------------------------------
-t('calcE1RM: Epley formula, rounded', function () {
-  A.strictEqual(M.calcE1RM(100, 5), 117);   // 100 * (1 + 5/30) = 116.67
-  A.strictEqual(M.calcE1RM(30, 12), 42);
-});
-t('calcE1RM edge: a single rep is its own 1RM, junk input is 0', function () {
-  A.strictEqual(M.calcE1RM(135, 1), 135);   // r === 1 short-circuits
-  A.strictEqual(M.calcE1RM(0, 5), 0);
-  A.strictEqual(M.calcE1RM(100, 0), 0);
-  A.strictEqual(M.calcE1RM(-50, 5), 0);
-});
-
 // --- getProgression ----------------------------------------------------
 // 'row' config: { top: 12, inc: 5, rpe: 8 }
 var twoGoodRowSessions = [
@@ -114,43 +102,6 @@ t('getSuggestedLoad: a second session today advises maintaining', function () {
   A.strictEqual(s.weight, 35);
   A.ok(/maintain or lighten/i.test(s.reason), s.reason);
 });
-
-// --- calcACWR ----------------------------------------------------------
-t('calcACWR: acute over chronic, both windows counted', function () {
-  // One session inside both windows: 2 sets x 30lb x 12 = 720.
-  // acute = 720, chronic = 720 / 4 = 180, ratio = 4.
-  var r = M.calcACWR([log({ ago: 1, sets: [[30, 12, 7], [30, 12, 7]] })]);
-  A.strictEqual(r, 4);
-});
-t('calcACWR edge: too little chronic volume returns null, not Infinity', function () {
-  A.strictEqual(M.calcACWR([]), null);
-  A.strictEqual(M.calcACWR([log({ ago: 40, sets: [[30, 12, 7]] })]), null);
-});
-
-// --- shouldDeload ------------------------------------------------------
-function deloadLogs(rpes, readinessSums) {
-  return rpes.map(function (rpe, i) {
-    return log({
-      ago: i * 3 + 1,
-      sets: [[30, 10, rpe]],
-      readiness: { sleep: readinessSums[i], soreness: 0, motivation: 0 }
-    });
-  });
-}
-t('shouldDeload: RPE climbing while readiness falls', function () {
-  A.strictEqual(
-    M.shouldDeload(deloadLogs([9, 8.5, 8, 7.5, 7, 6.5], [3, 4, 5, 6, 7, 8])),
-    true
-  );
-});
-t('shouldDeload edge: needs six sessions, and flat data never fires', function () {
-  A.strictEqual(M.shouldDeload([]), false);
-  A.strictEqual(
-    M.shouldDeload(deloadLogs([8, 8, 8, 8, 8], [5, 5, 5, 5, 5])), false);
-  A.strictEqual(
-    M.shouldDeload(deloadLogs([7, 7, 7, 7, 7, 7], [5, 5, 5, 5, 5, 5])), false);
-});
-
 // --- getFatigueTrend ---------------------------------------------------
 t('getFatigueTrend: monotonic RPE rise of 1.5+ ending at 8 or above', function () {
   var r = M.getFatigueTrend([
