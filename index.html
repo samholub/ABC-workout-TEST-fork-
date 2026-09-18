@@ -62,7 +62,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=42;
+var APP_VERSION=43;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -366,8 +366,13 @@ return{session:absent,msg:"No "+absentLabel+" in last "+recent.length+" logged s
 //    Audio feedback, exercise chart data
 // ========================================================================
 
-// Audio beep for rest timer
-function playBeep(){try{var ctx=new(window.AudioContext||window.webkitAudioContext)();var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3);setTimeout(function(){ctx.close()},500)}catch(e){}}
+// Audio beep for rest timer. iOS keeps an AudioContext built outside a
+// user gesture suspended, so the context is created and resumed inside the
+// tap that starts a rest timer (the set check circle) and kept for the rest
+// of the session; playBeep then plays through it when the timer hits zero.
+var _audioCtx=null;
+function primeAudio(){try{var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;if(!_audioCtx)_audioCtx=new AC();if(_audioCtx.state==="suspended")_audioCtx.resume();return _audioCtx}catch(e){return null}}
+function playBeep(){try{var ctx=primeAudio();if(!ctx)return;var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3)}catch(e){}}
 
 
 // ========================================================================
@@ -458,7 +463,7 @@ var done=setData.filter(function(s){return s.completed}).length;
 var allDone=done===setData.length;
 var displayName=exercise.isCarry&&carryType==="farmer"?exercise.name.replace("Suitcase Carry","Farmer's Carry").replace("Carries","Farmer's Carry"):exercise.name;
 var updateSet=function(i,f,v){var u=setData.slice();u[i]=Object.assign({},u[i]);u[i][f]=v;if(f==="weight"||f==="reps")u[i].touched=true;onUpdate(u)};
-var toggleDone=function(i){var u=setData.slice();u[i]=Object.assign({},u[i]);u[i].completed=!u[i].completed;u[i].touched=true;onUpdate(u)};
+var toggleDone=function(i){primeAudio();var u=setData.slice();u[i]=Object.assign({},u[i]);u[i].completed=!u[i].completed;u[i].touched=true;onUpdate(u)};
 var weightSummary="";
 if(done>0){var ws=setData.filter(function(s){return s.completed&&s.weight}).map(function(s){return s.weight});if(ws.length>0)weightSummary=ws[ws.length-1]+" lbs"}
 // Ghost summary for collapsed
