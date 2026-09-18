@@ -44,18 +44,6 @@ function t(name, fn) {
   catch (err) { failed.push([name, err]); console.log('  FAIL ' + name); }
 }
 
-// --- calcE1RM ----------------------------------------------------------
-t('calcE1RM: Epley formula, rounded', function () {
-  A.strictEqual(M.calcE1RM(100, 5), 117);   // 100 * (1 + 5/30) = 116.67
-  A.strictEqual(M.calcE1RM(30, 12), 42);
-});
-t('calcE1RM edge: a single rep is its own 1RM, junk input is 0', function () {
-  A.strictEqual(M.calcE1RM(135, 1), 135);   // r === 1 short-circuits
-  A.strictEqual(M.calcE1RM(0, 5), 0);
-  A.strictEqual(M.calcE1RM(100, 0), 0);
-  A.strictEqual(M.calcE1RM(-50, 5), 0);
-});
-
 // --- getProgression ----------------------------------------------------
 // 'row' config: { top: 12, inc: 5, rpe: 8 }
 var twoGoodRowSessions = [
@@ -114,43 +102,6 @@ t('getSuggestedLoad: a second session today advises maintaining', function () {
   A.strictEqual(s.weight, 35);
   A.ok(/maintain or lighten/i.test(s.reason), s.reason);
 });
-
-// --- calcACWR ----------------------------------------------------------
-t('calcACWR: acute over chronic, both windows counted', function () {
-  // One session inside both windows: 2 sets x 30lb x 12 = 720.
-  // acute = 720, chronic = 720 / 4 = 180, ratio = 4.
-  var r = M.calcACWR([log({ ago: 1, sets: [[30, 12, 7], [30, 12, 7]] })]);
-  A.strictEqual(r, 4);
-});
-t('calcACWR edge: too little chronic volume returns null, not Infinity', function () {
-  A.strictEqual(M.calcACWR([]), null);
-  A.strictEqual(M.calcACWR([log({ ago: 40, sets: [[30, 12, 7]] })]), null);
-});
-
-// --- shouldDeload ------------------------------------------------------
-function deloadLogs(rpes, readinessSums) {
-  return rpes.map(function (rpe, i) {
-    return log({
-      ago: i * 3 + 1,
-      sets: [[30, 10, rpe]],
-      readiness: { sleep: readinessSums[i], soreness: 0, motivation: 0 }
-    });
-  });
-}
-t('shouldDeload: RPE climbing while readiness falls', function () {
-  A.strictEqual(
-    M.shouldDeload(deloadLogs([9, 8.5, 8, 7.5, 7, 6.5], [3, 4, 5, 6, 7, 8])),
-    true
-  );
-});
-t('shouldDeload edge: needs six sessions, and flat data never fires', function () {
-  A.strictEqual(M.shouldDeload([]), false);
-  A.strictEqual(
-    M.shouldDeload(deloadLogs([8, 8, 8, 8, 8], [5, 5, 5, 5, 5])), false);
-  A.strictEqual(
-    M.shouldDeload(deloadLogs([7, 7, 7, 7, 7, 7], [5, 5, 5, 5, 5, 5])), false);
-});
-
 // --- getFatigueTrend ---------------------------------------------------
 t('getFatigueTrend: monotonic RPE rise of 1.5+ ending at 8 or above', function () {
   var r = M.getFatigueTrend([
@@ -182,56 +133,6 @@ t('getFatigueTrend edge: under three sessions, and manual logs are skipped', fun
     log({ ago: 4, manual: true, sessionRPE: 8.5, sets: [[30, 10, 8.5]] }),
     log({ ago: 7, manual: true, sessionRPE: 7, sets: [[30, 10, 7]] })
   ]), null);
-});
-
-// --- detectPRs ---------------------------------------------------------
-var rowHistory = [log({ ago: 5, sets: [[30, 10, 8]] })];
-
-t('detectPRs: a heavier completed set is a weight and e1RM PR', function () {
-  var prs = M.detectPRs('row', [
-    { weight: 35, reps: 10, rpe: 8, completed: true }
-  ], rowHistory);
-  A.strictEqual(prs.length, 1);
-  A.strictEqual(prs[0].setIdx, 0);
-  A.ok(prs[0].reasons.indexOf('weight') !== -1, prs[0].reasons.join(','));
-  A.ok(prs[0].reasons.indexOf('e1rm') !== -1, prs[0].reasons.join(','));
-});
-t('detectPRs edge: an unchecked set is never a PR', function () {
-  A.deepStrictEqual(M.detectPRs('row', [
-    { weight: 500, reps: 20, rpe: 8, completed: false }
-  ], rowHistory), []);
-});
-t('detectPRs edge: matching a previous best is not a PR', function () {
-  A.deepStrictEqual(M.detectPRs('row', [
-    { weight: 30, reps: 10, rpe: 8, completed: true }
-  ], rowHistory), []);
-});
-
-// --- getAllTimePRs -----------------------------------------------------
-t('getAllTimePRs: best weight, reps and e1RM per group, with dates', function () {
-  var heavyDate = daysAgo(3);
-  var prs = M.getAllTimePRs([
-    log({ date: heavyDate, sets: [[40, 6, 8]] }),
-    log({ ago: 9, sets: [[30, 15, 7]] })
-  ]);
-  A.strictEqual(prs.row.bestWeight, 40);
-  A.strictEqual(prs.row.bestWeightDate, heavyDate);
-  A.strictEqual(prs.row.bestReps, 15);
-  A.strictEqual(prs.row.bestE1RM, M.calcE1RM(40, 6));  // 48 > calcE1RM(30,15) = 45
-});
-t('getAllTimePRs edge: empty history yields zeroed records, not undefined', function () {
-  var prs = M.getAllTimePRs([]);
-  A.strictEqual(prs.row.bestWeight, 0);
-  A.strictEqual(prs.row.bestWeightDate, null);
-  A.strictEqual(prs.bss.bestE1RM, 0);
-  A.ok(prs.pullup, 'every known group is present');
-});
-t('getAllTimePRs: session variants fold into one group (bss-a + bss-c)', function () {
-  var prs = M.getAllTimePRs([
-    log({ ago: 2, id: 'bss-a', sets: [[25, 10, 8]] }),
-    log({ ago: 6, id: 'bss-c', sets: [[45, 8, 8]] })
-  ]);
-  A.strictEqual(prs.bss.bestWeight, 45);
 });
 
 // --- computeNextSession ------------------------------------------------
