@@ -61,8 +61,8 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
-var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=52;
+var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",schemaVersion:"wk-schema-version"};
+var APP_VERSION=53;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -500,10 +500,10 @@ function ConfirmDialog(props){return e("div",{style:STYLES.dialogOverlay,onClick
 // ── SettingsSheet ──
 function SettingsSheet(props){var restDur=props.restDur,setRestDur=props.setRestDur,onClose=props.onClose,onReset=props.onReset,onExport=props.onExport,logs=props.logs,lastWeights=props.lastWeights,videoUrls=props.videoUrls,cycleState=props.cycleState;var _imp=useState(""),importStatus=_imp[0],setImportStatus=_imp[1];
 var _pi=useState(null),pendingImport=_pi[0],setPendingImport=_pi[1];
-var exportData=function(){onExport();setImportStatus("Backup saved!");setTimeout(function(){setImportStatus("")},2500)};
+var exportData=function(){onExport(null);setImportStatus("Backup saved!");setTimeout(function(){setImportStatus("")},2500)};
 var validateImport=function(data){if(!data||typeof data!=="object")return"File is not a valid JSON object";if(!Array.isArray(data.logs))return"Missing or invalid session logs";var vl=validateLogs(data.logs);if(vl.length===0&&data.logs.length>0)return"No valid log entries found (missing dates or sessions)";if(vl.length===0)return"Backup contains no session logs";data._validatedLogs=vl;data._validatedState=validateState(data.state);if(data.weights&&typeof data.weights!=="object")return"Invalid weights data";return null};
 var importData=function(){var input=document.createElement("input");input.type="file";input.accept=".json";input.onchange=function(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e2){try{var data=JSON.parse(e2.target.result);var err=validateImport(data);if(err){setImportStatus("Error: "+err);return}setPendingImport(data);setImportStatus("")}catch(ex){setImportStatus("Error: could not parse file")}};reader.readAsText(file)};input.click()};
-var applyImport=function(){var data=pendingImport;if(!data)return;var vLogs=(data._validatedLogs||validateLogs(data.logs)).slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)});var vState=data._validatedState||validateState(data.state);var ok=S.set(KEYS.logs,vLogs)&&S.set(KEYS.state,vState);if(data.weights&&typeof data.weights==="object")ok=ok&&S.set(KEYS.weights,data.weights);if(data.videos&&typeof data.videos==="object")ok=ok&&S.set(KEYS.videos,data.videos);if(data.carry)ok=ok&&S.set(KEYS.carry,data.carry);if(data.rest)ok=ok&&S.set(KEYS.rest,data.rest);if(!ok){alert("Storage error! Import failed. Please free up space on your device.");return}setPendingImport(null);setImportStatus("Imported! Reloading...");setTimeout(function(){window.location.reload()},1500)};
+var applyImport=function(){var data=pendingImport;if(!data)return;var vLogs=(data._validatedLogs||validateLogs(data.logs)).slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)});var vState=data._validatedState||validateState(data.state);var ok=S.set(KEYS.logs,vLogs)&&S.set(KEYS.state,vState);if(data.weights&&typeof data.weights==="object")ok=ok&&S.set(KEYS.weights,data.weights);if(data.videos&&typeof data.videos==="object")ok=ok&&S.set(KEYS.videos,data.videos);if(data.carry)ok=ok&&S.set(KEYS.carry,data.carry);if(data.rest)ok=ok&&S.set(KEYS.rest,data.rest);if(typeof data.sessions==="number")ok=ok&&S.set(KEYS.sessions,data.sessions);if(!ok){alert("Storage error! Import failed. Please free up space on your device.");return}setPendingImport(null);setImportStatus("Imported! Reloading...");setTimeout(function(){window.location.reload()},1500)};
 var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),e("div",{style:{marginTop:16,borderTop:"1px solid #292524",paddingTop:16}},
 e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:10}},"Data Management"),
 e("div",{style:{display:"flex",gap:8,marginBottom:8}},
@@ -527,6 +527,11 @@ var _wu=useState(null),warmup=_wu[0],setWarmup=_wu[1];
 var _ed=useState({}),exData=_ed[0],setExData=_ed[1];
 var _lw=useState(function(){return S.get(KEYS.weights)||{}}),lastWeights=_lw[0],setLastWeights=_lw[1];
 var _lg=useState(function(){return validateLogs(S.get(KEYS.logs))}),logs=_lg[0],setLogs=_lg[1];
+// Sessions saved on this device, kept apart from logs.length so the 1000-session
+// trim and deletions in History do not move the every-10th backup nudge. Seeded
+// from the logs the first time the key is missing.
+var _sc=useState(function(){var v=S.get(KEYS.sessions);return typeof v==="number"?v:getSessionCount(logs)}),sessionCount=_sc[0],setSessionCount=_sc[1];
+var _bx=useState(false),exported=_bx[0],setExported=_bx[1];
 var _vu=useState(function(){return S.get(KEYS.videos)||{}}),videoUrls=_vu[0],setVideoUrls=_vu[1];
 var _ct=useState(function(){return S.get(KEYS.carry)||"suitcase"}),carryType=_ct[0],setCarryType=_ct[1];
 var _tk=useState(Date.now()),timerKey=_tk[0],setTimerKey=_tk[1];
@@ -592,24 +597,31 @@ var setFeel=function(rd){setReadiness(rd);var sess=SESSIONS[currentSession];var 
 sess.exercises.forEach(function(ex){var sug=getSuggestedLoad(ex.id,logs,rd,sesCount,isDouble&&ex.isCarry);var prefillW=sug?sug.weight:(lastWeights[ex.id]||0);updated[ex.id]=(updated[ex.id]||[]).map(function(s){return s.completed||s.touched?s:Object.assign({},s,{weight:prefillW})})});
 setExData(updated)};
 
+// The log entry for the session in progress, in the shape saveAndFinish writes.
+// The Complete screen uses it too, for the debrief and the export, before anything is saved.
+var buildSessionLog=function(){return{date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness||undefined,sessionRPE:sessionRPE||0,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})}};
+
 var saveAndFinish=function(){
 var sess=SESSIONS[currentSession];
 var totalDone=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(function(s){if(s.completed)totalDone++})});
 if(totalDone===0){if(window.confirm("No sets completed. Discard this session?")){clearDraft();home()}return}
 var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
-var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness||undefined,sessionRPE:sessionRPE||0,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
+var log=buildSessionLog();
 var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
 var ns=nextCycleState(cycleState,currentSession,getLocalDateKey());
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
 if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
 if(trimmed)alert("Oldest session removed to stay within storage limits.");
+var nc=sessionCount+1;S.set(KEYS.sessions,nc);setSessionCount(nc);
 setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 };
 
-var exportBackup=function(){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url)};
+// pendingLog: the session being completed, so a backup taken from the Complete
+// screen includes it (and counts it) before Save & Done has written it.
+var exportBackup=function(pendingLog){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:pendingLog?[pendingLog].concat(logs):logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur,sessions:sessionCount+(pendingLog?1:0)};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
+var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setExported(false);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
@@ -627,7 +639,7 @@ setLogs(nl);S.set(KEYS.logs,nl);
 setEditSnapshot(null);setEditingLogIdx(null);
 };
 var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);setLogs(nl);S.set(KEYS.logs,nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
-var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
+var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});S.set(KEYS.sessions,0);setSessionCount(0);clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
 var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(ex){allEx[ex.id]=ex.name})});return allEx[id]||id};
 
 var rec=getRec();
@@ -840,10 +852,11 @@ var totalDone=sess.exercises.reduce(function(a,x){return a+(exData[x.id]||[]).fi
 // state it is about to write, not the stale pre-save cycleState (row 18).
 var pendingState=nextCycleState(cycleState,currentSession,getLocalDateKey());
 var next=computeNextSession(pendingState);
-var showExportPrompt=(getSessionCount(logs)+1)%10===0;
+// Every 10th saved session, counted by the stored counter, not logs.length.
+var showExportPrompt=(sessionCount+1)%10===0;
 // Progression should reflect today's just-completed sets, not just history
 // saved before this session started (row 19), without writing anything.
-var todayLog={date:new Date().toISOString(),session:currentSession,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
+var todayLog=buildSessionLog();
 var logsWithToday=[todayLog].concat(logs);
 
 // Build coached debrief — 1 line per exercise + next session
@@ -890,7 +903,7 @@ e("div",{style:{display:"flex",gap:4}},
 e("div",{style:{width:"100%",maxWidth:380,margin:"0 auto",marginBottom:10}},
 e("div",{style:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,overflow:"hidden"}},e("textarea",{value:notes.notes,onChange:function(ev){setNotes({notes:ev.target.value})},placeholder:"Quick notes...",rows:2,style:{width:"100%",background:"transparent",border:"none",color:T.txt,padding:"12px 14px",fontSize:14,resize:"none",outline:"none",lineHeight:1.5}})))),
 // Periodic backup reminder
-showExportPrompt&&e("button",{onClick:exportBackup,style:{width:"100%",maxWidth:380,margin:"0 auto 10px",display:"block",padding:"12px",background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:13,fontWeight:500,cursor:"pointer"}},"\u{1F4E5} Export Backup"),
+showExportPrompt&&e("button",{onClick:function(){exportBackup(todayLog);setExported(true);setTimeout(function(){setExported(false)},2500)},style:{width:"100%",maxWidth:380,margin:"0 auto 10px",display:"block",padding:"12px",background:exported?"#052e1c":"#292524",border:"1px solid "+(exported?T.ok+"66":"#44403C"),borderRadius:10,color:exported?T.okL:"#E7E5E4",fontSize:13,fontWeight:500,cursor:"pointer"}},exported?"Backup saved!":"\u{1F4E5} Export Backup (includes this session)"),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 20px 12px"})},
 e("button",{onClick:saveAndFinish,style:{width:"100%",padding:"14px",background:sess.color,border:"none",borderRadius:12,color:"#fff",fontSize:16,fontWeight:600,cursor:"pointer"}},"Save & Done")))
 }
