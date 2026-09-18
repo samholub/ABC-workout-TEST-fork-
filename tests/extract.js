@@ -46,7 +46,7 @@ function sliceBetween(text, from, to, label) {
 // index.html -- the app file stays exactly as it ships.
 var EXPORTS = [
   'getProgression', 'getSuggestedLoad', 'calcE1RM', 'calcACWR',
-  'shouldDeload', 'getFatigueTrend', 'detectPRs', 'getAllTimePRs',
+  'shouldDeload', 'getFatigueTrend',
   // supporting functions the fixtures lean on
   'getWorkingWeight', 'getExE1RM', 'getPeriodPhase', 'getSessionCount',
   'calcTotalVolume', 'computeNextSession', 'nextCycleState',

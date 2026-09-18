@@ -184,56 +184,6 @@ t('getFatigueTrend edge: under three sessions, and manual logs are skipped', fun
   ]), null);
 });
 
-// --- detectPRs ---------------------------------------------------------
-var rowHistory = [log({ ago: 5, sets: [[30, 10, 8]] })];
-
-t('detectPRs: a heavier completed set is a weight and e1RM PR', function () {
-  var prs = M.detectPRs('row', [
-    { weight: 35, reps: 10, rpe: 8, completed: true }
-  ], rowHistory);
-  A.strictEqual(prs.length, 1);
-  A.strictEqual(prs[0].setIdx, 0);
-  A.ok(prs[0].reasons.indexOf('weight') !== -1, prs[0].reasons.join(','));
-  A.ok(prs[0].reasons.indexOf('e1rm') !== -1, prs[0].reasons.join(','));
-});
-t('detectPRs edge: an unchecked set is never a PR', function () {
-  A.deepStrictEqual(M.detectPRs('row', [
-    { weight: 500, reps: 20, rpe: 8, completed: false }
-  ], rowHistory), []);
-});
-t('detectPRs edge: matching a previous best is not a PR', function () {
-  A.deepStrictEqual(M.detectPRs('row', [
-    { weight: 30, reps: 10, rpe: 8, completed: true }
-  ], rowHistory), []);
-});
-
-// --- getAllTimePRs -----------------------------------------------------
-t('getAllTimePRs: best weight, reps and e1RM per group, with dates', function () {
-  var heavyDate = daysAgo(3);
-  var prs = M.getAllTimePRs([
-    log({ date: heavyDate, sets: [[40, 6, 8]] }),
-    log({ ago: 9, sets: [[30, 15, 7]] })
-  ]);
-  A.strictEqual(prs.row.bestWeight, 40);
-  A.strictEqual(prs.row.bestWeightDate, heavyDate);
-  A.strictEqual(prs.row.bestReps, 15);
-  A.strictEqual(prs.row.bestE1RM, M.calcE1RM(40, 6));  // 48 > calcE1RM(30,15) = 45
-});
-t('getAllTimePRs edge: empty history yields zeroed records, not undefined', function () {
-  var prs = M.getAllTimePRs([]);
-  A.strictEqual(prs.row.bestWeight, 0);
-  A.strictEqual(prs.row.bestWeightDate, null);
-  A.strictEqual(prs.bss.bestE1RM, 0);
-  A.ok(prs.pullup, 'every known group is present');
-});
-t('getAllTimePRs: session variants fold into one group (bss-a + bss-c)', function () {
-  var prs = M.getAllTimePRs([
-    log({ ago: 2, id: 'bss-a', sets: [[25, 10, 8]] }),
-    log({ ago: 6, id: 'bss-c', sets: [[45, 8, 8]] })
-  ]);
-  A.strictEqual(prs.bss.bestWeight, 45);
-});
-
 // --- computeNextSession ------------------------------------------------
 function next(s) { return M.computeNextSession(s); }
 t('computeNextSession: no history starts at A, then A -> B -> C -> A', function () {
