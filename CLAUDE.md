@@ -6,8 +6,9 @@ A single-file React 18 PWA for tracking an A/B/C strength-training cycle. It
 loads React from a CDN via UMD globals, uses `React.createElement` directly
 (no JSX, no build step), and keeps every byte of user data in `localStorage`
 (mirrored into IndexedDB as a backup) under the keys in `KEYS` — logs,
-cycle state, last weights, video URLs, carry preference, rest duration and an
-in-progress session draft. The script is organised into numbered sections:
+cycle state, last weights, video URLs, carry preference, rest duration, a
+saved-session counter and an in-progress session draft. The script is
+organised into numbered sections:
 core setup and storage (1), theme tokens (2), session/exercise/progression
 config (3), pure analytics — ghost sets from the previous session (4), pure
 recommendation helpers — progression engine, suggested load, smart warmup,
@@ -15,10 +16,14 @@ fatigue trend, balance advisory (5), utilities (6), UI components (8), the
 single `App` component with all screen renderers and the router (9), and the
 error boundary plus mount (10). There is no section 7: the camera-PPG
 heart-rate engine was removed and the sections after it kept their numbers,
-so the list skips from 6 to 8. Screens flow home → readiness check-in → game
-plan → warm-up → workout → complete, with history and settings reachable from
-home. Sections 4 and 5 are pure functions over a `logs` array and are the
-only parts covered by unit tests.
+so the list skips from 6 to 8. Screens flow home → game plan → workout →
+complete, with history and settings reachable from home. The game plan is the
+only screen between home and lifting: it carries the per-exercise loads, one
+"Feel: Rough / OK / Good" row (readiness, stored in the old three-field shape
+only once tapped), one expandable warm-up row with switch and skip, and the
+Standard/Circuit toggle. There is no check-in screen, no warm-up screen and no
+Time Available selector. Sections 4 and 5 are pure functions over a `logs`
+array and are the only parts covered by unit tests.
 
 **Log ordering is newest-first**: `logs[0]` is the most recent session.
 Every helper that slices history (`getGhostSets`, `getProgression`,

@@ -60,7 +60,7 @@ t('getProgression: two sessions at target reps and RPE means add weight', functi
 t('getProgression edge: low readiness overrides a qualifying history', function () {
   var p = M.getProgression('row', twoGoodRowSessions, WIPED, 10);
   A.strictEqual(p.type, 'maintain');
-  A.ok(/Readiness/.test(p.msg));
+  A.ok(/rough/i.test(p.msg));
 });
 t('getProgression edge: one session of history is not enough', function () {
   A.strictEqual(M.getProgression('row', [twoGoodRowSessions[0]], READY, 10), null);
