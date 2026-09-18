@@ -62,7 +62,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=45;
+var APP_VERSION=46;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -601,7 +601,7 @@ if(totalDone===0){if(window.confirm("No sets completed. Discard this session?"))
 var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
 var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness,sessionRPE:sessionRPE||0,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
-var nlFull=[log].concat(logs);var trimmed=nlFull.length>100;var nl=nlFull.slice(0,100);
+var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
 var ns=nextCycleState(cycleState,currentSession,getLocalDateKey());
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
 if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
@@ -629,7 +629,7 @@ return Object.assign({},l,{exercises:updatedExercises});
 setLogs(nl);S.set(KEYS.logs,nl);
 setEditSnapshot(null);setEditingLogIdx(null);
 };
-var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,100);setLogs(nl);S.set(KEYS.logs,nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
+var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);setLogs(nl);S.set(KEYS.logs,nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
 var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
 var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(ex){allEx[ex.id]=ex.name})});return allEx[id]||id};
 
@@ -659,7 +659,7 @@ e("div",{style:{fontSize:13,color:T.sec,marginBottom:10}},SESSIONS[draftSession.
 e("div",{style:{display:"flex",gap:8}},
 e("button",{onClick:function(){var d=draftSession;if(!d||!SESSIONS[d.session])return;var sess=SESSIONS[d.session];var restoredEx=d.exData||{};sess.exercises.forEach(function(ex){if(!restoredEx[ex.id]||!Array.isArray(restoredEx[ex.id])){restoredEx[ex.id]=Array.from({length:ex.sets},function(){return{weight:0,reps:"",rpe:"",completed:false,touched:false}})}});var validActiveEx=d.activeEx&&restoredEx[d.activeEx]?d.activeEx:sess.exercises[0].id;setCurrent(d.session);setExData(restoredEx);setStart(d.start||Date.now());setReadiness(d.readiness||{sleep:2,soreness:2,motivation:2});setWarmup(d.warmup||null);setNotes(d.notes||{notes:""});setTimeAvail(d.timeAvail||25);setSessionRPE(d.sessionRPE||0);setActiveEx(validActiveEx);setCircuitMode(!!d.circuitMode);setDraftSession(null);setScreen("workout")},style:{flex:1,padding:"12px",background:T.acc,border:"none",borderRadius:10,color:"#1C1917",fontSize:14,fontWeight:700,cursor:"pointer"}},"Resume"),
 e("button",{onClick:function(){clearDraft();setDraftSession(null)},style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.sec,fontSize:14,fontWeight:500,cursor:"pointer"}},"Discard"))),
-logs.length>=90&&e("div",{style:{background:"#1a1a0a",border:"1px solid #854d0e",borderRadius:12,padding:"12px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}},e("div",{style:{fontSize:18}},"\u26A0\uFE0F"),e("div",{style:{fontSize:13,color:T.warn,lineHeight:1.4}},"Storage advisory: You have ",e("strong",null,logs.length)," saved sessions. Please export a backup soon.")),
+logs.length>=900&&e("div",{style:{background:"#1a1a0a",border:"1px solid #854d0e",borderRadius:12,padding:"12px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}},e("div",{style:{fontSize:18}},"\u26A0\uFE0F"),e("div",{style:{fontSize:13,color:T.warn,lineHeight:1.4}},"Storage advisory: You have ",e("strong",null,logs.length)," saved sessions. Please export a backup soon.")),
 e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}},
 [{l:"Last",v:cycleState.lastSession?(SESSIONS[cycleState.lastSession]?SESSIONS[cycleState.lastSession].label.replace("Session ",""):cycleState.lastSession):"\u2014",s:daysSince!==null?(daysSince===0?"Today":daysSince+"d ago"):""},
 {l:"Next Up",v:rec,s:SESSIONS[rec].time},{l:"Last 7 Days",v:weekLogs.length,s:"sessions"}
