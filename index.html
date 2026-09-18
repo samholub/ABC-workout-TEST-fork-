@@ -47,7 +47,7 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 //   5. Recommendations .......... Progression engine, warmup picker, training focus
 //   6. Utilities ................ Audio cue, exercise history
 //   8. UI Components ............ RestTimer, ExerciseCard, etc.
-//   9. Main App ................. State, 6 screen renderers, router
+//   9. Main App ................. State, 5 screen renderers, router
 //  10. Mount .................... ReactDOM render call
 //
 
@@ -62,7 +62,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=48;
+var APP_VERSION=49;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -133,6 +133,10 @@ var CARRY_TYPES={suitcase:{label:"Suitcase",desc:"One hand, more core"},farmer:{
 var SESSIONS={A:{label:"Session A",time:"15 min",color:"#F59E0B",exercises:[{id:"bss-a",name:"Bulgarian Split Squats",sets:3,reps:"8-10/leg",hasWeight:true},{id:"pushup",name:"Push-Ups",sets:3,reps:"8-15",hasWeight:false},{id:"carry-a",name:"Suitcase Carry",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true}]},B:{label:"Session B",time:"15 min",color:"#3B82F6",exercises:[{id:"sldl-b",name:"Single-Leg Deadlifts",sets:3,reps:"8-10/leg",hasWeight:true},{id:"row",name:"Single-Arm Rows",sets:3,reps:"8-12/arm",hasWeight:true},{id:"carry-b",name:"Carries",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true}]},C:{label:"Session C",time:"20 min",color:"#10B981",exercises:[{id:"bss-c",name:"Bulgarian Split Squats",sets:3,reps:"8-10/leg",hasWeight:true},{id:"pullup",name:"Pull-Ups / Chin-Ups",sets:3,reps:"max reps",hasWeight:false,note:"Sets 1-2: Pull-ups. Final set: Chin-ups"},{id:"sldl-c",name:"Single-Leg Deadlifts",sets:3,reps:"8-10/leg",hasWeight:true}]},modC:{label:"Modified C",time:"15-18 min",color:"#8B5CF6",subtitle:"After A+B double-day",exercises:[{id:"ohp",name:"SA Overhead Press",sets:3,reps:"8-10/arm",hasWeight:true},{id:"pullup-mc",name:"Pull-Ups / Chin-Ups",sets:3,reps:"max reps",hasWeight:false,note:"Sets 1-2: Pull-ups. Final set: Chin-ups"},{id:"carry-mc",name:"Carries",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true,note:"From dropped B session"}]},TGU:{label:"Turkish Get-Up",time:"15 min",color:"#EC4899",subtitle:"Optional variety session",exercises:[{id:"tgu",name:"Turkish Get-Up",sets:1,reps:"5/side",hasWeight:true,note:"Light-moderate weight. Movement quality focus"}]}};
 
 var WARMUPS=[{id:"enhanced",label:"Enhanced 3D",time:"8-10 min",icon:"\u{1F525}",steps:["Hip Mobility (3 min): 90/90 transitions 5-8/side, deep squat hold 30-60s, hip circles 10 each","3D Lunge Matrix (3 min): 2x5 each - forward, lateral, curtsy lunges","Upper Body (2-3 min): Thoracic rotations 8/side, scapular pulls or dead hang, face pulls if band available, easy push-ups 5-8","Integration (1 min): Inchworms 3-5, World's Greatest Stretch 3-5/side"]},{id:"standard",label:"Standard 3D",time:"5 min",icon:"\u26a1",steps:["2x5 each direction: Forward lunges, lateral lunges, curtsy lunges"]},{id:"hip",label:"Hip Mobility",time:"5 min",icon:"\u{1F9B5}",steps:["General movement (1 min): Jumping jacks, arm circles","Hip mobility (2 min): Leg swings fwd/back 10 each, side-to-side 10 each, hip circles 10 each","Movement prep (2 min): BW squats 10, easy push-ups 5-10, dead hang 30s"]},{id:"quick",label:"Emergency",time:"1-3 min",icon:"\u{1F4A8}",steps:["20 jumping jacks + 10 bodyweight squats. That's it. Go."]}];
+
+// One-tap readiness. Stored in the old three-field shape so every consumer and
+// every old log keep working: Rough = 3/9 (hold loads), OK = 6/9, Good = 9/9.
+var FEEL=[{key:"rough",label:"Rough",rd:{sleep:1,soreness:1,motivation:1}},{key:"ok",label:"OK",rd:{sleep:2,soreness:2,motivation:2}},{key:"good",label:"Good",rd:{sleep:3,soreness:3,motivation:3}}];
 
 var CYCLE=["A","B","C"];
 
@@ -224,7 +228,7 @@ history.push({reps:avgReps,rpe:avgRPE,weight:maxW})}}
 if(history.length<2)return null;
 var h0=history[0],h1=history[1];
 var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
-if(rdScore<=4)return{type:"maintain",msg:"Readiness \u22644/9 \u2014 maintain current load"};
+if(rdScore<=4)return{type:"maintain",msg:"Feeling rough \u2014 hold current load"};
 var phase=getPeriodPhase(sessionCount||0);
 if(cfg.top>0){
 if(h0.reps>=cfg.top&&h1.reps>=cfg.top&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight){
@@ -546,7 +550,7 @@ var _ex=useState(null),expandedLog=_ex[0],setExpandedLog=_ex[1];
 var _ae=useState(null),activeEx=_ae[0],setActiveEx=_ae[1];
 var _wp=useState(false),warmupOpen=_wp[0],setWarmupOpen=_wp[1];
 var _cm=useState(false),circuitMode=_cm[0],setCircuitMode=_cm[1];
-var _rd2=useState({sleep:2,soreness:2,motivation:2}),readiness=_rd2[0],setReadiness=_rd2[1];
+var _rd2=useState(null),readiness=_rd2[0],setReadiness=_rd2[1];
 var _ch=useState(null),chartEx=_ch[0],setChartEx=_ch[1];
 var _srpe=useState(0),sessionRPE=_srpe[0],setSessionRPE=_srpe[1];
 var _ft=useState(null),floatTimer=_ft[0],setFloatTimer=_ft[1];
@@ -584,11 +588,17 @@ var prefillR="";if(ghost&&ghost[si]&&ghost[si].reps>0)prefillR=ghost[si].reps;
 else if(ghost&&ghost[0]&&ghost[0].reps>0)prefillR=ghost[0].reps;
 return{weight:prefillW,reps:prefillR,rpe:"",completed:false,touched:false}})});
 var startTs=Date.now();
-setExData(init);setCurrent(key);setStart(startTs);setNotes({notes:""});setActiveEx(sess.exercises[0].id);setReadiness({sleep:2,soreness:2,motivation:2});
-S.set(KEYS.draft,{session:key,exData:init,start:startTs,readiness:{sleep:2,soreness:2,motivation:2},warmup:null,notes:{notes:""},sessionRPE:0,activeEx:sess.exercises[0].id,circuitMode:false,ts:Date.now()});
+setExData(init);setCurrent(key);setStart(startTs);setNotes({notes:""});setActiveEx(sess.exercises[0].id);setReadiness(null);
+S.set(KEYS.draft,{session:key,exData:init,start:startTs,readiness:null,warmup:null,notes:{notes:""},sessionRPE:0,activeEx:sess.exercises[0].id,circuitMode:false,ts:Date.now()});
 setDraftSession(null);
-setScreen("readiness")
+setScreen("gameplan")
 };
+
+// Feel tap on the Game Plan: store the readiness and re-prefill every untouched,
+// unlogged set with the load the progression rule suggests under it.
+var setFeel=function(rd){setReadiness(rd);var sess=SESSIONS[currentSession];var sesCount=getSessionCount(logs);var isDouble=countTrainingToday((cycleState||{}).completedToday)>=1;var updated=Object.assign({},exData);
+sess.exercises.forEach(function(ex){var sug=getSuggestedLoad(ex.id,logs,rd,sesCount,isDouble&&ex.isCarry);var prefillW=sug?sug.weight:(lastWeights[ex.id]||0);updated[ex.id]=(updated[ex.id]||[]).map(function(s){return s.completed||s.touched?s:Object.assign({},s,{weight:prefillW})})});
+setExData(updated)};
 
 var saveAndFinish=function(){
 var sess=SESSIONS[currentSession];
@@ -596,7 +606,7 @@ var totalDone=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(
 if(totalDone===0){if(window.confirm("No sets completed. Discard this session?")){clearDraft();home()}return}
 var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
-var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness,sessionRPE:sessionRPE||0,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
+var log={date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness||undefined,sessionRPE:sessionRPE||0,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})};
 var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
 var ns=nextCycleState(cycleState,currentSession,getLocalDateKey());
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
@@ -636,7 +646,7 @@ var daysSince=cycleState.lastDate?(function(){var ld=cycleState.lastDate;var las
 // ────────────────────────────────────────────────────────────────────────
 // SCREEN RENDERERS
 // Each screen is its own function inside App(), with closure access to state.
-// Screens: Home, History, Readiness, GamePlan, Workout, Complete
+// Screens: Home, History, GamePlan, Workout, Complete
 // ────────────────────────────────────────────────────────────────────────
 
 // ── Screen: Home ──
@@ -656,7 +666,7 @@ draftSession&&SESSIONS[draftSession.session]&&e("div",{style:{background:"#1a1a0
 e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},e("div",{style:{width:10,height:10,borderRadius:"50%",background:T.acc,animation:"pulse 1.5s infinite"}}),e("div",{style:{fontSize:15,fontWeight:700,color:T.accL}},"Unfinished session found")),
 e("div",{style:{fontSize:13,color:T.sec,marginBottom:10}},SESSIONS[draftSession.session].label+" \u2014 started "+new Date(draftSession.start).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})),
 e("div",{style:{display:"flex",gap:8}},
-e("button",{onClick:function(){var d=draftSession;if(!d||!SESSIONS[d.session])return;var sess=SESSIONS[d.session];var restoredEx=d.exData||{};sess.exercises.forEach(function(ex){if(!restoredEx[ex.id]||!Array.isArray(restoredEx[ex.id])){restoredEx[ex.id]=Array.from({length:ex.sets},function(){return{weight:0,reps:"",rpe:"",completed:false,touched:false}})}});var validActiveEx=d.activeEx&&restoredEx[d.activeEx]?d.activeEx:sess.exercises[0].id;setCurrent(d.session);setExData(restoredEx);setStart(d.start||Date.now());setReadiness(d.readiness||{sleep:2,soreness:2,motivation:2});setWarmup(d.warmup||null);setNotes(d.notes||{notes:""});setSessionRPE(d.sessionRPE||0);setActiveEx(validActiveEx);setCircuitMode(!!d.circuitMode);setDraftSession(null);setScreen("workout")},style:{flex:1,padding:"12px",background:T.acc,border:"none",borderRadius:10,color:"#1C1917",fontSize:14,fontWeight:700,cursor:"pointer"}},"Resume"),
+e("button",{onClick:function(){var d=draftSession;if(!d||!SESSIONS[d.session])return;var sess=SESSIONS[d.session];var restoredEx=d.exData||{};sess.exercises.forEach(function(ex){if(!restoredEx[ex.id]||!Array.isArray(restoredEx[ex.id])){restoredEx[ex.id]=Array.from({length:ex.sets},function(){return{weight:0,reps:"",rpe:"",completed:false,touched:false}})}});var validActiveEx=d.activeEx&&restoredEx[d.activeEx]?d.activeEx:sess.exercises[0].id;setCurrent(d.session);setExData(restoredEx);setStart(d.start||Date.now());setReadiness(d.readiness||null);setWarmup(d.warmup||null);setNotes(d.notes||{notes:""});setSessionRPE(d.sessionRPE||0);setActiveEx(validActiveEx);setCircuitMode(!!d.circuitMode);setDraftSession(null);setScreen("workout")},style:{flex:1,padding:"12px",background:T.acc,border:"none",borderRadius:10,color:"#1C1917",fontSize:14,fontWeight:700,cursor:"pointer"}},"Resume"),
 e("button",{onClick:function(){clearDraft();setDraftSession(null)},style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.sec,fontSize:14,fontWeight:500,cursor:"pointer"}},"Discard"))),
 logs.length>=900&&e("div",{style:{background:"#1a1a0a",border:"1px solid #854d0e",borderRadius:12,padding:"12px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}},e("div",{style:{fontSize:18}},"\u26A0\uFE0F"),e("div",{style:{fontSize:13,color:T.warn,lineHeight:1.4}},"Storage advisory: You have ",e("strong",null,logs.length)," saved sessions. Please export a backup soon.")),
 e("button",{onClick:function(){startSession(rec)},style:{width:"100%",padding:"14px 16px",background:"linear-gradient(135deg,"+SESSIONS[rec].color+"22,"+SESSIONS[rec].color+"11)",border:"2px solid "+SESSIONS[rec].color,borderRadius:16,cursor:"pointer",textAlign:"left",marginBottom:12,flexShrink:0}},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",null,e("div",{style:{fontSize:11,color:SESSIONS[rec].color,textTransform:"uppercase",letterSpacing:2,fontWeight:700}},"Recommended"),e("div",{style:{fontSize:22,fontWeight:700,color:"#F5F5F4",marginTop:3}},SESSIONS[rec].label),e("div",{style:{fontSize:13,color:"#A8A29E",marginTop:2}},SESSIONS[rec].time+" | "+SESSIONS[rec].exercises.length+" exercises"),e("div",{style:{fontSize:11,color:T.mut,marginTop:3}},recReason),e("div",{style:{fontSize:11,color:T.mut,marginTop:3}},summaryLine)),e("div",{style:{width:44,height:44,borderRadius:"50%",background:SESSIONS[rec].color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:"#fff",fontWeight:700}},"\u2192"))),
@@ -729,45 +739,6 @@ confirmDel!==null&&e(ConfirmDialog,{title:"Delete Session?",message:"Remove this
 chartEx&&e(ProgressChart,{data:getExHistory(chartEx,logs),exName:EX_GROUP_NAMES[EX_GROUP[chartEx]]||exNameLookup(chartEx),onClose:function(){setChartEx(null)}}))
 }
 
-// ── Screen: Readiness Check-In ──
-function renderReadinessCheckIn(){
-var sess=SESSIONS[currentSession];
-var score=readiness.sleep+readiness.soreness+readiness.motivation;
-var scoreClr=score<=4?"#EF4444":score<=6?"#FBBF24":"#10B981";
-var scoreLbl=score<=4?"Low":score<=6?"Moderate":score<=7?"High":"Very High";
-var sesCount=getSessionCount(logs);var period=getPeriodPhase(sesCount);
-var fatigueTrend=getFatigueTrend(logs);
-var opts=[
-{key:"sleep",label:"Sleep Quality",vals:[{v:1,l:"\u{1F62B}",d:"Poor"},{v:2,l:"\u{1F610}",d:"OK"},{v:3,l:"\u{1F60A}",d:"Great"}]},
-{key:"soreness",label:"Body Soreness",vals:[{v:1,l:"\u{1F534}",d:"High"},{v:2,l:"\u{1F7E1}",d:"Some"},{v:3,l:"\u{1F7E2}",d:"None"}]},
-{key:"motivation",label:"Motivation",vals:[{v:1,l:"\u{1F611}",d:"Low"},{v:2,l:"\u{1F610}",d:"OK"},{v:3,l:"\u{1F525}",d:"Fired Up"}]}
-];
-return e("div",{style:STYLES.screen},
-e("div",{style:STYLES.headerPad},
-e("button",{onClick:function(){clearDraft();home()},style:STYLES.backBtn},"\u2190 Cancel"),
-e("div",{style:Object.assign({},STYLES.sessionLabel,{color:sess.color})},sess.label),
-e("div",{style:STYLES.screenTitle},"Quick Check-In")),
-e("div",{style:{flex:1,padding:"0 14px",display:"flex",flexDirection:"column",justifyContent:"center"}},
-opts.map(function(opt){return e("div",{key:opt.key,style:{marginBottom:16}},
-e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},opt.label),
-e("div",{style:{display:"flex",gap:8}},
-opt.vals.map(function(v){var sel=readiness[opt.key]===v.v;return e("button",{key:v.v,onClick:function(){var u=Object.assign({},readiness);u[opt.key]=v.v;setReadiness(u)},style:{flex:1,padding:"14px 8px",borderRadius:12,cursor:"pointer",background:sel?"#292524":"transparent",border:"2px solid "+(sel?"#F59E0B":"#292524"),textAlign:"center",transition:"all 0.2s"}},
-e("div",{style:{fontSize:24}},v.l),e("div",{style:{fontSize:12,color:sel?"#F5F5F4":"#78716C",marginTop:4,fontWeight:sel?600:400}},v.d))})))}),
-e("div",{style:{textAlign:"center",marginTop:8}},
-e("div",{style:{fontSize:48,fontWeight:700,color:scoreClr,fontFamily:MONO}},score+"/9"),
-e("div",{style:{fontSize:14,color:scoreClr,fontWeight:600}},scoreLbl),
-sesCount>0&&e("div",{style:{marginTop:10,display:"inline-flex",alignItems:"center",gap:6,background:period.clr+"15",border:"1px solid "+period.clr+"33",borderRadius:8,padding:"4px 12px"}},
-e("span",{style:{fontSize:11,color:period.clr,fontWeight:600}},sesCount+" sessions \u00b7 "+period.msg)),
-fatigueTrend&&e("div",{style:Object.assign({},STYLES.warnBannerCompact,{maxWidth:300,margin:"10px auto 0"})},e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},fatigueTrend.msg)),
-score<=4&&e("div",{style:{marginTop:8,fontSize:13,color:"#A8A29E",fontStyle:"italic"}},"Readiness \u22644/9. Progression paused \u2014 maintain loads."))),
-e("div",{style:STYLES.footerBar},
-e("div",{style:{display:"flex",gap:8}},
-e("button",{onClick:function(){var sesCount=getSessionCount(logs);var isDouble=countTrainingToday((cycleState||{}).completedToday)>=1;var updated=Object.assign({},exData);
-sess.exercises.forEach(function(ex){var sug=getSuggestedLoad(ex.id,logs,readiness,sesCount,isDouble&&ex.isCarry);var prefillW=sug?sug.weight:(lastWeights[ex.id]||0);var ghost=getGhostSets(ex.id,logs);var sets=updated[ex.id]||[];
-updated[ex.id]=sets.map(function(s,si){if(s.completed)return s;var prefillR=s.reps;if(!prefillR){if(ghost&&ghost[si]&&ghost[si].reps>0)prefillR=ghost[si].reps;else if(ghost&&ghost[0]&&ghost[0].reps>0)prefillR=ghost[0].reps;else prefillR=""}var newW=s.weight;if(!s.weight||s.weight===(lastWeights[ex.id]||0))newW=prefillW;return Object.assign({},s,{weight:newW,reps:prefillR})})});
-setExData(updated);setScreen("gameplan")},style:{width:"100%",padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"See Game Plan \u2192"))))
-}
-
 // ── Screen: Game Plan ──
 function renderGamePlan(){
 var sess=SESSIONS[currentSession];
@@ -776,25 +747,18 @@ if(!ctx)return e("div",null,"Loading...");
 // warmup state null = "use the suggestion"; an id or "skip" once the user has chosen
 var wuId=warmup||getSmartWarmup(currentSession,readiness,daysSince);
 var wuData=wuId==="skip"?null:WARMUPS.find(function(w){return w.id===wuId});
-var rdClr=ctx.readinessScore<=4?T.err:ctx.readinessScore<=6?T.warn:T.ok;
-var rdLbl=ctx.readinessScore<=4?"Low":ctx.readinessScore<=6?"Moderate":"High";
+var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
+var feelKey=rdScore<=4?"rough":rdScore<=6?"ok":"good";
 return e("div",{style:STYLES.screen},
 e("div",{style:STYLES.headerPad},
-e("button",{onClick:function(){setScreen("readiness")},style:STYLES.backBtn},"\u2190 Back"),
-e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
-e("div",null,
+e("button",{onClick:function(){clearDraft();home()},style:STYLES.backBtn},"\u2190 Cancel"),
 e("div",{style:Object.assign({},STYLES.sessionLabel,{color:sess.color})},sess.label),
 e("div",{style:{fontSize:22,fontWeight:700,color:T.hi,marginTop:3}},"Your Game Plan")),
-e("div",{style:{textAlign:"center"}},
-e("div",{style:{fontSize:22,fontWeight:700,color:rdClr,fontFamily:MONO}},ctx.readinessScore+"/9"),
-e("div",{style:{fontSize:11,color:rdClr,fontWeight:600}},rdLbl)))),
 e("div",{style:STYLES.scrollBody},
 ctx.fatigue&&e("div",{style:STYLES.warnBanner},
 e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},ctx.fatigue.msg)),
 ctx.isDouble&&e("div",{style:STYLES.warnBanner},
 e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},"Second session today \u2014 consider lighter carries.")),
-ctx.period&&e("div",{style:{display:"inline-flex",alignItems:"center",gap:6,background:ctx.period.clr+"15",border:"1px solid "+ctx.period.clr+"33",borderRadius:8,padding:"4px 12px",marginBottom:12}},
-e("span",{style:{fontSize:11,color:ctx.period.clr,fontWeight:600}},ctx.period.msg)),
 ctx.exercises.map(function(ex){
 var progClr=ex.progression?ex.progression.type==="progress"?T.ok:ex.progression.type==="caution"?T.warn:T.sec:T.sec;
 var progIcon=ex.progression?ex.progression.type==="progress"?"\u2B06":ex.progression.type==="caution"?"\u26A0":"\u2192":null;
@@ -806,6 +770,10 @@ e("div",{style:{fontSize:12,color:T.mut}},ex.sets+" sets"+(ex.lastSets?" \u00b7 
 ex.progression&&e("div",{style:{marginTop:4,fontSize:12,color:progClr,display:"flex",alignItems:"center",gap:4}},
 e("span",null,progIcon),e("span",null,ex.progression.msg)),
 ex.suggestedReason&&!ex.progression&&e("div",{style:{marginTop:4,fontSize:12,color:T.sec}},ex.suggestedReason))}),
+// Feel row: default OK, stored only once tapped
+e("div",{style:Object.assign({},STYLES.card,{marginBottom:8,display:"flex",alignItems:"center",gap:8})},
+e("div",{style:{fontSize:14,fontWeight:600,color:T.hi,marginRight:4}},"Feel:"),
+FEEL.map(function(f){var sel=feelKey===f.key;return e("button",{key:f.key,onClick:function(){setFeel(f.rd)},style:{flex:1,minHeight:44,padding:"8px 6px",borderRadius:10,fontSize:14,fontWeight:sel?700:400,cursor:"pointer",background:sel?T.inp:"transparent",border:"1px solid "+(sel?T.brdL:T.inp),color:sel?T.hi:T.mut}},f.label)})),
 // Warm-up row: the suggested warm-up (or the one picked), expandable to its steps, a switch and skip
 e("div",{style:Object.assign({},STYLES.card,{marginBottom:8,padding:0,overflow:"hidden"})},
 e("div",{onClick:function(){setWarmupOpen(!warmupOpen)},style:{minHeight:44,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}},
@@ -921,7 +889,7 @@ lines.push("=== SESSION DATA ===");
 lines.push("Session: "+sess.label);
 lines.push("Date: "+new Date().toLocaleDateString());
 lines.push("Duration: "+dur+" min");
-lines.push("Readiness: sleep="+readiness.sleep+"/3, soreness="+readiness.soreness+"/3, motivation="+readiness.motivation+"/3 (total: "+(readiness.sleep+readiness.soreness+readiness.motivation)+"/9)");
+lines.push("Readiness: "+(readiness?readiness.sleep+readiness.soreness+readiness.motivation+"/9":"not rated"));
 lines.push("Session RPE: "+(sessionRPE||"not rated")+"/10");
 lines.push("Session Volume: "+sessVol.toLocaleString()+" lbs total tonnage");
 lines.push("");
@@ -982,7 +950,6 @@ e("button",{onClick:saveAndFinish,style:{width:"100%",padding:"14px",background:
 // ── Router ──
 if(screen==="home"&&!showHist) return renderHome();
 if(showHist) return renderHistory();
-if(screen==="readiness") return renderReadinessCheckIn();
 if(screen==="gameplan") return renderGamePlan();
 if(screen==="workout") return renderActiveWorkout();
 if(screen==="complete") return renderSessionComplete();

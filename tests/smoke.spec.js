@@ -29,17 +29,12 @@ test('a session survives backing out and resuming', async function ({ page }) {
 
   // --- Session A -------------------------------------------------------
   await page.getByRole('button', { name: /^Session A/ }).last().click();
-  await expect(page.getByText('Quick Check-In')).toBeVisible();
-
-  // --- readiness: three taps, one per row -------------------------------
-  await page.getByText('Great', { exact: true }).click();     // Sleep Quality
-  await page.getByText('None', { exact: true }).click();      // Body Soreness
-  await page.getByText('Fired Up', { exact: true }).click();  // Motivation
+  await expect(page.getByText('Your Game Plan')).toBeVisible();
 
   // --- Start Lifting ----------------------------------------------------
-  // Readiness hands off to the Game Plan screen, which is where the
-  // Start Lifting button actually lives.
-  await page.getByRole('button', { name: /See Game Plan/ }).click();
+  // The Game Plan is the only screen between Home and lifting. Feel defaults
+  // to OK and is left untouched here; the warm-up row is left on its
+  // suggestion.
   await page.getByRole('button', { name: /Start Lifting/ }).click();
   await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
 
