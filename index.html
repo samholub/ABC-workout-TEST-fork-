@@ -46,8 +46,7 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 //   4. Analytics & Metrics ...... e1RM, volume, ACWR, PRs, fatigue, deload
 //   5. Recommendations .......... Progression engine, warmup picker, training focus
 //   6. Utilities ................ Audio cue, exercise history
-//   7. PPG / Heart Rate Engine .. Camera-based pulse detection (experimental)
-//   8. UI Components ............ RestTimer, HRMonitor, ExerciseCard, etc.
+//   8. UI Components ............ RestTimer, ExerciseCard, etc.
 //   9. Main App ................. State, 9 screen renderers, router
 //  10. Mount .................... ReactDOM render call
 //
@@ -63,7 +62,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=37;
+var APP_VERSION=38;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -402,95 +401,15 @@ return{session:absent,msg:"No "+absentLabel+" in last "+recent.length+" logged s
 // Audio beep for rest timer
 function playBeep(){try{var ctx=new(window.AudioContext||window.webkitAudioContext)();var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3);setTimeout(function(){ctx.close()},500)}catch(e){}}
 
-// ========================================================================
-// 7. PPG / HEART RATE ENGINE
-//    Camera-based pulse detection via SNR-weighted multi-channel algorithm (experimental)
-// ========================================================================
-
-var PPG_CH=['red','blue','L','a','b'];
-var PPG_REF='a';
-var PPG_LO=0.7,PPG_HI=3.5,PPG_FW=0.3,PPG_SETTLE=2000,PPG_MIN_RED=100,PPG_MIN_BPM=42,PPG_MAX_BPM=210;
-
-function ppgMedian(arr){var s=arr.slice().sort(function(a,b){return a-b});var m=Math.floor(s.length/2);return s.length%2===0?(s[m-1]+s[m])/2:s[m]}
-function ppgStd(arr){var n=arr.length,sm=0;for(var i=0;i<n;i++)sm+=arr[i];var mn=sm/n,sq=0;for(var i=0;i<n;i++)sq+=(arr[i]-mn)*(arr[i]-mn);return Math.sqrt(sq/n)}
-function ppgTrapz(y,x){var s=0;for(var i=1;i<y.length;i++)s+=0.5*(y[i]+y[i-1])*(x[i]-x[i-1]);return s}
-
-function ppgDedup(samples){if(!samples.length)return[];var r=[samples[0]];var ks=['red','green','blue','L','a','b'];for(var i=1;i<samples.length;i++){var d=false;for(var k=0;k<ks.length;k++){if(Math.abs(samples[i][ks[k]]-samples[i-1][ks[k]])>1e-9){d=true;break}}if(d)r.push(samples[i])}return r}
-function ppgTrim(samples){var ci=-1;for(var i=0;i<samples.length;i++){if(samples[i].red>=PPG_MIN_RED){ci=i;break}}if(ci===-1)return[];var post=samples.slice(ci);var t0=post[0].time_ms;var settled=post.filter(function(s){return s.time_ms>=t0+PPG_SETTLE});return settled.length<20?[]:settled}
-function ppgFs(samples){var d=[];for(var i=1;i<samples.length;i++)d.push(samples[i].time_ms-samples[i-1].time_ms);d.sort(function(a,b){return a-b});return 1000/d[Math.floor(d.length/2)]}
-function ppgZNorm(v){var n=v.length,sm=0;for(var i=0;i<n;i++)sm+=v[i];var mn=sm/n,sq=0;for(var i=0;i<n;i++)sq+=(v[i]-mn)*(v[i]-mn);var st=Math.sqrt(sq/n);var r=new Float64Array(n);if(st<1e-10)return r;for(var i=0;i<n;i++)r[i]=(v[i]-mn)/st;return r}
-
-// Butterworth bandpass via cascaded biquads
-function ppgBqLP(fc,fs,Q){var w=2*Math.PI*fc/fs,al=Math.sin(w)/(2*Q),c=Math.cos(w),a0=1+al;return{b:[(1-c)/2/a0,(1-c)/a0,(1-c)/2/a0],a:[1,-2*c/a0,(1-al)/a0]}}
-function ppgBqHP(fc,fs,Q){var w=2*Math.PI*fc/fs,al=Math.sin(w)/(2*Q),c=Math.cos(w),a0=1+al;return{b:[(1+c)/2/a0,-(1+c)/a0,(1+c)/2/a0],a:[1,-2*c/a0,(1-al)/a0]}}
-function ppgSOS(lo,hi,fs){var Q1=Math.abs(1/(2*Math.cos(5*Math.PI/8))),Q2=Math.abs(1/(2*Math.cos(7*Math.PI/8)));return[ppgBqHP(lo,fs,Q1),ppgBqHP(lo,fs,Q2),ppgBqLP(hi,fs,Q1),ppgBqLP(hi,fs,Q2)]}
-function ppgBiquad(b,a,x){var n=x.length,y=new Float64Array(n),z1=0,z2=0;for(var i=0;i<n;i++){y[i]=b[0]*x[i]+z1;z1=b[1]*x[i]-a[1]*y[i]+z2;z2=b[2]*x[i]-a[2]*y[i]}return y}
-function ppgApplySOS(sec,x){var y=x;for(var s=0;s<sec.length;s++)y=ppgBiquad(sec[s].b,sec[s].a,y);return y}
-function ppgFiltfilt(sec,x){var n=x.length,pl=Math.min(3*2*sec.length,n-1);if(n<=pl+1){var f=ppgApplySOS(sec,x);var rv=new Float64Array(n);for(var i=0;i<n;i++)rv[i]=f[n-1-i];var bk=ppgApplySOS(sec,rv);var r=new Float64Array(n);for(var i=0;i<n;i++)r[i]=bk[n-1-i];return r}var pd=new Float64Array(n+2*pl);for(var i=0;i<pl;i++)pd[i]=2*x[0]-x[pl-i];for(var i=0;i<n;i++)pd[pl+i]=x[i];for(var i=0;i<pl;i++)pd[pl+n+i]=2*x[n-1]-x[n-2-i];var y=ppgApplySOS(sec,pd);var yR=new Float64Array(y.length);for(var i=0;i<y.length;i++)yR[i]=y[y.length-1-i];var yB=ppgApplySOS(sec,yR);var res=new Float64Array(n);for(var i=0;i<n;i++)res[i]=yB[yB.length-1-pl-i];return res}
-
-// FFT (Radix-2 Cooley-Tukey)
-function ppgNP2(n){var p=1;while(p<n)p<<=1;return p}
-function ppgFFT(re,im){var n=re.length,j=0;for(var i=0;i<n-1;i++){if(i<j){var t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}var m=n>>1;while(m>=1&&j>=m){j-=m;m>>=1}j+=m}for(var sz=2;sz<=n;sz*=2){var h=sz/2,ag=-2*Math.PI/sz,wR=Math.cos(ag),wI=Math.sin(ag);for(var i=0;i<n;i+=sz){var cR=1,cI=0;for(var k=0;k<h;k++){var ei=i+k,oi=i+k+h;var tR=cR*re[oi]-cI*im[oi],tI=cR*im[oi]+cI*re[oi];re[oi]=re[ei]-tR;im[oi]=im[ei]-tI;re[ei]+=tR;im[ei]+=tI;var nR=cR*wR-cI*wI;cI=cR*wI+cI*wR;cR=nR}}}return{re:re,im:im}}
-function ppgRFFT(sig){var N=ppgNP2(sig.length);var re=new Float64Array(N),im=new Float64Array(N);for(var i=0;i<sig.length;i++)re[i]=sig[i];var r=ppgFFT(re,im);var nF=Math.floor(N/2)+1;var out=[];for(var i=0;i<nF;i++)out.push({re:r.re[i],im:r.im[i]});return{data:out,N:N}}
-
-// Welch PSD
-function ppgWelch(sig,fs){var n=sig.length,np=Math.min(n,Math.floor(4*fs));if(np<8)np=n;var no=Math.floor(np/2),st=np-no;var win=new Float64Array(np),wSq=0;for(var i=0;i<np;i++){win[i]=0.5*(1-Math.cos(2*Math.PI*i/(np-1)));wSq+=win[i]*win[i]}var nfft=ppgNP2(np),nF=Math.floor(nfft/2)+1;var freqs=new Float64Array(nF);for(var i=0;i<nF;i++)freqs[i]=i*fs/nfft;var ps=new Float64Array(nF),ns=0;for(var s=0;s+np<=n;s+=st){var sg=new Float64Array(nfft);for(var i=0;i<np;i++)sg[i]=sig[s+i]*win[i];var ft=ppgRFFT(sg);for(var i=0;i<nF;i++){var pw=ft.data[i].re*ft.data[i].re+ft.data[i].im*ft.data[i].im;pw/=(fs*wSq);if(i>0&&i<nF-1)pw*=2;ps[i]+=pw}ns++}if(ns===0){var sg=new Float64Array(nfft);for(var i=0;i<Math.min(n,np);i++)sg[i]=sig[i]*win[Math.min(i,np-1)];var ft=ppgRFFT(sg);for(var i=0;i<nF;i++){var pw=ft.data[i].re*ft.data[i].re+ft.data[i].im*ft.data[i].im;pw/=(fs*wSq);if(i>0&&i<nF-1)pw*=2;ps[i]=pw}ns=1}var psd=new Float64Array(nF);for(var i=0;i<nF;i++)psd[i]=ps[i]/ns;return{freqs:freqs,psd:psd}}
-
-// Channel SNR
-function ppgSNR(filtered,fs){var r=ppgWelch(filtered,fs);var freqs=r.freqs,psd=r.psd;var bI=[];for(var i=0;i<freqs.length;i++)if(freqs[i]>=PPG_LO&&freqs[i]<=PPG_HI)bI.push(i);if(bI.length<3)return{snr:0,peakFreq:0};var bF=bI.map(function(i){return freqs[i]}),bP=bI.map(function(i){return psd[i]});var pi=0;for(var i=1;i<bP.length;i++)if(bP[i]>bP[pi])pi=i;var pF=bF[pi];var sI=[],nI=[];for(var i=0;i<bF.length;i++){if(Math.abs(bF[i]-pF)<=PPG_FW)sI.push(i);else nI.push(i)}var sP=sI.length>1?ppgTrapz(sI.map(function(i){return bP[i]}),sI.map(function(i){return bF[i]})):bP[pi];var nP=nI.length>1?ppgTrapz(nI.map(function(i){return bP[i]}),nI.map(function(i){return bF[i]})):1e-10;return{snr:sP/Math.max(nP,1e-10),peakFreq:pF}}
-
-// Sign alignment & Pearson correlation
-function ppgPearson(x,y){var n=x.length,sX=0,sY=0,sXY=0,sX2=0,sY2=0;for(var i=0;i<n;i++){sX+=x[i];sY+=y[i];sXY+=x[i]*y[i];sX2+=x[i]*x[i];sY2+=y[i]*y[i]}var num=n*sXY-sX*sY,den=Math.sqrt((n*sX2-sX*sX)*(n*sY2-sY*sY));return den<1e-10?0:num/den}
-function ppgSignAlign(filtered){var ref=filtered[PPG_REF];var signs={};for(var i=0;i<PPG_CH.length;i++){var ch=PPG_CH[i];if(ch===PPG_REF){signs[ch]=1;continue}signs[ch]=ppgPearson(Array.from(filtered[ch]),Array.from(ref))>=0?1:-1}return signs}
-
-// Peak detection
-function ppgFindPeaks(sig,params){var dist=params.distance,ht=params.height,prom=params.prominence;var n=sig.length,cands=[];for(var i=1;i<n-1;i++)if(sig[i]>sig[i-1]&&sig[i]>=sig[i+1])cands.push(i);var peaks=cands.filter(function(i){return sig[i]>=ht});peaks=peaks.filter(function(pk){var v=sig[pk],lm=v,rm=v;for(var i=pk-1;i>=0;i--){lm=Math.min(lm,sig[i]);if(sig[i]>v)break}for(var i=pk+1;i<n;i++){rm=Math.min(rm,sig[i]);if(sig[i]>v)break}return v-Math.max(lm,rm)>=prom});var sorted=peaks.slice().sort(function(a,b){return sig[b]-sig[a]});var keep={},supp={};for(var i=0;i<sorted.length;i++){var p=sorted[i];if(supp[p])continue;keep[p]=true;for(var j=0;j<sorted.length;j++){var q=sorted[j];if(q!==p&&Math.abs(q-p)<dist)supp[q]=true}}return Object.keys(keep).map(Number).sort(function(a,b){return a-b})}
-
-// Complete pipeline
-function ppgDetect(rawSamples){
-var samples=rawSamples.map(function(s){return{time_ms:s.t,red:s.r,green:s.g,blue:s.b,L:s.L,a:s.a,b:s.lb}});
-var processed=ppgDedup(samples);processed=ppgTrim(processed);
-if(processed.length<20)return{error:"Insufficient data after preprocessing"};
-var fs=ppgFs(processed);var n=processed.length;
-var chData={},normalized={},filtered={};
-var sos=ppgSOS(PPG_LO,PPG_HI,fs);
-for(var ci=0;ci<PPG_CH.length;ci++){var ch=PPG_CH[ci];var arr=new Float64Array(n);for(var i=0;i<n;i++)arr[i]=processed[i][ch];chData[ch]=arr;normalized[ch]=ppgZNorm(arr);filtered[ch]=ppgFiltfilt(sos,normalized[ch])}
-var snrs={},peakFreqs={};
-for(var ci=0;ci<PPG_CH.length;ci++){var ch=PPG_CH[ci];var sr=ppgSNR(filtered[ch],fs);snrs[ch]=sr.snr;peakFreqs[ch]=sr.peakFreq}
-var signs=ppgSignAlign(filtered);
-var totalSNR=0;for(var ci=0;ci<PPG_CH.length;ci++)totalSNR+=snrs[PPG_CH[ci]];
-var weights={};if(totalSNR<1e-10){for(var ci=0;ci<PPG_CH.length;ci++)weights[PPG_CH[ci]]=1/PPG_CH.length}else{for(var ci=0;ci<PPG_CH.length;ci++)weights[PPG_CH[ci]]=snrs[PPG_CH[ci]]/totalSNR}
-var ppg=new Float64Array(n);for(var ci=0;ci<PPG_CH.length;ci++){var ch=PPG_CH[ci],w=weights[ch]*signs[ch],f=filtered[ch];for(var i=0;i<n;i++)ppg[i]+=w*f[i]}
-var ppgF=ppgFiltfilt(sos,ppg);
-var cSNR=ppgSNR(ppgF,fs);var domFreq=cSNR.peakFreq;if(domFreq<0.5)domFreq=1.2;
-var expIBI=fs/domFreq,minDist=Math.max(Math.floor(expIBI*0.5),1);
-var ppgArr=Array.from(ppgF);var pos=ppgArr.filter(function(v){return v>0});
-var medAmp=pos.length>0?ppgMedian(pos):ppgStd(ppgArr);
-var minH=0.3*medAmp,minP=0.3*ppgStd(ppgArr);
-var peaks=ppgFindPeaks(ppgArr,{distance:minDist,height:minH,prominence:minP});
-// Heart rate from peaks
-if(peaks.length<2)return{error:"Could not detect enough heartbeats"};
-var ibi=[];for(var i=1;i<peaks.length;i++)ibi.push((peaks[i]-peaks[i-1])/fs*1000);
-var hr=ibi.map(function(v){return 60000/v});
-var rej=hr.map(function(v){return v<PPG_MIN_BPM||v>PPG_MAX_BPM});
-var vHR=hr.filter(function(_,i){return!rej[i]});
-var meanHR=NaN;if(vHR.length>0){var sm=0;for(var i=0;i<vHR.length;i++)sm+=vHR[i];meanHR=sm/vHR.length}
-var vIBI=ibi.filter(function(_,i){return!rej[i]});
-var rmssd=NaN;if(vIBI.length>1){var sq=0;for(var i=1;i<vIBI.length;i++)sq+=(vIBI[i]-vIBI[i-1])*(vIBI[i]-vIBI[i-1]);rmssd=Math.sqrt(sq/(vIBI.length-1))}
-return{meanHR:meanHR,beatCount:peaks.length,rmssd:rmssd,domBPM:Math.round(domFreq*60),rejected:rej.filter(function(r){return r}).length,total:rej.length,weights:weights,snrs:snrs,fs:fs}}
-
-// RGB to LAB conversion for camera capture
-function ppgRgbToLab(r,g,b){var rl=r/255,gl=g/255,bl=b/255;rl=rl>0.04045?Math.pow((rl+0.055)/1.055,2.4):rl/12.92;gl=gl>0.04045?Math.pow((gl+0.055)/1.055,2.4):gl/12.92;bl=bl>0.04045?Math.pow((bl+0.055)/1.055,2.4):bl/12.92;var x=(rl*0.4124564+gl*0.3575761+bl*0.1804375)/0.95047;var y=(rl*0.2126729+gl*0.7151522+bl*0.0721750)/1.00000;var z=(rl*0.0193339+gl*0.1191920+bl*0.9503041)/1.08883;var fx=x>0.008856?Math.pow(x,1/3):(903.3*x+16)/116;var fy=y>0.008856?Math.pow(y,1/3):(903.3*y+16)/116;var fz=z>0.008856?Math.pow(z,1/3):(903.3*z+16)/116;return{L:116*fy-16,a:500*(fx-fy),b:200*(fy-fz)}}
-
 
 // ========================================================================
 // 8. UI COMPONENTS
-//    RestTimer, HRMonitor, ProgressChart, ElapsedClock, ExerciseCard, LoadTargets, ConfirmDialog, SettingsSheet
+//    RestTimer, ProgressChart, ElapsedClock, ExerciseCard, LoadTargets, ConfirmDialog, SettingsSheet
 // ========================================================================
 
 // ── RestTimer ──
 function RestTimer(props){
-var duration=props.duration||90,onDone=props.onDone,onHR=props.onHR,floating=props.floating,adaptiveLabel=props.adaptiveLabel;
+var duration=props.duration||90,onDone=props.onDone,floating=props.floating,adaptiveLabel=props.adaptiveLabel;
 var _r=useState(duration),rem=_r[0],setRem=_r[1];
 var _u=useState(true),run=_u[0],setRun=_u[1];
 var beeped=useRef(false);
@@ -516,179 +435,12 @@ e("div",{style:{fontFamily:MONO,fontSize:24,fontWeight:700,letterSpacing:2,color
 adaptiveLabel&&e("div",{style:{fontSize:10,color:T.mut,marginTop:1}},adaptiveLabel),
 e("div",{style:{flex:1,height:3,background:T.inp,borderRadius:2,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:5}},
-onHR&&e("button",{onClick:onHR,style:Object.assign({},STYLES.timerBtn,{background:"#1a0a1a",border:"1px solid "+T.pkD,color:T.pkL})},"\u2764\uFE0F"),
 e("button",{onClick:toggleRun,style:Object.assign({},STYLES.timerBtn,{background:T.inp,border:"1px solid "+T.brd,color:T.txt})},run?"\u23F8":"\u25B6"),
 rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip")))}
 return e("div",{style:{background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"12px 16px",marginTop:8,display:"flex",alignItems:"center",gap:12}},
 e("div",{style:{flex:1}},e("div",{style:{fontFamily:MONO,fontSize:28,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),adaptiveLabel&&e("div",{style:{fontSize:11,color:T.mut,marginTop:2}},adaptiveLabel),e("div",{style:{height:3,background:T.inp,borderRadius:2,marginTop:4,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-onHR&&e("button",{onClick:onHR,style:Object.assign({},STYLES.timerBtn,{background:"#1a0a1a",border:"1px solid "+T.pkD,color:T.pkL})},"\u{2764}\uFE0F"),
 e("button",{onClick:toggleRun,style:Object.assign({},STYLES.timerBtn,{background:T.inp,border:"1px solid "+T.brd,color:T.txt})},run?"Pause":"Resume"),rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip")))
-}
-
-// ── HRMonitor ──
-function HRMonitor(props){
-var onClose=props.onClose,onRecovered=props.onRecovered;
-// UI state
-var _p=useState("ready"),phase=_p[0],setPhase=_p[1];
-var _b=useState(0),bpm=_b[0],setBpm=_b[1];
-var _q=useState(""),quality=_q[0],setQuality=_q[1];
-var _pr=useState(0),progress=_pr[0],setProgress=_pr[1];
-var _cq=useState("none"),contactQ=_cq[0],setContactQ=_cq[1];
-var _cp=useState(0),contactPct=_cp[0],setContactPct=_cp[1];
-var _ss=useState(0),sigStr=_ss[0],setSigStr=_ss[1];
-var _pv=useState(false),pulseVis=_pv[0],setPulseVis=_pv[1];
-// Refs (real-time, no re-render)
-var vidRef=useRef(null),canRef=useRef(null);
-var samplesRef=useRef([]),streamRef=useRef(null),rafRef=useRef(null);
-var startRef=useRef(0),phaseRef=useRef("ready");
-var contactCntRef=useRef(0),lastUIRef=useRef(0);
-var recentRedRef=useRef([]),prevDeltaRef=useRef(0),lastBeatRef=useRef(0);
-var DURATION=15000,CONTACT_MIN=100,CONTACT_FRAMES=30;
-
-var cleanup=function(){if(streamRef.current){streamRef.current.getVideoTracks().forEach(function(t){try{t.applyConstraints({advanced:[{torch:false}]})}catch(ex){}t.stop()});streamRef.current=null}if(rafRef.current)cancelAnimationFrame(rafRef.current)};
-
-var startCamera=function(){
-setPhase("preparing");phaseRef.current="preparing";
-contactCntRef.current=0;setContactQ("none");setContactPct(0);
-samplesRef.current=[];recentRedRef.current=[];prevDeltaRef.current=0;lastBeatRef.current=0;
-navigator.mediaDevices.getUserMedia({video:true}).then(function(tempStream){
-tempStream.getTracks().forEach(function(t){t.stop()});
-return navigator.mediaDevices.enumerateDevices();
-}).then(function(devices){
-var cameras=devices.filter(function(d){return d.kind==="videoinput"});
-var rear=cameras.find(function(d){return /back|rear|environment/i.test(d.label)});
-if(!rear&&cameras.length>1)rear=cameras[cameras.length-1];
-var constraints={video:{width:{ideal:64},height:{ideal:64}}};
-if(rear){constraints.video.deviceId={exact:rear.deviceId}}else{constraints.video.facingMode="environment"}
-return navigator.mediaDevices.getUserMedia(constraints);
-}).then(function(stream){
-streamRef.current=stream;
-var v=vidRef.current;v.srcObject=stream;v.play().then(function(){
-var track=stream.getVideoTracks()[0];
-setTimeout(function(){try{track.applyConstraints({advanced:[{torch:true}]}).catch(function(){})}catch(ex){}},300);
-var canvas=canRef.current;canvas.width=32;canvas.height=32;
-var ctx=canvas.getContext("2d",{willReadFrequently:true});
-var processFrame=function(){
-var now=Date.now();
-ctx.drawImage(v,0,0,32,32);var d=ctx.getImageData(0,0,32,32).data;
-var rS=0,gS=0,bS=0,px=32*32;
-for(var i=0;i<d.length;i+=4){rS+=d[i];gS+=d[i+1];bS+=d[i+2]}
-var avgR=rS/px,avgG=gS/px,avgB=bS/px;
-var lab=ppgRgbToLab(avgR,avgG,avgB);
-var cp=phaseRef.current;
-// === PREPARING: contact detection ===
-if(cp==="preparing"){
-if(avgR>=CONTACT_MIN){
-contactCntRef.current++;
-if(contactCntRef.current>=CONTACT_FRAMES){
-phaseRef.current="measuring";setPhase("measuring");setContactQ("good");
-startRef.current=Date.now();samplesRef.current=[];recentRedRef.current=[];
-}else if(now-lastUIRef.current>150){
-var pct=Math.round(contactCntRef.current/CONTACT_FRAMES*100);
-setContactPct(pct);setContactQ(pct>40?"adjusting":"weak");lastUIRef.current=now}
-}else{contactCntRef.current=Math.max(0,contactCntRef.current-2);
-if(now-lastUIRef.current>150){var pct2=Math.round(Math.max(0,contactCntRef.current)/CONTACT_FRAMES*100);setContactPct(pct2);setContactQ(pct2>10?"weak":"none");lastUIRef.current=now}}
-}
-// === MEASURING: record + live feedback ===
-if(cp==="measuring"){
-var elapsed=now-startRef.current;
-samplesRef.current.push({t:elapsed,r:avgR,g:avgG,b:avgB,L:lab.L,a:lab.a,lb:lab.b});
-// Live pulse detection on red channel
-var recent=recentRedRef.current;recent.push(avgR);if(recent.length>20)recent.shift();
-if(recent.length>=5){
-var rmn=0;for(var ri=0;ri<recent.length;ri++)rmn+=recent[ri];rmn/=recent.length;
-var delta=avgR-rmn;var pDelta=prevDeltaRef.current;
-if(pDelta>0.03&&delta<-0.03&&now-lastBeatRef.current>300){
-lastBeatRef.current=now;setPulseVis(true);setTimeout(function(){setPulseVis(false)},150)}
-prevDeltaRef.current=delta}
-// Signal strength from recent amplitude range
-if(recent.length>=10){
-var rMin=recent[0],rMax=recent[0];
-for(var ri=1;ri<recent.length;ri++){if(recent[ri]<rMin)rMin=recent[ri];if(recent[ri]>rMax)rMax=recent[ri]}
-var str=Math.min(1,(rMax-rMin)/2.0);
-if(now-lastUIRef.current>150){setSigStr(str);setProgress(Math.min(elapsed/DURATION,1));lastUIRef.current=now}
-}else if(now-lastUIRef.current>150){setProgress(Math.min(elapsed/DURATION,1));lastUIRef.current=now}
-if(elapsed>=DURATION){analyzeSignal();return}
-}
-rafRef.current=requestAnimationFrame(processFrame)};
-rafRef.current=requestAnimationFrame(processFrame)})
-}).catch(function(err){setQuality("Camera error: "+(err.message||"access denied"));setPhase("done");cleanup()})};
-
-var analyzeSignal=function(){
-cleanup();var raw=samplesRef.current;
-if(raw.length<60){setQuality("Not enough data ("+raw.length+" samples). Keep finger pressed firmly for the full 15 seconds.");setPhase("done");return}
-try{
-var result=ppgDetect(raw);
-if(result.error){
-var msg=result.error;
-if(raw.filter(function(s){return s.r>=CONTACT_MIN}).length<raw.length*0.5)msg="Finger contact lost during recording. Keep steady pressure the entire time.";
-else if(raw.length<100)msg="Signal too short. Keep your finger pressed firmly for the full duration.";
-else msg+=". Press thumb firmly over the flashlight and hold very still.";
-setQuality(msg);setPhase("done");return}
-var hr=Math.round(result.meanHR);
-if(isNaN(hr)||hr<PPG_MIN_BPM||hr>PPG_MAX_BPM){setQuality("Reading out of range"+(isNaN(hr)?"":" ("+hr+" BPM)")+". Try again with firm, still pressure.");setPhase("done");return}
-if(result.total>0&&result.rejected/result.total>0.5){setQuality("Unstable reading \u2014 too much movement detected. Hold your finger completely still and breathe normally.");setPhase("done");return}
-setBpm(hr);setQuality("good");setPhase("done");
-console.log("HR PPGv2: "+hr+" BPM, beats:"+result.beatCount+", dom:"+result.domBPM+"BPM, fs:"+Math.round(result.fs)+"Hz, rej:"+result.rejected+"/"+result.total);
-}catch(err){setQuality("Analysis error. Try again with steady, firm finger pressure.");setPhase("done")}};
-
-useEffect(function(){return cleanup},[]);
-
-var hrMsg=bpm<=100?"Recovered":bpm<=120?"Recovered \u2014 good to continue":bpm<=140?"Still elevated \u2014 rest longer":"HR still high \u2014 continue resting";
-var hrClr=bpm<=100?"#10B981":bpm<=120?"#6EE7B7":bpm<=140?"#FBBF24":"#EF4444";
-var cqClr=contactQ==="good"?"#10B981":contactQ==="adjusting"?"#FBBF24":contactQ==="weak"?"#F97316":"#78716C";
-var cqMsg=contactQ==="good"?"Good contact \u2014 starting...":contactQ==="adjusting"?"Hold still...":contactQ==="weak"?"Press more firmly...":"Place finger on camera";
-var ssClr=sigStr>0.5?"#10B981":sigStr>0.2?"#FBBF24":"#EF4444";
-
-return e("div",{style:{position:"fixed",inset:0,zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",padding:20},onClick:function(){cleanup();onClose()}},
-e("div",{style:{position:"absolute",inset:0,background:"#000000dd"}}),
-e("div",{onClick:function(ev){ev.stopPropagation()},style:{position:"relative",width:"100%",maxWidth:340,background:"#1C1917",borderRadius:16,padding:"24px 20px",border:"1px solid #292524"}},
-e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-e("div",{style:{fontSize:17,fontWeight:700,color:"#F5F5F4"}},"\u2764\uFE0F Heart Rate Check"),
-e("div",{style:{fontSize:10,color:"#78716C",background:"#292524",borderRadius:4,padding:"2px 6px"}},"PPG v2")),
-e("video",{ref:vidRef,playsInline:true,muted:true,style:{width:1,height:1,opacity:0,position:"absolute"}}),
-e("canvas",{ref:canRef,style:{display:"none"}}),
-// === READY ===
-phase==="ready"&&e("div",null,
-e("div",{style:{fontSize:14,color:"#A8A29E",lineHeight:1.6,marginBottom:16}},"Cover the ",e("span",{style:{color:"#F5F5F4",fontWeight:600}},"flashlight and ONE camera lens")," with your fingertip. Leave the other lens uncovered."),
-e("div",{style:{fontSize:12,color:"#78716C",marginBottom:16,lineHeight:1.5}},"Recording starts automatically once good finger contact is detected."),
-e("button",{onClick:startCamera,style:{width:"100%",padding:14,background:"#991B4D",border:"none",borderRadius:12,color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer"}},"Open Camera")),
-// === PREPARING: contact detection ===
-phase==="preparing"&&e("div",{style:{textAlign:"center"}},
-e("div",{style:{width:90,height:90,borderRadius:45,border:"3px solid "+cqClr,margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center",transition:"border-color 0.3s, background 0.3s",background:contactQ==="good"?"#052e1c":contactQ==="adjusting"?"#2a2000":"transparent"}},
-e("div",{style:{fontSize:contactQ==="none"?14:26,color:contactQ==="none"?"#78716C":"#fff",transition:"transform 0.2s",transform:contactQ==="adjusting"?"scale(1.05)":"scale(1)"}},
-contactQ==="none"?"\u261D\uFE0F Waiting...":contactQ==="weak"?"\u{1F534}":"\u2764\uFE0F")),
-e("div",{style:{fontSize:14,color:cqClr,fontWeight:600,marginBottom:8,transition:"color 0.3s"}},cqMsg),
-e("div",{style:{height:4,background:"#292524",borderRadius:2,overflow:"hidden",marginBottom:8}},
-e("div",{style:{height:"100%",width:contactPct+"%",background:cqClr,transition:"width 0.2s, background 0.3s"}})),
-e("div",{style:{fontSize:11,color:"#78716C"}},"Recording starts automatically"),
-e("button",{onClick:function(){cleanup();setPhase("ready")},style:{marginTop:12,padding:"8px 16px",background:"transparent",border:"1px solid #44403C",borderRadius:8,color:"#A8A29E",fontSize:12,cursor:"pointer"}},"Cancel")),
-// === MEASURING ===
-phase==="measuring"&&e("div",{style:{textAlign:"center"}},
-e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginBottom:14}},
-e("div",{style:{width:50,height:50,borderRadius:25,background:pulseVis?"#BE185D":"#1a0a12",border:"2px solid "+(pulseVis?"#EC4899":"#44203C"),display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.1s ease-out",transform:pulseVis?"scale(1.2)":"scale(1)",boxShadow:pulseVis?"0 0 16px #EC489966":"none"}},
-e("div",{style:{fontSize:22}},"\u2764\uFE0F")),
-e("div",{style:{flex:1,maxWidth:140,textAlign:"left"}},
-e("div",{style:{fontSize:10,color:"#78716C",marginBottom:3}},"Signal strength"),
-e("div",{style:{height:5,background:"#292524",borderRadius:3,overflow:"hidden"}},
-e("div",{style:{height:"100%",width:Math.max(5,sigStr*100)+"%",background:ssClr,transition:"width 0.3s, background 0.3s"}})),
-e("div",{style:{fontSize:9,color:ssClr,marginTop:2,transition:"color 0.3s"}},sigStr>0.5?"Strong":sigStr>0.2?"Moderate":"Weak"))),
-e("div",{style:{fontSize:14,color:"#F9A8D4",marginBottom:10}},"Hold still \u2014 recording..."),
-e("div",{style:{height:6,background:"#292524",borderRadius:3,overflow:"hidden",marginBottom:6}},
-e("div",{style:{height:"100%",width:Math.max(1,progress*100)+"%",background:"#EC4899",transition:"width 0.2s"}})),
-e("div",{style:{fontSize:12,color:"#78716C"}},Math.round(progress*15)+"s / 15s")),
-// === DONE ===
-phase==="done"&&e("div",{style:{textAlign:"center"}},
-quality==="good"?e("div",null,
-e("div",{style:{fontSize:48,fontWeight:700,color:hrClr,fontFamily:MONO,marginBottom:4}},bpm),
-e("div",{style:{fontSize:13,color:"#78716C",marginBottom:10}},"beats per minute"),
-e("div",{style:{fontSize:14,color:hrClr,fontWeight:600,marginBottom:16}},hrMsg)):
-e("div",null,e("div",{style:{fontSize:14,color:"#FBBF24",marginBottom:16,lineHeight:1.5}},quality)),
-e("div",{style:{display:"flex",gap:8,marginTop:4}},
-e("button",{onClick:function(){setPhase("ready");phaseRef.current="ready";setBpm(0);setQuality("");setProgress(0);setSigStr(0);setContactQ("none");setContactPct(0)},style:{flex:1,padding:12,background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:14,cursor:"pointer"}},"Retry"),
-quality==="good"&&bpm<=120&&onRecovered?e("button",{onClick:function(){cleanup();onRecovered()},style:{flex:1,padding:12,background:"#10B981",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}},"Next Set \u2192"):
-e("button",{onClick:function(){cleanup();onClose()},style:{flex:1,padding:12,background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:14,cursor:"pointer"}},"Close")))))
 }
 
 // ── ProgressChart ──
@@ -733,7 +485,7 @@ return e("span",{style:{fontFamily:MONO,fontSize:12,color:paceClr}},m+":"+s.toSt
 
 // ── ExerciseCard ──
 function ExerciseCard(props){
-var exercise=props.exercise,setData=props.setData,onUpdate=props.onUpdate,lastWeight=props.lastWeight,showTimer=props.showTimer,onTimerDone=props.onTimerDone,restDuration=props.restDuration,carryType=props.carryType,onCarryTypeChange=props.onCarryTypeChange,videoUrls=props.videoUrls,onVideoSave=props.onVideoSave,isExpanded=props.isExpanded,onToggle=props.onToggle,progression=props.progression,onHR=props.onHR,ghostSets=props.ghostSets,prs=props.prs,e1rmData=props.e1rmData,carryAdvisory=props.carryAdvisory,suggestedLoad=props.suggestedLoad;
+var exercise=props.exercise,setData=props.setData,onUpdate=props.onUpdate,lastWeight=props.lastWeight,showTimer=props.showTimer,onTimerDone=props.onTimerDone,restDuration=props.restDuration,carryType=props.carryType,onCarryTypeChange=props.onCarryTypeChange,videoUrls=props.videoUrls,onVideoSave=props.onVideoSave,isExpanded=props.isExpanded,onToggle=props.onToggle,progression=props.progression,ghostSets=props.ghostSets,prs=props.prs,e1rmData=props.e1rmData,carryAdvisory=props.carryAdvisory,suggestedLoad=props.suggestedLoad;
 var _c=useState(false),showCues=_c[0],setShowCues=_c[1];
 var _v=useState(false),editVid=_v[0],setEditVid=_v[1];
 var _sv=useState(false),showVid=_sv[0],setShowVid=_sv[1];
@@ -785,7 +537,7 @@ e("div",{style:{width:52,textAlign:"center",fontSize:10,color:T.mut,textTransfor
 e("div",{style:{flex:1,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"RPE")),
 setData.map(function(set,i){var ghost=ghostSets&&ghostSets[i]?ghostSets[i]:null;var isPR=prs&&prs.some(function(p){return p.setIdx===i});
 var RPE_COLORS={5:T.ok,6:"#34D399",7:T.ok,8:T.acc,9:T.err,10:T.err};
-return e("div",{key:i},ghost&&!set.completed&&e("div",{style:{fontSize:11,color:T.brdL,fontStyle:"italic",paddingLeft:50,marginBottom:2}},"Last: "+(ghost.weight?ghost.weight+"lb":"")+(ghost.weight&&ghost.reps?" \u00d7 ":"")+((ghost.reps||"")+(ghost.rpe?" @"+ghost.rpe:""))),e("div",{style:{padding:isPR?"6px 4px":"6px 0",opacity:set.completed?0.6:1,background:isPR?"#854d0e11":"transparent",borderRadius:isPR?8:0}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("div",{onClick:function(){toggleDone(i)},style:Object.assign({},STYLES.setCheck,{background:set.completed?(isPR?"#854d0e":T.okD):T.inp,border:"2px solid "+(set.completed?(isPR?"#EAB308":T.okBr):T.brd),color:set.completed?T.okL:T.mut})},set.completed?(isPR?"\u{1F3C6}":"\u2713"):(i+1)),exercise.hasWeight&&e("input",{type:"number",inputMode:"decimal",value:set.weight||"",onChange:function(ev){updateSet(i,"weight",Number(ev.target.value))},placeholder:ghost&&ghost.weight?String(ghost.weight):"0",style:Object.assign({},STYLES.numInput,{width:60,color:!set.touched&&!set.completed?T.mut:T.hi})}),e("input",{type:"number",inputMode:"numeric",value:set.reps||"",onChange:function(ev){updateSet(i,"reps",Number(ev.target.value))},placeholder:ghost&&ghost.reps?String(ghost.reps):"0",style:Object.assign({},STYLES.numInput,{width:52,color:!set.touched&&!set.completed?T.mut:T.hi})})),e("div",{style:{display:"flex",gap:3,flexWrap:"wrap",marginTop:6}},[null,5,6,7,8,9,10].map(function(v){var isActive=v===null?(!set.rpe||set.rpe===0):(set.rpe===v);var label=v===null?"\u2014":""+v;var clr=v!==null?RPE_COLORS[v]||T.sec:T.mut;return e("button",{key:v===null?"none":v,onClick:function(){updateSet(i,"rpe",v===null?0:(set.rpe===v?0:v))},style:{width:28,height:28,borderRadius:"50%",border:isActive?"none":"1px solid "+T.brd,background:isActive&&v!==null?clr:"transparent",color:isActive&&v!==null?"#fff":(isActive?T.mut:T.sec),fontSize:11,fontWeight:isActive?700:400,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0,fontFamily:MONO}},label)}))),isPR&&set.completed&&e("div",{style:{fontSize:11,color:"#EAB308",fontWeight:600,paddingLeft:50,marginTop:2}},"\u{1F3C6} New Personal Record!"),set.completed&&!(setData[i+1]&&setData[i+1].completed)&&i<setData.length-1&&showTimer===exercise.id+"-"+i&&!props.floatingTimer&&e(RestTimer,{key:props.timerKey,duration:restDuration,onDone:onTimerDone,onHR:onHR}))})))
+return e("div",{key:i},ghost&&!set.completed&&e("div",{style:{fontSize:11,color:T.brdL,fontStyle:"italic",paddingLeft:50,marginBottom:2}},"Last: "+(ghost.weight?ghost.weight+"lb":"")+(ghost.weight&&ghost.reps?" \u00d7 ":"")+((ghost.reps||"")+(ghost.rpe?" @"+ghost.rpe:""))),e("div",{style:{padding:isPR?"6px 4px":"6px 0",opacity:set.completed?0.6:1,background:isPR?"#854d0e11":"transparent",borderRadius:isPR?8:0}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("div",{onClick:function(){toggleDone(i)},style:Object.assign({},STYLES.setCheck,{background:set.completed?(isPR?"#854d0e":T.okD):T.inp,border:"2px solid "+(set.completed?(isPR?"#EAB308":T.okBr):T.brd),color:set.completed?T.okL:T.mut})},set.completed?(isPR?"\u{1F3C6}":"\u2713"):(i+1)),exercise.hasWeight&&e("input",{type:"number",inputMode:"decimal",value:set.weight||"",onChange:function(ev){updateSet(i,"weight",Number(ev.target.value))},placeholder:ghost&&ghost.weight?String(ghost.weight):"0",style:Object.assign({},STYLES.numInput,{width:60,color:!set.touched&&!set.completed?T.mut:T.hi})}),e("input",{type:"number",inputMode:"numeric",value:set.reps||"",onChange:function(ev){updateSet(i,"reps",Number(ev.target.value))},placeholder:ghost&&ghost.reps?String(ghost.reps):"0",style:Object.assign({},STYLES.numInput,{width:52,color:!set.touched&&!set.completed?T.mut:T.hi})})),e("div",{style:{display:"flex",gap:3,flexWrap:"wrap",marginTop:6}},[null,5,6,7,8,9,10].map(function(v){var isActive=v===null?(!set.rpe||set.rpe===0):(set.rpe===v);var label=v===null?"\u2014":""+v;var clr=v!==null?RPE_COLORS[v]||T.sec:T.mut;return e("button",{key:v===null?"none":v,onClick:function(){updateSet(i,"rpe",v===null?0:(set.rpe===v?0:v))},style:{width:28,height:28,borderRadius:"50%",border:isActive?"none":"1px solid "+T.brd,background:isActive&&v!==null?clr:"transparent",color:isActive&&v!==null?"#fff":(isActive?T.mut:T.sec),fontSize:11,fontWeight:isActive?700:400,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0,fontFamily:MONO}},label)}))),isPR&&set.completed&&e("div",{style:{fontSize:11,color:"#EAB308",fontWeight:600,paddingLeft:50,marginTop:2}},"\u{1F3C6} New Personal Record!"),set.completed&&!(setData[i+1]&&setData[i+1].completed)&&i<setData.length-1&&showTimer===exercise.id+"-"+i&&!props.floatingTimer&&e(RestTimer,{key:props.timerKey,duration:restDuration,onDone:onTimerDone}))})))
 }
 
 // ── LoadTargets ──
@@ -845,7 +597,6 @@ var _wp=useState(null),warmupPeek=_wp[0],setWarmupPeek=_wp[1];
 var _cm=useState(false),circuitMode=_cm[0],setCircuitMode=_cm[1];
 var _ta=useState(25),timeAvail=_ta[0],setTimeAvail=_ta[1];
 var _rd2=useState({sleep:2,soreness:2,motivation:2}),readiness=_rd2[0],setReadiness=_rd2[1];
-var _hr=useState(false),showHR=_hr[0],setShowHR=_hr[1];
 var _ch=useState(null),chartEx=_ch[0],setChartEx=_ch[1];
 var _srpe=useState(0),sessionRPE=_srpe[0],setSessionRPE=_srpe[1];
 var _ft=useState(null),floatTimer=_ft[0],setFloatTimer=_ft[1];
@@ -909,7 +660,7 @@ setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 var exportBackup=function(){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur,analysisTs:S.get(KEYS.analysisTs)};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url)};
 var saveVid=function(exId,url){var u=Object.assign({},videoUrls);u[exId]=url;setVideoUrls(u);S.set(KEYS.videos,u)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setShowHR(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setSessionPRs([]);setCopied(false);setTimeAvail(25);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
+var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowLoads(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setSessionPRs([]);setCopied(false);setTimeAvail(25);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
@@ -1187,7 +938,7 @@ e("div",{style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScroll
 floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,floating:true,adaptiveLabel:adaptiveRestLabel,onDone:function(){setFloatTimer(null);setTimer(null);setAdaptiveRestLabel(null);
 if(circuitMode){var sess2=SESSIONS[currentSession];var curIdx=sess2.exercises.findIndex(function(x){return x.id===floatTimer.exId});
 var nextEx=null;for(var ci=1;ci<=sess2.exercises.length;ci++){var ni=(curIdx+ci)%sess2.exercises.length;var nid=sess2.exercises[ni].id;var nsets=exData[nid]||[];if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
-if(nextEx)setTimeout(function(){setActiveEx(nextEx)},200)}},onHR:function(){setShowHR(true)}}),
+if(nextEx)setTimeout(function(){setActiveEx(nextEx)},200)}}}),
 carryWarn&&e("div",{style:STYLES.warnBannerCompact},e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},"Second session today. Consider skipping or lightening carries to manage grip fatigue.")),
 sess.exercises.map(function(ex){
 var exSets=exData[ex.id]||[];
@@ -1200,7 +951,6 @@ var sugLoad=getSuggestedLoad(ex.id,logs,readiness,getSessionCount(logs),carryWar
 return e(ExerciseCard,{key:ex.id,exercise:ex,setData:exSets,lastWeight:lastWeights[ex.id]||0,
 showTimer:timer,timerKey:timerKey,restDuration:restDur,progression:prog,floatingTimer:!!floatTimer,
 ghostSets:ghost,prs:prList,e1rmData:e1rm,carryAdvisory:carryWarn&&ex.isCarry,suggestedLoad:sugLoad,
-onHR:function(){setShowHR(true)},
 onTimerDone:function(){setTimer(null);setFloatTimer(null);setAdaptiveRestLabel(null);
 if(circuitMode){var curIdx=sess.exercises.findIndex(function(x){return x.id===ex.id});
 var nextEx=null;for(var ci=1;ci<=sess.exercises.length;ci++){var ni=(curIdx+ci)%sess.exercises.length;var nid=sess.exercises[ni].id;var nsets=exData[nid]||[];if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
@@ -1220,8 +970,7 @@ if(justDone){var nextEx=null;for(var ni=0;ni<sess.exercises.length;ni++){var nid
 if(nextEx)setTimeout(function(){setActiveEx(nextEx)},400)}}})})),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 16px 12px"})},
 e("button",{onClick:function(){setScreen("complete")},style:{width:"100%",padding:16,background:allDone?sess.color:"#292524",border:allDone?"none":"1px solid #44403C",borderRadius:14,cursor:"pointer",color:allDone?"#fff":"#A8A29E",fontSize:16,fontWeight:700}},allDone?"Complete Session \u2713":"Finish Session ("+done+"/"+total+" sets)")),
-showLoads&&e(LoadTargets,{onClose:function(){setShowLoads(false)}}),
-showHR&&e(HRMonitor,{onClose:function(){setShowHR(false)},onRecovered:function(){setShowHR(false);setTimer(null)}}))
+showLoads&&e(LoadTargets,{onClose:function(){setShowLoads(false)}}))
 }
 
 // ── Screen: Session Complete ──
