@@ -62,7 +62,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=41;
+var APP_VERSION=42;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -377,14 +377,12 @@ function playBeep(){try{var ctx=new(window.AudioContext||window.webkitAudioConte
 
 // ── RestTimer ──
 function RestTimer(props){
-var duration=props.duration||90,onDone=props.onDone,floating=props.floating,adaptiveLabel=props.adaptiveLabel;
+var duration=props.duration||90,onDone=props.onDone,adaptiveLabel=props.adaptiveLabel;
 var _r=useState(duration),rem=_r[0],setRem=_r[1];
-var _u=useState(true),run=_u[0],setRun=_u[1];
 var beeped=useRef(false);
 var ref=useRef(null);
 var endRef=useRef(Date.now()+duration*1000);
 useEffect(function(){
-if(!run)return;
 var tick=function(){
 var r=Math.max(0,Math.ceil((endRef.current-Date.now())/1000));
 setRem(r);
@@ -394,21 +392,15 @@ tick();
 ref.current=setInterval(tick,1000);
 document.addEventListener("visibilitychange",tick);
 return function(){clearInterval(ref.current);document.removeEventListener("visibilitychange",tick)}
-},[run]);
-var toggleRun=function(){if(run){setRun(false)}else{endRef.current=Date.now()+rem*1000;setRun(true)}};
+},[]);
 var pct=((duration-rem)/duration)*100;var m=Math.floor(rem/60),s=rem%60;
-if(floating){return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 12px #0008"}},
+return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 12px #0008"}},
 e("div",{style:{flex:1,display:"flex",alignItems:"center",gap:10}},
 e("div",{style:{fontFamily:MONO,fontSize:24,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),
 adaptiveLabel&&e("div",{style:{fontSize:10,color:T.mut,marginTop:1}},adaptiveLabel),
 e("div",{style:{flex:1,height:3,background:T.inp,borderRadius:2,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:5}},
-e("button",{onClick:toggleRun,style:Object.assign({},STYLES.timerBtn,{background:T.inp,border:"1px solid "+T.brd,color:T.txt})},run?"\u23F8":"\u25B6"),
-rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip")))}
-return e("div",{style:{background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"12px 16px",marginTop:8,display:"flex",alignItems:"center",gap:12}},
-e("div",{style:{flex:1}},e("div",{style:{fontFamily:MONO,fontSize:28,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),adaptiveLabel&&e("div",{style:{fontSize:11,color:T.mut,marginTop:2}},adaptiveLabel),e("div",{style:{height:3,background:T.inp,borderRadius:2,marginTop:4,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
-e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-e("button",{onClick:toggleRun,style:Object.assign({},STYLES.timerBtn,{background:T.inp,border:"1px solid "+T.brd,color:T.txt})},run?"Pause":"Resume"),rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip")))
+rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip")))
 }
 
 // ── ProgressChart ──
@@ -453,7 +445,7 @@ return e("span",{style:{fontFamily:MONO,fontSize:12,color:paceClr}},m+":"+s.toSt
 
 // ── ExerciseCard ──
 function ExerciseCard(props){
-var exercise=props.exercise,setData=props.setData,onUpdate=props.onUpdate,lastWeight=props.lastWeight,showTimer=props.showTimer,onTimerDone=props.onTimerDone,restDuration=props.restDuration,carryType=props.carryType,onCarryTypeChange=props.onCarryTypeChange,videoUrls=props.videoUrls,onVideoSave=props.onVideoSave,isExpanded=props.isExpanded,onToggle=props.onToggle,progression=props.progression,ghostSets=props.ghostSets,carryAdvisory=props.carryAdvisory,suggestedLoad=props.suggestedLoad;
+var exercise=props.exercise,setData=props.setData,onUpdate=props.onUpdate,lastWeight=props.lastWeight,carryType=props.carryType,onCarryTypeChange=props.onCarryTypeChange,videoUrls=props.videoUrls,onVideoSave=props.onVideoSave,isExpanded=props.isExpanded,onToggle=props.onToggle,progression=props.progression,ghostSets=props.ghostSets,carryAdvisory=props.carryAdvisory,suggestedLoad=props.suggestedLoad;
 var _c=useState(false),showCues=_c[0],setShowCues=_c[1];
 var _v=useState(false),editVid=_v[0],setEditVid=_v[1];
 var _sv=useState(false),showVid=_sv[0],setShowVid=_sv[1];
@@ -500,20 +492,20 @@ e("div",{style:{width:52,textAlign:"center",fontSize:10,color:T.mut,textTransfor
 e("div",{style:{flex:1,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"RPE")),
 setData.map(function(set,i){var ghost=ghostSets&&ghostSets[i]?ghostSets[i]:null;
 var RPE_COLORS={5:T.ok,6:"#34D399",7:T.ok,8:T.acc,9:T.err,10:T.err};
-return e("div",{key:i},ghost&&!set.completed&&e("div",{style:{fontSize:11,color:T.brdL,fontStyle:"italic",paddingLeft:50,marginBottom:2}},"Last: "+(ghost.weight?ghost.weight+"lb":"")+(ghost.weight&&ghost.reps?" \u00d7 ":"")+((ghost.reps||"")+(ghost.rpe?" @"+ghost.rpe:""))),e("div",{style:{padding:"6px 0",opacity:set.completed?0.6:1}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("div",{onClick:function(){toggleDone(i)},style:Object.assign({},STYLES.setCheck,{background:set.completed?T.okD:T.inp,border:"2px solid "+(set.completed?T.okBr:T.brd),color:set.completed?T.okL:T.mut})},set.completed?"\u2713":(i+1)),exercise.hasWeight&&e("input",{type:"number",inputMode:"decimal",value:set.weight||"",onChange:function(ev){updateSet(i,"weight",Number(ev.target.value))},placeholder:ghost&&ghost.weight?String(ghost.weight):"0",style:Object.assign({},STYLES.numInput,{width:60,color:!set.touched&&!set.completed?T.mut:T.hi})}),e("input",{type:"number",inputMode:"numeric",value:set.reps||"",onChange:function(ev){updateSet(i,"reps",Number(ev.target.value))},placeholder:ghost&&ghost.reps?String(ghost.reps):"0",style:Object.assign({},STYLES.numInput,{width:52,color:!set.touched&&!set.completed?T.mut:T.hi})})),e("div",{style:{display:"flex",gap:3,flexWrap:"wrap",marginTop:6}},[null,5,6,7,8,9,10].map(function(v){var isActive=v===null?(!set.rpe||set.rpe===0):(set.rpe===v);var label=v===null?"\u2014":""+v;var clr=v!==null?RPE_COLORS[v]||T.sec:T.mut;return e("button",{key:v===null?"none":v,onClick:function(){updateSet(i,"rpe",v===null?0:(set.rpe===v?0:v))},style:{width:28,height:28,borderRadius:"50%",border:isActive?"none":"1px solid "+T.brd,background:isActive&&v!==null?clr:"transparent",color:isActive&&v!==null?"#fff":(isActive?T.mut:T.sec),fontSize:11,fontWeight:isActive?700:400,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0,fontFamily:MONO}},label)}))),set.completed&&!(setData[i+1]&&setData[i+1].completed)&&i<setData.length-1&&showTimer===exercise.id+"-"+i&&!props.floatingTimer&&e(RestTimer,{key:props.timerKey,duration:restDuration,onDone:onTimerDone}))})))
+return e("div",{key:i},ghost&&!set.completed&&e("div",{style:{fontSize:11,color:T.brdL,fontStyle:"italic",paddingLeft:50,marginBottom:2}},"Last: "+(ghost.weight?ghost.weight+"lb":"")+(ghost.weight&&ghost.reps?" \u00d7 ":"")+((ghost.reps||"")+(ghost.rpe?" @"+ghost.rpe:""))),e("div",{style:{padding:"6px 0",opacity:set.completed?0.6:1}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("div",{onClick:function(){toggleDone(i)},style:Object.assign({},STYLES.setCheck,{background:set.completed?T.okD:T.inp,border:"2px solid "+(set.completed?T.okBr:T.brd),color:set.completed?T.okL:T.mut})},set.completed?"\u2713":(i+1)),exercise.hasWeight&&e("input",{type:"number",inputMode:"decimal",value:set.weight||"",onChange:function(ev){updateSet(i,"weight",Number(ev.target.value))},placeholder:ghost&&ghost.weight?String(ghost.weight):"0",style:Object.assign({},STYLES.numInput,{width:60,color:!set.touched&&!set.completed?T.mut:T.hi})}),e("input",{type:"number",inputMode:"numeric",value:set.reps||"",onChange:function(ev){updateSet(i,"reps",Number(ev.target.value))},placeholder:ghost&&ghost.reps?String(ghost.reps):"0",style:Object.assign({},STYLES.numInput,{width:52,color:!set.touched&&!set.completed?T.mut:T.hi})})),e("div",{style:{display:"flex",gap:3,flexWrap:"wrap",marginTop:6}},[null,5,6,7,8,9,10].map(function(v){var isActive=v===null?(!set.rpe||set.rpe===0):(set.rpe===v);var label=v===null?"\u2014":""+v;var clr=v!==null?RPE_COLORS[v]||T.sec:T.mut;return e("button",{key:v===null?"none":v,onClick:function(){updateSet(i,"rpe",v===null?0:(set.rpe===v?0:v))},style:{width:28,height:28,borderRadius:"50%",border:isActive?"none":"1px solid "+T.brd,background:isActive&&v!==null?clr:"transparent",color:isActive&&v!==null?"#fff":(isActive?T.mut:T.sec),fontSize:11,fontWeight:isActive?700:400,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0,fontFamily:MONO}},label)}))))})))
 }
 
 // ── ConfirmDialog ──
 function ConfirmDialog(props){return e("div",{style:STYLES.dialogOverlay,onClick:props.onCancel},e("div",{style:{position:"absolute",inset:0,background:"#000000cc"}}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.dialogBox},e("div",{style:{fontSize:17,fontWeight:700,color:T.hi,marginBottom:8}},props.title),e("div",{style:{fontSize:14,color:T.sec,lineHeight:1.5,marginBottom:20}},props.message),e("div",{style:STYLES.footerBtnRow},e("button",{onClick:props.onCancel,style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.txt,fontSize:14,fontWeight:500,cursor:"pointer"}},"Cancel"),e("button",{onClick:props.onConfirm,style:{flex:1,padding:"12px",background:props.danger?T.errD:T.acc,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}},props.confirmLabel||"Confirm"))))}
 
 // ── SettingsSheet ──
-function SettingsSheet(props){var restDur=props.restDur,setRestDur=props.setRestDur,carryType=props.carryType,setCarryType=props.setCarryType,onClose=props.onClose,onReset=props.onReset,onExport=props.onExport,logs=props.logs,lastWeights=props.lastWeights,videoUrls=props.videoUrls,cycleState=props.cycleState;var _imp=useState(""),importStatus=_imp[0],setImportStatus=_imp[1];
+function SettingsSheet(props){var restDur=props.restDur,setRestDur=props.setRestDur,onClose=props.onClose,onReset=props.onReset,onExport=props.onExport,logs=props.logs,lastWeights=props.lastWeights,videoUrls=props.videoUrls,cycleState=props.cycleState;var _imp=useState(""),importStatus=_imp[0],setImportStatus=_imp[1];
 var _pi=useState(null),pendingImport=_pi[0],setPendingImport=_pi[1];
 var exportData=function(){onExport();setImportStatus("Backup saved!");setTimeout(function(){setImportStatus("")},2500)};
 var validateImport=function(data){if(!data||typeof data!=="object")return"File is not a valid JSON object";if(!Array.isArray(data.logs))return"Missing or invalid session logs";var vl=validateLogs(data.logs);if(vl.length===0&&data.logs.length>0)return"No valid log entries found (missing dates or sessions)";if(vl.length===0)return"Backup contains no session logs";data._validatedLogs=vl;data._validatedState=validateState(data.state);if(data.weights&&typeof data.weights!=="object")return"Invalid weights data";return null};
 var importData=function(){var input=document.createElement("input");input.type="file";input.accept=".json";input.onchange=function(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e2){try{var data=JSON.parse(e2.target.result);var err=validateImport(data);if(err){setImportStatus("Error: "+err);return}setPendingImport(data);setImportStatus("")}catch(ex){setImportStatus("Error: could not parse file")}};reader.readAsText(file)};input.click()};
 var applyImport=function(){var data=pendingImport;if(!data)return;var vLogs=(data._validatedLogs||validateLogs(data.logs)).slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)});var vState=data._validatedState||validateState(data.state);var ok=S.set(KEYS.logs,vLogs)&&S.set(KEYS.state,vState);if(data.weights&&typeof data.weights==="object")ok=ok&&S.set(KEYS.weights,data.weights);if(data.videos&&typeof data.videos==="object")ok=ok&&S.set(KEYS.videos,data.videos);if(data.carry)ok=ok&&S.set(KEYS.carry,data.carry);if(data.rest)ok=ok&&S.set(KEYS.rest,data.rest);if(data.analysisTs)ok=ok&&S.set(KEYS.analysisTs,data.analysisTs);if(!ok){alert("Storage error! Import failed. Please free up space on your device.");return}setPendingImport(null);setImportStatus("Imported! Reloading...");setTimeout(function(){window.location.reload()},1500)};
-var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Default Carry Type"),e("div",{style:{display:"flex",gap:6}},Object.keys(CARRY_TYPES).map(function(k){var v=CARRY_TYPES[k];return e("button",{key:k,onClick:function(){setCarryType(k)},style:{flex:1,padding:"10px 12px",borderRadius:10,fontSize:14,cursor:"pointer",fontWeight:carryType===k?600:400,background:carryType===k?"#292524":"transparent",border:"1px solid "+(carryType===k?"#57534E":"#44403C"),color:carryType===k?"#F5F5F4":"#78716C",textAlign:"center"}},v.label,e("span",{style:{display:"block",fontSize:11,color:"#78716C",marginTop:2}},v.desc))}))),e("div",{style:{marginTop:16,borderTop:"1px solid #292524",paddingTop:16}},
+var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),e("div",{style:{marginTop:16,borderTop:"1px solid #292524",paddingTop:16}},
 e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:10}},"Data Management"),
 e("div",{style:{display:"flex",gap:8,marginBottom:8}},
 e("button",{onClick:exportData,style:{flex:1,padding:"12px",background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:13,cursor:"pointer"}},"\u{1F4E5} Export Backup"),
@@ -538,7 +530,6 @@ var _lw=useState(function(){return S.get(KEYS.weights)||{}}),lastWeights=_lw[0],
 var _lg=useState(function(){return validateLogs(S.get(KEYS.logs))}),logs=_lg[0],setLogs=_lg[1];
 var _vu=useState(function(){return S.get(KEYS.videos)||{}}),videoUrls=_vu[0],setVideoUrls=_vu[1];
 var _ct=useState(function(){return S.get(KEYS.carry)||"suitcase"}),carryType=_ct[0],setCarryType=_ct[1];
-var _tm=useState(null),timer=_tm[0],setTimer=_tm[1];
 var _tk=useState(Date.now()),timerKey=_tk[0],setTimerKey=_tk[1];
 var _rd=useState(function(){return S.get(KEYS.rest)||90}),restDur=_rd[0],setRestDurState=_rd[1];
 var _st=useState(null),start=_st[0],setStart=_st[1];
@@ -564,7 +555,6 @@ var _cp=useState(false),copied=_cp[0],setCopied=_cp[1];
 var _df=useState(function(){return S.get(KEYS.draft)||null}),draftSession=_df[0],setDraftSession=_df[1];
 
 var setRestDur=function(v){setRestDurState(v);S.set(KEYS.rest,v)};
-var setCarryPref=function(v){setCarryType(v);S.set(KEYS.carry,v)};
 
 useEffect(function(){var today=getLocalDateKey();var ld=cycleState.lastDate;var ldKey=ld?(ld.length===10?ld:getLocalDateKey(new Date(ld))):null;if(ldKey&&ldKey!==today){var updated=Object.assign({},cycleState,{completedToday:[]});setCycleState(updated);S.set(KEYS.state,updated)}},[]);
 
@@ -617,7 +607,7 @@ setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 var exportBackup=function(){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur,analysisTs:S.get(KEYS.analysisTs)};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url)};
 var saveVid=function(exId,url){var u=Object.assign({},videoUrls);u[exId]=url;setVideoUrls(u);S.set(KEYS.videos,u)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setTimer(null);setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setCopied(false);setTimeAvail(25);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
+var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupPeek(null);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setCopied(false);setTimeAvail(25);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
@@ -682,7 +672,7 @@ Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];var avg=getAvgTime(k,log
 todayN===1&&CYCLE.indexOf((cycleState.completedToday||[])[0])!==-1&&e("div",{style:{marginTop:6,background:"#1C1917",border:"1px solid #44403C",borderRadius:10,padding:"8px 12px"}},e("div",{style:{fontSize:12,color:"#FBBF24",fontWeight:600}},"\u26a1 Double Day Available")))),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:0})},
 e("div",{style:{display:"grid",gridTemplateColumns:"1fr",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowHist(true)},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"📋 History"))),
-showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,carryType:carryType,setCarryType:setCarryPref,onClose:function(){setShowSettings(false)},onReset:clearAll,onExport:exportBackup,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
+showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,onClose:function(){setShowSettings(false)},onReset:clearAll,onExport:exportBackup,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
 }
 
 // ── Screen: History ──
@@ -871,7 +861,7 @@ e("div",{style:{display:"flex",gap:6}},warmupData&&e("button",{onClick:function(
 e("div",{style:{height:3,background:"#292524",borderRadius:2,marginTop:8,overflow:"hidden"}},e("div",{style:{height:"100%",width:(done/total*100)+"%",background:sess.color,transition:"width 0.3s"}}))),
 showWarmupRef&&warmupData&&e("div",{style:{padding:"8px 16px",background:"#1a1a14",borderBottom:"1px solid #3d3d00",flexShrink:0}},e("div",{style:{fontSize:12,fontWeight:600,color:"#FBBF24",marginBottom:6}},warmupData.icon+" "+warmupData.label),warmupData.steps.map(function(s,i){return e("div",{key:i,style:{fontSize:12,color:"#D4D4AA",lineHeight:1.5,marginBottom:3}},s)})),
 e("div",{style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScrolling:"touch"}},
-floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,floating:true,adaptiveLabel:adaptiveRestLabel,onDone:function(){setFloatTimer(null);setTimer(null);setAdaptiveRestLabel(null);
+floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,adaptiveLabel:adaptiveRestLabel,onDone:function(){setFloatTimer(null);setAdaptiveRestLabel(null);
 if(circuitMode){var sess2=SESSIONS[currentSession];var curIdx=sess2.exercises.findIndex(function(x){return x.id===floatTimer.exId});
 var nextEx=null;for(var ci=1;ci<=sess2.exercises.length;ci++){var ni=(curIdx+ci)%sess2.exercises.length;var nid=sess2.exercises[ni].id;var nsets=exData[nid]||[];if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
 if(nextEx)setTimeout(function(){setActiveEx(nextEx)},200)}}}),
@@ -883,12 +873,8 @@ var prog=getProgression(ex.id,logs,readiness,getSessionCount(logs));
 var ghost=getGhostSets(ex.id,logs);
 var sugLoad=getSuggestedLoad(ex.id,logs,readiness,getSessionCount(logs),carryWarn&&ex.isCarry);
 return e(ExerciseCard,{key:ex.id,exercise:ex,setData:exSets,lastWeight:lastWeights[ex.id]||0,
-showTimer:timer,timerKey:timerKey,restDuration:restDur,progression:prog,floatingTimer:!!floatTimer,
+progression:prog,
 ghostSets:ghost,carryAdvisory:carryWarn&&ex.isCarry,suggestedLoad:sugLoad,
-onTimerDone:function(){setTimer(null);setFloatTimer(null);setAdaptiveRestLabel(null);
-if(circuitMode){var curIdx=sess.exercises.findIndex(function(x){return x.id===ex.id});
-var nextEx=null;for(var ci=1;ci<=sess.exercises.length;ci++){var ni=(curIdx+ci)%sess.exercises.length;var nid=sess.exercises[ni].id;var nsets=exData[nid]||[];if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
-if(nextEx)setTimeout(function(){setActiveEx(nextEx)},200)}},
 carryType:carryType,onCarryTypeChange:changeCarry,videoUrls:videoUrls,onVideoSave:saveVid,
 isExpanded:isActive,onToggle:function(){setActiveEx(isActive?null:ex.id)},
 onUpdate:function(ns){var u=Object.assign({},exData);u[ex.id]=ns;setExData(u);
@@ -896,7 +882,7 @@ var old=exData[ex.id];
 var jd=ns.findIndex(function(s,i){return s.completed&&!(old&&old[i]&&old[i].completed)});
 var uncompletedOrEdited=old&&ns.some(function(s,i){return old[i]&&old[i].completed&&(s.completed!==old[i].completed||s.weight!==old[i].weight||s.reps!==old[i].reps)});
 if(jd!==-1||uncompletedOrEdited)S.set(KEYS.draft,{session:currentSession,exData:u,start:start,readiness:readiness,warmup:warmup,notes:notes,timeAvail:timeAvail,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()});
-if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());setTimer(ex.id+"-"+jd);setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur})}
+if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur})}
 var justDone=ns.every(function(s){return s.completed});
 if(justDone){var nextEx=null;for(var ni=0;ni<sess.exercises.length;ni++){var nid=sess.exercises[ni].id;var nsets=nid===ex.id?ns:(u[nid]||[]);if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
 if(nextEx)setTimeout(function(){setActiveEx(nextEx)},400)}}})})),
@@ -1008,7 +994,6 @@ e("button",{onClick:copySummary,style:{width:"100%",maxWidth:380,margin:"0 auto 
 // Periodic backup reminder
 showExportPrompt&&e("button",{onClick:exportBackup,style:{width:"100%",maxWidth:380,margin:"0 auto 10px",display:"block",padding:"12px",background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:13,fontWeight:500,cursor:"pointer"}},"\u{1F4E5} Export Backup"),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 20px 12px"})},
-e("div",{style:{fontSize:13,color:T.mut,textAlign:"center",marginBottom:10}},"Next: ",e("span",{style:{color:SESSIONS[next]?SESSIONS[next].color:T.mut,fontWeight:600}},SESSIONS[next]?SESSIONS[next].label:"")),
 e("button",{onClick:saveAndFinish,style:{width:"100%",padding:"14px",background:sess.color,border:"none",borderRadius:12,color:"#fff",fontSize:16,fontWeight:600,cursor:"pointer"}},"Save & Done")))
 }
 
