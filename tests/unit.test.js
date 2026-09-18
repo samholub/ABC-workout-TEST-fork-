@@ -78,6 +78,23 @@ t('getProgression: RPE above target holds the load', function () {
   ], READY, 10);
   A.strictEqual(p.type, 'maintain');
 });
+t('getProgression edge: a new weight hitting target on its own session does not progress', function () {
+  // A single session at 35 lbs meeting reps+RPE should not count toward the
+  // 2-session rule when the prior qualifying session was at 30 lbs.
+  var p = M.getProgression('row', [
+    log({ ago: 2, sets: [[35, 12, 7], [35, 12, 7]] }),
+    log({ ago: 5, sets: [[30, 12, 7], [30, 12, 7]] })
+  ], READY, 10);
+  A.ok(!p || p.type !== 'progress', 'expected no progression, got: ' + JSON.stringify(p));
+});
+t('getProgression edge: RPE-only exercises also require the same weight both sessions', function () {
+  // carry-a config: { top: 0, inc: 5, rpe: 7 }
+  var p = M.getProgression('carry-a', [
+    log({ ago: 2, id: 'carry-a', sets: [[40, 40, 7]] }),
+    log({ ago: 5, id: 'carry-a', sets: [[35, 40, 7]] })
+  ], READY, 10);
+  A.ok(!p || p.type !== 'progress', 'expected no progression, got: ' + JSON.stringify(p));
+});
 
 // --- getSuggestedLoad --------------------------------------------------
 t('getSuggestedLoad: follows the progression engine when it fires', function () {

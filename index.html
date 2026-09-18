@@ -62,7 +62,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",analysisTs:"wk-at",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=44;
+var APP_VERSION=45;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -227,7 +227,7 @@ var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
 if(rdScore<=4)return{type:"maintain",msg:"Readiness \u22644/9 \u2014 maintain current load"};
 var phase=getPeriodPhase(sessionCount||0);
 if(cfg.top>0){
-if(h0.reps>=cfg.top&&h1.reps>=cfg.top&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe){
+if(h0.reps>=cfg.top&&h1.reps>=cfg.top&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight){
 var msg="2 sessions at target reps + RPE \u2192 "+(h0.weight+cfg.inc)+" lbs";
 if(phase.phase==="early")msg="Reps and RPE on track \u2192 try "+(h0.weight+cfg.inc)+" lbs";
 if(phase.phase==="experienced")msg="Progression criteria met \u2192 "+(h0.weight+cfg.inc)+" lbs";
@@ -235,7 +235,7 @@ return{type:"progress",msg:msg,weight:h0.weight+cfg.inc}}
 if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
 if(h0.reps<h1.reps&&h0.weight===h1.weight)return{type:"caution",msg:"Reps dropped at same weight \u2014 check form"};
 }else{
-if(h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe)
+if(h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight)
 return{type:"progress",msg:"2 sessions at target RPE \u2192 "+(h0.weight+cfg.inc)+" lbs",weight:h0.weight+cfg.inc};
 if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
 }return null}
