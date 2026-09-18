@@ -45,12 +45,15 @@ test('a session survives backing out and resuming', async function ({ page }) {
   var reps = numbers.nth(1);
   await weight.fill('35');
   await reps.fill('9');
+  // Tapping an RPE chip logs the set with the values it holds (row 31).
   await page.getByRole('button', { name: '8', exact: true }).first().click(); // RPE 8
-
-  // Tap the set-1 check circle. It reads "1" until completed, then a check.
-  var setCheck = page.locator('div').filter({ hasText: /^1$/ }).last();
-  await setCheck.click();
   await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
+
+  // The check circle still logs a set without an RPE. It reads "2" until
+  // completed, then a check.
+  var setCheck = page.locator('div').filter({ hasText: /^2$/ }).last();
+  await setCheck.click();
+  await expect(page.getByText('2/9 sets', { exact: true })).toBeVisible();
 
   // Let the draft autosave tick pick the set up.
   await page.waitForTimeout(DRAFT_TICK_MS + 1000);
@@ -66,7 +69,7 @@ test('a session survives backing out and resuming', async function ({ page }) {
 
   // --- resume ------------------------------------------------------------
   await page.getByRole('button', { name: 'Resume' }).click();
-  await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
+  await expect(page.getByText('2/9 sets', { exact: true })).toBeVisible();
 
   var resumedWeight = page.locator('input[type="number"]').nth(0);
   await expect(resumedWeight, 'the logged set survives the round trip')
