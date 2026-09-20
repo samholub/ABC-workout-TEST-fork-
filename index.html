@@ -62,7 +62,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=56;
+var APP_VERSION=57;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -98,26 +98,19 @@ scrollBodyPx:{flex:1,overflowY:"auto",padding:"0 14px",display:"flex",flexDirect
 footerBar:{flexShrink:0,background:T.bg,borderTop:"1px solid "+T.inp,padding:"12px 14px 12px"},
 footerBtnRow:{display:"flex",gap:8},
 card:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,padding:"12px 14px"},
-cardRound:{background:T.card,border:"1px solid "+T.inp,borderRadius:14,padding:"14px 16px"},
 warnBanner:{background:"#1a1a0a",border:"1px solid #854d0e44",borderRadius:10,padding:"10px 14px",marginBottom:10},
 warnBannerCompact:{background:"#1a1a0a",border:"1px solid #854d0e44",borderRadius:10,padding:"8px 14px"},
 closeBtn:{background:T.inp,border:"none",borderRadius:8,color:T.sec,padding:"6px 12px",fontSize:13,cursor:"pointer"},
 sectionLabel:{fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1.5,fontWeight:600},
 sessionLabel:{fontSize:13,textTransform:"uppercase",letterSpacing:2,fontWeight:700},
-screenTitle:{fontSize:24,fontWeight:700,color:T.hi,marginTop:4},
 numInput:{background:T.inp,border:"1px solid "+T.brd,borderRadius:6,color:T.hi,padding:8,fontSize:16,textAlign:"center",outline:"none",fontFamily:MONO},
 setCheck:{width:44,height:44,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,flexShrink:0,cursor:"pointer"},
 timerBtn:{minHeight:44,padding:"10px 16px",borderRadius:10,fontSize:14,cursor:"pointer"},
 modalBackdrop:{position:"absolute",inset:0,background:"#000000aa"},
-modalBackdropDark:{position:"absolute",inset:0,background:"#000000dd"},
 sheetOverlay:{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"},
 sheetBody:{position:"relative",width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto",background:T.card,borderRadius:"16px 16px 0 0",padding:"20px 16px calc(20px + env(safe-area-inset-bottom,0px))",border:"1px solid "+T.inp,borderBottom:"none"},
 dialogOverlay:{position:"fixed",inset:0,zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:20},
-dialogBox:{position:"relative",width:"100%",maxWidth:340,background:T.card,borderRadius:16,padding:"24px 20px",border:"1px solid "+T.inp},
-checkCircle:{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0},
-primaryBtn:{border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",padding:16},
-secondaryBtn:{border:"1px solid "+T.brd,borderRadius:14,color:T.txt,fontSize:14,fontWeight:600,cursor:"pointer",padding:16,background:T.inp},
-pillBadge:{fontSize:9,borderRadius:4,padding:"2px 6px",fontWeight:700}
+dialogBox:{position:"relative",width:"100%",maxWidth:340,background:T.card,borderRadius:16,padding:"24px 20px",border:"1px solid "+T.inp}
 };
 
 // ========================================================================
