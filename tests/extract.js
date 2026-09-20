@@ -81,6 +81,36 @@ function buildPureModule() {
   ].join('\n');
 }
 
+// Reduce source text to what can change behaviour: lines that are wholly a
+// comment (`//`, `/* */`, `<!-- -->`, including multi-line blocks) and blank
+// lines are dropped, and each remaining line is trimmed. A line carrying code
+// plus a trailing comment is kept as is, so editing it counts as a change.
+function stripNonCode(text) {
+  var out = [];
+  var close = null; // terminator of the block comment we are inside
+  text.split(/\r?\n/).forEach(function (raw) {
+    var line = raw.trim();
+    if (close) {
+      var at = line.indexOf(close);
+      if (at === -1) return;
+      line = line.slice(at + close.length).trim();
+      close = null;
+    }
+    while (line) {
+      var end = null;
+      if (line.indexOf('/*') === 0) end = '*/';
+      else if (line.indexOf('<!--') === 0) end = '-->';
+      if (!end) break;
+      var e = line.indexOf(end, end === '*/' ? 2 : 4);
+      if (e === -1) { close = end; line = ''; break; }
+      line = line.slice(e + end.length).trim();
+    }
+    if (!line || line.indexOf('//') === 0) return;
+    out.push(line);
+  });
+  return out.join('\n');
+}
+
 function tmpFile(name, contents) {
   var dir = fs.mkdtempSync(path.join(os.tmpdir(), 'abc-harness-'));
   var p = path.join(dir, name);
@@ -94,5 +124,6 @@ module.exports = {
   inlineScript: inlineScript,
   sliceBetween: sliceBetween,
   buildPureModule: buildPureModule,
+  stripNonCode: stripNonCode,
   tmpFile: tmpFile
 };

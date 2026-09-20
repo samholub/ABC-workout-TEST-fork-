@@ -210,6 +210,19 @@ t('nextCycleState: TGU then A on one day is not a double day', function () {
   A.strictEqual(M.nextCycleState(s, 'B', '2026-09-16').isDoubleDay, true);
 });
 
+// --- stripNonCode (gate's comment-only check) ---------------------------
+t('stripNonCode: comment-only and whitespace-only edits compare equal', function () {
+  var base = 'var a=1;\nfunction f(){\n  return a;\n}\n';
+  var edited = '// new note\nvar a=1;\n\n/* block\n   note */\n<!-- html -->\nfunction f(){\n      return a;   \n}\n';
+  A.strictEqual(ex.stripNonCode(edited), ex.stripNonCode(base));
+});
+t('stripNonCode: a code change, or a trailing-comment line edit, still differs', function () {
+  var base = 'var a=1;\nvar u="http://x";\n';
+  A.notStrictEqual(ex.stripNonCode('var a=2;\nvar u="http://x";\n'), ex.stripNonCode(base));
+  A.notStrictEqual(ex.stripNonCode('var a=1;\nvar u="http://y";\n'), ex.stripNonCode(base));
+  A.notStrictEqual(ex.stripNonCode('var a=1; // x\nvar u="http://x";\n'), ex.stripNonCode(base));
+});
+
 // --- summary -----------------------------------------------------------
 console.log('');
 if (failed.length) {
