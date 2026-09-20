@@ -92,7 +92,9 @@ FILES.forEach(function (f) {
   }
   // git hands back LF; the working copy may be CRLF under autocrlf.
   var lf = function (s) { return s.replace(/\r\n/g, '\n'); };
-  if (prevIndex !== null && lf(prevIndex) !== lf(indexSrc)) {
+  // A change to comment lines or whitespace alone needs no bump.
+  var code = function (s) { return ex.stripNonCode(lf(s)); };
+  if (prevIndex !== null && code(prevIndex) !== code(indexSrc)) {
     var prevVM = prevIndex.match(/var APP_VERSION\s*=\s*(\d+)/);
     if (prevVM && prevVM[1] === vIndex) {
       failures.push('index.html changed but APP_VERSION was not bumped (still v' + vIndex + ')');
