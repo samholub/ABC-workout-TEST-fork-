@@ -38,7 +38,8 @@ function sliceBetween(text, from, to, label) {
   return lines.slice(a, b).join('\n');
 }
 
-// Build a CommonJS module out of sections 4 and 5 of the inline script.
+// Build a CommonJS module out of sections 4 and 5 of the inline script, plus
+// the recommendation and debrief lines sliced out of App (appSlices).
 //
 // Sections 4 and 5 are pure functions, but they close over four config values
 // that live at the end of section 3 (PROG, EX_GROUP, EX_GROUP_NAMES and
@@ -49,8 +50,57 @@ var EXPORTS = [
   // supporting functions the fixtures lean on
   'getWorkingWeight', 'getPeriodPhase', 'getSessionCount',
   'computeNextSession', 'nextCycleState',
-  'countTrainingToday'
+  'countTrainingToday', 'getBalanceAdvisory',
+  // section 3 config the spine fixtures read
+  'SESSIONS', 'FEEL', 'getLocalDateKey',
+  // section 9 slices, wrapped below (see appSlices)
+  'recFor', 'debriefFor'
 ];
+
+// The first line of `text` matching `re`, verbatim.
+function lineMatching(text, re, label) {
+  var line = text.split(/\r?\n/).find(function (l) { return re.test(l); });
+  if (line === undefined) throw new Error('line for ' + label + ' not found: ' + re);
+  return line;
+}
+
+// Lines from the one after `after` through the first later line matching
+// `through`, inclusive.
+function sliceAfterThrough(text, after, through, label) {
+  var lines = text.split(/\r?\n/);
+  var a = lines.findIndex(function (l) { return after.test(l); });
+  if (a === -1) throw new Error('start marker for ' + label + ' not found: ' + after);
+  var b = lines.findIndex(function (l, i) { return i > a && through.test(l); });
+  if (b === -1) throw new Error('end marker for ' + label + ' not found: ' + through);
+  return lines.slice(a + 1, b + 1).join('\n');
+}
+
+// The recommendation and the debrief live inside App (section 9) as closures
+// over its state. Their lines are copied verbatim into two wrapper functions
+// that take that state as arguments, so the fixtures run the shipped code.
+//   recFor(cycleState) -> { rec, reason }                   getRec, getRecReason
+//   debriefFor(o)      -> { next, debrief, pendingState }   renderSessionComplete
+//                         up to its "Next:" line, with buildSessionLog
+function appSlices(script) {
+  var getRec = lineMatching(script, /^var getRec=useCallback\(/, 'getRec');
+  var reason = sliceBetween(script, /^var getRecReason=function\(\)\{/,
+    /^var startSession=function/, 'getRecReason');
+  var buildLog = lineMatching(script, /^var buildSessionLog=function/, 'buildSessionLog');
+  var debrief = sliceAfterThrough(script, /^function renderSessionComplete\(\)\{/,
+    /^debrief\.push\("Next: "/, 'debrief');
+  return [
+    'function recFor(cycleState){',
+    'var useCallback=function(f){return f};',
+    getRec, reason,
+    'return {rec:getRec(),reason:getRecReason()}}',
+    'function debriefFor(o){',
+    'var currentSession=o.session,cycleState=o.cycleState,exData=o.exData,logs=o.logs,',
+    'readiness=o.readiness||null,sessionCount=o.sessionCount||0,start=Date.now(),',
+    'warmup=null,notes={notes:""},sessionRPE=0;',
+    buildLog, debrief,
+    'return {next:next,debrief:debrief,pendingState:pendingState}}'
+  ].join('\n');
+}
 
 function buildPureModule() {
   var script = inlineScript(readIndex(), 2);
@@ -69,12 +119,18 @@ function buildPureModule() {
     return /^var CYCLE=/.test(l);
   });
   var body = sliceBetween(script, /^\/\/ 4\./, /^\/\/ 6\./, 'sections 4-5');
+  // getBalanceAdvisory and the debrief read SESSIONS, the fixtures read FEEL,
+  // and the debrief reads getLocalDateKey (section 1).
   return [
     '"use strict";',
     config,
     gidLine,
     cycleLine,
+    lineMatching(script, /^var SESSIONS=/, 'SESSIONS'),
+    lineMatching(script, /^var FEEL=/, 'FEEL'),
+    lineMatching(script, /^function getLocalDateKey\(/, 'getLocalDateKey'),
     body,
+    appSlices(script),
     'module.exports = {' + EXPORTS.map(function (n) {
       return n + ': ' + n;
     }).join(', ') + '};'
