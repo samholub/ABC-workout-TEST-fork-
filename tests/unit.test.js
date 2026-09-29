@@ -276,6 +276,12 @@ t('spine cycle: Modified C then A continues the rotation at B', function () {
   A.deepStrictEqual(s.completedToday, ['A']);
   A.strictEqual(M.computeNextSession(s), 'B');
 });
+t('spine cycle: Modified C then A on the same day is not a double day', function () {
+  var s = M.nextCycleState({ lastSession: 'B', lastDate: '2026-09-07', isDoubleDay: true, completedToday: ['A', 'B'] }, 'modC', '2026-09-08');
+  s = M.nextCycleState(s, 'A', '2026-09-08');
+  A.strictEqual(s.isDoubleDay, false);
+  A.strictEqual(M.computeNextSession(s), 'B');
+});
 t('spine cycle: day rollover drops yesterday\'s sessions but keeps the rotation', function () {
   var s = M.nextCycleState({ lastSession: null, lastDate: null, completedToday: [] }, 'A', '2026-09-07');
   s = M.nextCycleState(s, 'B', '2026-09-08');

@@ -62,7 +62,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=57;
+var APP_VERSION=58;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -197,7 +197,7 @@ function computeNextSession(state){var ls=state.lastSession;if(state.isDoubleDay
 // `today`. A completedToday from an earlier day is dropped here, so
 // isDoubleDay expires on the first save after the day rolls over even if the
 // mount-time rollover effect has not run.
-function nextCycleState(state,session,today){var ld=state.lastDate;var prev=ld&&ld.length===10&&ld!==today?[]:(state.completedToday||[]);var ct=prev.concat([session]);return{lastSession:session,lastDate:today,isDoubleDay:countTrainingToday(ct)>=2&&CYCLE.indexOf(session)!==-1,completedToday:ct,preTgu:session==="TGU"?(state.preTgu||computeNextSession(state)):undefined}}
+function nextCycleState(state,session,today){var ld=state.lastDate;var prev=ld&&ld.length===10&&ld!==today?[]:(state.completedToday||[]);var ct=prev.concat([session]);return{lastSession:session,lastDate:today,isDoubleDay:ct.filter(function(x){return CYCLE.indexOf(x)!==-1}).length>=2&&CYCLE.indexOf(session)!==-1,completedToday:ct,preTgu:session==="TGU"?(state.preTgu||computeNextSession(state)):undefined}}
 
 // Session count and training focus — based on sessions logged, not calendar
 function getSessionCount(logs){var c=0;for(var i=0;i<logs.length;i++){if(!logs[i].manual)c++}return c}
