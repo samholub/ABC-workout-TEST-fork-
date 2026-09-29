@@ -497,6 +497,12 @@ t('spine debrief: an RPE 10 grind today holds, though history alone said +5', fu
     sets: { 'sldl-b': x3(40, 8, 8), row: x3(30, 12, 10), 'carry-b': x3(35, 40, 7) } });
   A.strictEqual(line(d, 'Single-Arm Rows'), 'Single-Arm Rows: hold at 30');
 });
+t('spine debrief: hold at is the working weight, not one heavy outlier set', function () {
+  var logs = [sess(1, 'B', { row: x3(30, 8, 8) })];
+  var d = debrief({ session: 'B', logs: logs, state: { lastSession: 'A', lastDate: '2026-09-26', completedToday: [] },
+    sets: { 'sldl-b': x3(40, 8, 8), row: [[30, 10, 8], [30, 10, 8], [35, 6, 9]], 'carry-b': x3(35, 40, 7) } });
+  A.strictEqual(line(d, 'Single-Arm Rows'), 'Single-Arm Rows: hold at 30');
+});
 t('spine debrief: reps falling today at the same weight is flagged', function () {
   var d = debrief({ session: 'B', state: { lastSession: 'A', lastDate: '2026-09-26', completedToday: [] },
     sets: { 'sldl-b': x3(40, 6, 8), row: x3(30, 12, 8), 'carry-b': x3(35, 40, 7) } });
