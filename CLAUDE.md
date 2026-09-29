@@ -103,6 +103,7 @@ saying what changed and how to verify it on a phone:
    free of DOM and React references.
 6. **Preserve newest-first log ordering** in anything that writes `KEYS.logs`.
 7. When a change touches a data-loss token, say so in the commit body.
+8. The spine — `nextCycleState`/`computeNextSession`, `getRec`/`getRecReason`, `getProgression`, `getFatigueTrend` and the debrief's Next and load advice — has fixtures in `tests/unit.test.js`; any change to them must keep or extend those fixtures.
 
 ## Decision block
 
