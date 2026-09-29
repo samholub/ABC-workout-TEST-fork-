@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=61;
+var APP_VERSION=62;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -265,7 +265,7 @@ function getExHistory(exId,logs){
 var groupIds=getGroupIds(exId);
 var pts=[];for(var i=logs.length-1;i>=0;i--){var l=logs[i];if(!l.exercises)continue;
 var ex=l.exercises.find(function(x){return groupIds.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});
-if(ex){var mw=Math.max.apply(null,ex.sets.map(function(s){return s.weight||0}));
+if(ex){var mw=getWorkingWeight(ex.sets);
 var mr=Math.max.apply(null,ex.sets.map(function(s){return s.reps||0}));
 var rpes=ex.sets.filter(function(s){return s.rpe>0});var ar=rpes.length?Math.round(rpes.reduce(function(a,s){return a+s.rpe},0)/rpes.length):0;
 pts.push({date:l.date,weight:mw,reps:mr,rpe:ar})}}return pts.slice(-12)}
@@ -614,7 +614,7 @@ var sess=SESSIONS[currentSession];
 var totalDone=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(function(s){if(s.completed)totalDone++})});
 if(totalDone===0){if(window.confirm("No sets completed. Discard this session?")){clearDraft();home()}return}
 var nw=Object.assign({},lastWeights);
-sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
+sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var ww=getWorkingWeight(sets.filter(function(s){return s.completed}));if(ww)nw[ex.id]=ww});
 var log=buildSessionLog();
 var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
 var ns=nextCycleState(cycleState,currentSession,getLocalDateKey());

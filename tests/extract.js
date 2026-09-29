@@ -48,7 +48,7 @@ function sliceBetween(text, from, to, label) {
 var EXPORTS = [
   'getProgression', 'getSuggestedLoad', 'getFatigueTrend',
   // supporting functions the fixtures lean on
-  'getWorkingWeight', 'getPeriodPhase', 'getSessionCount',
+  'getWorkingWeight', 'getExHistory', 'getPeriodPhase', 'getSessionCount',
   'computeNextSession', 'nextCycleState',
   'countTrainingToday', 'getBalanceAdvisory',
   // section 3 config the spine fixtures read

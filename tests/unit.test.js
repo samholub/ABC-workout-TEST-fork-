@@ -520,6 +520,10 @@ t('spine debrief: the +5 it promises is the load the next Game Plan prefills', f
   A.strictEqual(M.getSuggestedLoad('bss-c', saved, null, 7, false).weight, 35);
   A.ok(/start at 35/.test(line(d, 'Bulgarian Split Squats')));
 });
+t('history chart: a session point is the working weight, not the heaviest set', function () {
+  var pts = M.getExHistory('row', [log({ ago: 1, id: 'row', sets: [[30, 10, 8], [30, 10, 8], [35, 6, 9]] })]);
+  A.strictEqual(pts[pts.length - 1].weight, 30);
+});
 
 // --- summary -----------------------------------------------------------
 console.log('');
