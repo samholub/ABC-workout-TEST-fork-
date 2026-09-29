@@ -92,7 +92,34 @@ FILES.forEach(function (f) {
   }
   // git hands back LF; the working copy may be CRLF under autocrlf.
   var lf = function (s) { return s.replace(/\r\n/g, '\n'); };
-  if (prevIndex !== null && lf(prevIndex) !== lf(indexSrc)) {
+  // What counts as a change: whole-line comments (// , /* */ , <!-- -->),
+  // blank lines and leading/trailing whitespace do not.
+  var codeOnly = function (s) {
+    return lf(s)
+      .replace(/^[ \t]*\/\*[\s\S]*?\*\/[ \t]*$/gm, '')
+      .replace(/^[ \t]*<!--[\s\S]*?-->[ \t]*$/gm, '')
+      .split('\n')
+      .map(function (l) { return l.trim(); })
+      .filter(function (l) { return l !== '' && l.slice(0, 2) !== '//'; })
+      .join('\n');
+  };
+  // Fixtures for codeOnly: comment/whitespace edits are equal, code edits are not.
+  var fixBase = 'var a = 1;\nvar u = "http://x";\n';
+  var fixCases = [
+    ['comment line added', fixBase + '// note\n', true],
+    ['block comment added', '/* a\n b */\n' + fixBase, true],
+    ['html comment added', fixBase + '<!-- hi -->\n', true],
+    ['blank line and indent', '\n  ' + fixBase.replace('\n', '  \n'), true],
+    ['code changed', fixBase.replace('1', '2'), false],
+    ['comment turned into code', fixBase + 'x();\n', false],
+    ['url in string edited', fixBase.replace('http://x', 'http://y'), false]
+  ];
+  fixCases.forEach(function (c) {
+    if ((codeOnly(fixBase) === codeOnly(c[1])) !== c[2]) {
+      failures.push('gate fixture failed (codeOnly): ' + c[0]);
+    }
+  });
+  if (prevIndex !== null && codeOnly(prevIndex) !== codeOnly(indexSrc)) {
     var prevVM = prevIndex.match(/var APP_VERSION\s*=\s*(\d+)/);
     if (prevVM && prevVM[1] === vIndex) {
       failures.push('index.html changed but APP_VERSION was not bumped (still v' + vIndex + ')');

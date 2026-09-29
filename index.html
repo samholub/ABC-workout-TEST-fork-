@@ -25,6 +25,7 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
 input[type="number"]{-moz-appearance:textfield}
 input[type="range"]{width:100%;accent-color:#F59E0B}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes flash{0%,100%{background-color:#065F46}50%{background-color:#10B981}}
 </style>
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8"></script>
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh"></script>
@@ -62,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=60;
+var APP_VERSION=63;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -98,26 +99,19 @@ scrollBodyPx:{flex:1,overflowY:"auto",padding:"0 14px",display:"flex",flexDirect
 footerBar:{flexShrink:0,background:T.bg,borderTop:"1px solid "+T.inp,padding:"12px 14px 12px"},
 footerBtnRow:{display:"flex",gap:8},
 card:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,padding:"12px 14px"},
-cardRound:{background:T.card,border:"1px solid "+T.inp,borderRadius:14,padding:"14px 16px"},
 warnBanner:{background:"#1a1a0a",border:"1px solid #854d0e44",borderRadius:10,padding:"10px 14px",marginBottom:10},
 warnBannerCompact:{background:"#1a1a0a",border:"1px solid #854d0e44",borderRadius:10,padding:"8px 14px"},
 closeBtn:{background:T.inp,border:"none",borderRadius:8,color:T.sec,padding:"6px 12px",fontSize:13,cursor:"pointer"},
 sectionLabel:{fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1.5,fontWeight:600},
 sessionLabel:{fontSize:13,textTransform:"uppercase",letterSpacing:2,fontWeight:700},
-screenTitle:{fontSize:24,fontWeight:700,color:T.hi,marginTop:4},
 numInput:{background:T.inp,border:"1px solid "+T.brd,borderRadius:6,color:T.hi,padding:8,fontSize:16,textAlign:"center",outline:"none",fontFamily:MONO},
 setCheck:{width:44,height:44,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,flexShrink:0,cursor:"pointer"},
 timerBtn:{minHeight:44,padding:"10px 16px",borderRadius:10,fontSize:14,cursor:"pointer"},
 modalBackdrop:{position:"absolute",inset:0,background:"#000000aa"},
-modalBackdropDark:{position:"absolute",inset:0,background:"#000000dd"},
 sheetOverlay:{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"},
 sheetBody:{position:"relative",width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto",background:T.card,borderRadius:"16px 16px 0 0",padding:"20px 16px calc(20px + env(safe-area-inset-bottom,0px))",border:"1px solid "+T.inp,borderBottom:"none"},
 dialogOverlay:{position:"fixed",inset:0,zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:20},
-dialogBox:{position:"relative",width:"100%",maxWidth:340,background:T.card,borderRadius:16,padding:"24px 20px",border:"1px solid "+T.inp},
-checkCircle:{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0},
-primaryBtn:{border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",padding:16},
-secondaryBtn:{border:"1px solid "+T.brd,borderRadius:14,color:T.txt,fontSize:14,fontWeight:600,cursor:"pointer",padding:16,background:T.inp},
-pillBadge:{fontSize:9,borderRadius:4,padding:"2px 6px",fontWeight:700}
+dialogBox:{position:"relative",width:"100%",maxWidth:340,background:T.card,borderRadius:16,padding:"24px 20px",border:"1px solid "+T.inp}
 };
 
 // ========================================================================
@@ -264,7 +258,7 @@ function getExHistory(exId,logs){
 var groupIds=getGroupIds(exId);
 var pts=[];for(var i=logs.length-1;i>=0;i--){var l=logs[i];if(!l.exercises)continue;
 var ex=l.exercises.find(function(x){return groupIds.indexOf(x.id)!==-1&&x.sets&&x.sets.length>0});
-if(ex){var mw=Math.max.apply(null,ex.sets.map(function(s){return s.weight||0}));
+if(ex){var mw=getWorkingWeight(ex.sets);
 var mr=Math.max.apply(null,ex.sets.map(function(s){return s.reps||0}));
 var rpes=ex.sets.filter(function(s){return s.rpe>0});var ar=rpes.length?Math.round(rpes.reduce(function(a,s){return a+s.rpe},0)/rpes.length):0;
 pts.push({date:l.date,weight:mw,reps:mr,rpe:ar})}}return pts.slice(-12)}
@@ -399,9 +393,9 @@ document.addEventListener("visibilitychange",tick);
 return function(){clearInterval(ref.current);document.removeEventListener("visibilitychange",tick)}
 },[]);
 var pct=((duration-rem)/duration)*100;var m=Math.floor(rem/60),s=rem%60;
-return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 12px #0008"}},
+return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 12px #0008",animation:rem===0?"flash 0.6s 2":"none"}},
 e("div",{style:{flex:1,display:"flex",alignItems:"center",gap:10}},
-e("div",{style:{fontFamily:MONO,fontSize:24,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),
+e("div",{style:{fontFamily:MONO,fontSize:24,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL,animation:rem===0?"pulse 1s infinite":"none"}},m+":"+s.toString().padStart(2,"0")),
 adaptiveLabel&&e("div",{style:{fontSize:10,color:T.mut,marginTop:1}},adaptiveLabel),
 e("div",{style:{flex:1,height:3,background:T.inp,borderRadius:2,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:5}},
@@ -613,7 +607,7 @@ var sess=SESSIONS[currentSession];
 var totalDone=0;sess.exercises.forEach(function(ex){(exData[ex.id]||[]).forEach(function(s){if(s.completed)totalDone++})});
 if(totalDone===0){if(window.confirm("No sets completed. Discard this session?")){clearDraft();home()}return}
 var nw=Object.assign({},lastWeights);
-sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var last=sets.slice().reverse().find(function(s){return s.completed&&s.weight>0});if(last)nw[ex.id]=last.weight});
+sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var ww=getWorkingWeight(sets.filter(function(s){return s.completed}));if(ww)nw[ex.id]=ww});
 var log=buildSessionLog();
 var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
 var ns=nextCycleState(cycleState,currentSession,getLocalDateKey());
