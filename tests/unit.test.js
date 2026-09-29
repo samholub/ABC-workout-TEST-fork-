@@ -210,6 +210,300 @@ t('nextCycleState: TGU then A on one day is not a double day', function () {
   A.strictEqual(M.nextCycleState(s, 'B', '2026-09-16').isDoubleDay, true);
 });
 
+// === Spine: cycle state -> recommendation -> progression -> debrief =====
+// Every serious bug the reviews found sat on this chain. The fixtures below
+// run against a small seeded history and against getRec, getRecReason and the
+// debrief lines sliced verbatim out of App (extract.js appSlices).
+
+var TODAY = M.getLocalDateKey();
+var FEEL = {};
+M.FEEL.forEach(function (f) { FEEL[f.key] = f.rd; });
+
+// One session log with several exercises: { exId: [[w, reps, rpe], ...] }.
+function sess(ago, key, exs, extra) {
+  var l = {
+    date: daysAgo(ago), session: key,
+    exercises: Object.keys(exs).map(function (id) {
+      return { id: id, sets: exs[id].map(function (s) {
+        return { weight: s[0], reps: s[1], rpe: s[2], completed: true };
+      }) };
+    })
+  };
+  return Object.assign(l, extra || {});
+}
+function x3(w, reps, rpe) { return [[w, reps, rpe], [w, reps, rpe], [w, reps, rpe]]; }
+
+// Seeded history, newest first: a normal A -> B -> C run ending in C, with
+// row and BSS each at a working weight they have held for two sessions.
+var SEED = [
+  sess(2, 'C', { 'bss-c': x3(30, 10, 8), 'pullup': x3(0, 6, 9), 'sldl-c': x3(40, 9, 8) }),
+  sess(4, 'B', { 'sldl-b': x3(40, 8, 8), 'row': x3(30, 12, 8), 'carry-b': x3(35, 40, 7) }),
+  sess(6, 'A', { 'bss-a': x3(25, 10, 7), 'pushup': x3(0, 12, 7), 'carry-a': x3(35, 40, 7) }),
+  sess(9, 'C', { 'bss-c': x3(25, 10, 8), 'pullup': x3(0, 5, 9), 'sldl-c': x3(35, 10, 7) }),
+  sess(11, 'B', { 'sldl-b': x3(35, 10, 7), 'row': x3(30, 12, 7), 'carry-b': x3(30, 40, 7) }),
+  sess(13, 'A', { 'bss-a': x3(25, 10, 7), 'pushup': x3(0, 10, 7), 'carry-a': x3(30, 40, 7) })
+];
+
+// --- cycle state: nextCycleState / computeNextSession ------------------
+t('spine cycle: a walk through A, B, C, a double day, TGU and Modified C', function () {
+  var steps = [
+    ['2026-09-01', 'A', 'B'], ['2026-09-03', 'B', 'C'], ['2026-09-05', 'C', 'A'],
+    ['2026-09-07', 'A', 'B'], ['2026-09-07', 'B', 'modC'],
+    ['2026-09-08', 'TGU', 'modC'], ['2026-09-09', 'modC', 'A'], ['2026-09-11', 'A', 'B']
+  ];
+  var s = { lastSession: null, lastDate: null, isDoubleDay: false, completedToday: [] };
+  A.strictEqual(M.computeNextSession(s), 'A');
+  steps.forEach(function (st) {
+    s = M.nextCycleState(s, st[1], st[0]);
+    A.strictEqual(M.computeNextSession(s), st[2], 'after ' + st[1] + ' on ' + st[0]);
+  });
+});
+t('spine cycle: a TGU on the double day itself keeps Modified C owed', function () {
+  var s = M.nextCycleState({ lastSession: 'C', lastDate: '2026-09-06', completedToday: ['C'] }, 'A', '2026-09-07');
+  s = M.nextCycleState(s, 'B', '2026-09-07');
+  s = M.nextCycleState(s, 'TGU', '2026-09-07');
+  A.strictEqual(s.preTgu, 'modC');
+  A.strictEqual(M.computeNextSession(s), 'modC');
+  s = M.nextCycleState(s, 'modC', '2026-09-08');
+  A.strictEqual(s.isDoubleDay, false);
+  A.strictEqual(M.computeNextSession(s), 'A');
+});
+t('spine cycle: Modified C then A continues the rotation at B', function () {
+  var s = M.nextCycleState({ lastSession: 'B', lastDate: '2026-09-07', isDoubleDay: true, completedToday: ['A', 'B'] }, 'modC', '2026-09-08');
+  A.strictEqual(M.computeNextSession(s), 'A');
+  s = M.nextCycleState(s, 'A', '2026-09-10');
+  A.strictEqual(s.isDoubleDay, false);
+  A.deepStrictEqual(s.completedToday, ['A']);
+  A.strictEqual(M.computeNextSession(s), 'B');
+});
+t('spine cycle: day rollover drops yesterday\'s sessions but keeps the rotation', function () {
+  var s = M.nextCycleState({ lastSession: null, lastDate: null, completedToday: [] }, 'A', '2026-09-07');
+  s = M.nextCycleState(s, 'B', '2026-09-08');
+  A.strictEqual(s.isDoubleDay, false, 'A yesterday and B today is not a double day');
+  A.deepStrictEqual(s.completedToday, ['B']);
+  A.strictEqual(s.lastDate, '2026-09-08');
+  A.strictEqual(M.computeNextSession(s), 'C');
+  // Days off never reset the cycle.
+  s = M.nextCycleState(s, 'C', '2026-09-20');
+  A.strictEqual(M.computeNextSession(s), 'A');
+});
+
+// --- getRec / getRecReason ---------------------------------------------
+t('spine rec: no history recommends A as the first session', function () {
+  A.deepStrictEqual(M.recFor({ lastSession: null, completedToday: [] }),
+    { rec: 'A', reason: 'First session → starting with A' });
+});
+t('spine rec: after A, B or C the next in the rotation, naming the last one', function () {
+  [['A', 'B'], ['B', 'C'], ['C', 'A']].forEach(function (p) {
+    A.deepStrictEqual(M.recFor({ lastSession: p[0], completedToday: [] }),
+      { rec: p[1], reason: 'Last completed: Session ' + p[0] });
+  });
+});
+t('spine rec: after Modified C the cycle restarts at A', function () {
+  A.deepStrictEqual(M.recFor({ lastSession: 'modC', completedToday: [] }),
+    { rec: 'A', reason: 'Last was Modified C → restarting cycle at A' });
+});
+t('spine rec: after TGU the cycle resumes where it was, or resets to A', function () {
+  A.deepStrictEqual(M.recFor({ lastSession: 'TGU', preTgu: 'C', completedToday: [] }),
+    { rec: 'C', reason: 'Last was TGU → resuming cycle' });
+  A.deepStrictEqual(M.recFor({ lastSession: 'TGU', preTgu: 'modC', completedToday: [] }),
+    { rec: 'modC', reason: 'Last was TGU → resuming cycle' });
+  A.deepStrictEqual(M.recFor({ lastSession: 'TGU', completedToday: [] }),
+    { rec: 'A', reason: 'Cycle reset to A' });
+});
+t('spine rec: a double day recommends Modified C, the same day and the next', function () {
+  A.deepStrictEqual(M.recFor({ lastSession: 'B', isDoubleDay: true, completedToday: ['A', 'B'] }),
+    { rec: 'modC', reason: 'Double day → Modified C' });
+  A.deepStrictEqual(M.recFor({ lastSession: 'B', isDoubleDay: true, completedToday: [] }),
+    { rec: 'modC', reason: 'Double day → Modified C' });
+});
+t('spine rec: an unrecognised last session resets to A and says so', function () {
+  A.deepStrictEqual(M.recFor({ lastSession: 'bogus', completedToday: [] }),
+    { rec: 'A', reason: 'Cycle reset to A' });
+});
+
+// --- Feel: the Rough-readiness hold ------------------------------------
+t('spine feel: Rough holds the load on a history that would progress', function () {
+  var p = M.getProgression('row', SEED, FEEL.rough, SEED.length);
+  A.strictEqual(p.type, 'maintain');
+  var s = M.getSuggestedLoad('row', SEED, FEEL.rough, SEED.length, false);
+  A.strictEqual(s.weight, 30, 'held at the last working weight');
+  A.ok(/rough/i.test(s.reason), s.reason);
+});
+t('spine feel: OK, Good and no tap all progress the same history', function () {
+  [FEEL.ok, FEEL.good, null].forEach(function (rd) {
+    var s = M.getSuggestedLoad('row', SEED, rd, SEED.length, false);
+    A.strictEqual(s.weight, 35, 'readiness ' + JSON.stringify(rd));
+  });
+});
+
+// --- getProgression: top-reps branch -----------------------------------
+t('spine progression: exactly top reps at exactly target RPE twice qualifies', function () {
+  // row: top 12, rpe 8. SEED's last two rows are 30x12 @8 and @7.
+  var p = M.getProgression('row', SEED, FEEL.ok, SEED.length);
+  A.strictEqual(p.type, 'progress');
+  A.strictEqual(p.weight, 35);
+});
+t('spine progression: RPE 10 at target reps holds the load', function () {
+  var logs = [sess(1, 'B', { row: x3(30, 12, 10) })].concat(SEED);
+  var p = M.getProgression('row', logs, FEEL.ok, logs.length);
+  A.strictEqual(p.type, 'maintain');
+  A.ok(/RPE above target/.test(p.msg), p.msg);
+});
+t('spine progression: an RPE 10 session one back also blocks the +5', function () {
+  var logs = [sess(1, 'B', { row: x3(30, 12, 7) }), sess(3, 'B', { row: x3(30, 12, 10) })];
+  var p = M.getProgression('row', logs, FEEL.ok, 2);
+  A.ok(!p || p.type !== 'progress', JSON.stringify(p));
+});
+t('spine progression: same-weight rule, top reps at a new weight starts the count over', function () {
+  // BSS: 25 then 30, both at top reps and target RPE -- one session at 30 only.
+  var logs = [sess(1, 'A', { 'bss-a': x3(30, 10, 7) }), sess(3, 'C', { 'bss-c': x3(25, 10, 7) })];
+  var p = M.getProgression('bss-a', logs, FEEL.ok, 2);
+  A.ok(!p || p.type !== 'progress', JSON.stringify(p));
+  // A second session at 30 completes it; bss-a and bss-c count together.
+  logs = [sess(0, 'C', { 'bss-c': x3(30, 10, 8) })].concat(logs);
+  p = M.getProgression('bss-a', logs, FEEL.ok, 3);
+  A.strictEqual(p.type, 'progress');
+  A.strictEqual(p.weight, 35);
+});
+t('spine progression: one heavy outlier set does not move the working weight', function () {
+  var logs = [
+    sess(1, 'B', { row: [[30, 12, 8], [30, 12, 8], [35, 12, 8]] }),
+    sess(3, 'B', { row: x3(30, 12, 8) })
+  ];
+  var p = M.getProgression('row', logs, FEEL.ok, 2);
+  A.strictEqual(p.type, 'progress');
+  A.strictEqual(p.weight, 35, 'progresses from the working weight 30, not the 35 outlier');
+});
+t('spine progression: below top reps, or no RPE logged, never progresses', function () {
+  var short = [sess(1, 'B', { row: x3(30, 11, 7) }), sess(3, 'B', { row: x3(30, 11, 7) })];
+  A.strictEqual(M.getProgression('row', short, FEEL.ok, 2), null);
+  var noRpe = [sess(1, 'B', { row: x3(30, 12, '') }), sess(3, 'B', { row: x3(30, 12, '') })];
+  A.strictEqual(M.getProgression('row', noRpe, FEEL.ok, 2), null);
+});
+t('spine progression: reps falling at the same weight is a caution', function () {
+  var logs = [sess(1, 'B', { row: x3(30, 9, 8) }), sess(3, 'B', { row: x3(30, 11, 8) })];
+  var p = M.getProgression('row', logs, FEEL.ok, 2);
+  A.strictEqual(p.type, 'caution');
+});
+
+// --- getProgression: RPE-only branch (carries) -------------------------
+t('spine progression: carries progress on two same-weight sessions at target RPE', function () {
+  // carry-a / carry-b / carry-mc are one group; SEED has 35 @7 in A and B.
+  var p = M.getProgression('carry-mc', SEED, FEEL.ok, SEED.length);
+  A.strictEqual(p.type, 'progress');
+  A.strictEqual(p.weight, 40);
+});
+t('spine progression: carries at RPE 8 hold, and without RPE never progress', function () {
+  var hard = [sess(1, 'A', { 'carry-a': x3(35, 40, 8) })].concat(SEED);
+  A.strictEqual(M.getProgression('carry-a', hard, FEEL.ok, 7).type, 'maintain');
+  var noRpe = [sess(1, 'A', { 'carry-a': x3(35, 40, 0) }), sess(3, 'B', { 'carry-b': x3(35, 40, 0) })];
+  A.strictEqual(M.getProgression('carry-a', noRpe, FEEL.ok, 2), null);
+});
+
+// --- getFatigueTrend: three sessions rising, flat, falling -------------
+function rpeRun(rpes, rd) {   // newest first
+  return rpes.map(function (r, i) {
+    return sess(1 + i * 2, 'A', { 'bss-a': x3(30, 10, r) }, { sessionRPE: r, readiness: rd });
+  });
+}
+t('spine fatigue: rising 7 -> 8 -> 9 fires, from set RPE when sessionRPE is absent', function () {
+  var logs = rpeRun([9, 8, 7], FEEL.good).map(function (l) { delete l.sessionRPE; return l; });
+  var r = M.getFatigueTrend(logs);
+  A.ok(r && /RPE rising/.test(r.msg), JSON.stringify(r));
+});
+t('spine fatigue: rising but ending below 8 stays quiet', function () {
+  A.strictEqual(M.getFatigueTrend(rpeRun([7.5, 6.5, 6], FEEL.good)), null);
+});
+t('spine fatigue: flat at RPE 8 is quiet with OK readiness, fires with Rough', function () {
+  A.strictEqual(M.getFatigueTrend(rpeRun([8, 8, 8], FEEL.ok)), null);
+  var r = M.getFatigueTrend(rpeRun([8, 8, 8], FEEL.rough));
+  A.ok(r && /low readiness/.test(r.msg), JSON.stringify(r));
+});
+t('spine fatigue: falling 9 -> 8 -> 7 stays quiet', function () {
+  A.strictEqual(M.getFatigueTrend(rpeRun([7, 8, 9], FEEL.ok)), null);
+});
+t('spine fatigue: sessions with no RPE at all are skipped, not counted', function () {
+  var logs = rpeRun([9, 8, 7], FEEL.good);
+  logs.splice(1, 0, sess(2, 'B', { row: x3(30, 12, 0) }));
+  var r = M.getFatigueTrend(logs);
+  A.ok(r && /RPE rising/.test(r.msg), JSON.stringify(r));
+});
+
+// --- debrief: next session and load advice from today's sets -----------
+function debrief(o) {
+  return M.debriefFor({
+    session: o.session, logs: o.logs || SEED, readiness: o.readiness,
+    cycleState: o.state || { lastSession: 'C', lastDate: '2026-09-26', completedToday: [] },
+    exData: Object.keys(o.sets).reduce(function (acc, id) {
+      acc[id] = o.sets[id].map(function (s) {
+        return { weight: s[0], reps: s[1], rpe: s[2], completed: s[3] !== false };
+      });
+      return acc;
+    }, {})
+  });
+}
+function line(d, name) {
+  return d.debrief.find(function (l) { return l.indexOf(name + ':') === 0; });
+}
+t('spine debrief: finishing A names B next, not A', function () {
+  var d = debrief({ session: 'A', sets: { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) } });
+  A.strictEqual(d.next, 'B');
+  A.ok(/^Next: Session B/.test(d.debrief[d.debrief.length - 1]), d.debrief.join(' | '));
+});
+t('spine debrief: the second cycle session of a day names Modified C next', function () {
+  var d = debrief({
+    session: 'B', state: { lastSession: 'A', lastDate: TODAY, completedToday: ['A'] },
+    sets: { 'sldl-b': x3(40, 8, 8), row: x3(30, 12, 8), 'carry-b': [] }
+  });
+  A.strictEqual(d.next, 'modC');
+  A.strictEqual(d.pendingState.isDoubleDay, true);
+  A.strictEqual(line(d, 'Carries'), 'Carries: skipped (double-day grip management)');
+});
+t('spine debrief: finishing TGU names the session it interrupted', function () {
+  var d = debrief({ session: 'TGU', state: { lastSession: 'B', lastDate: '2026-09-26', completedToday: [] }, sets: { tgu: [[20, 5, 7]] } });
+  A.strictEqual(d.next, 'C');
+});
+t('spine debrief: Modified C the day after a double day names A next', function () {
+  var d = debrief({
+    session: 'modC', state: { lastSession: 'B', lastDate: '2026-09-27', isDoubleDay: true, completedToday: ['A', 'B'] },
+    sets: { ohp: x3(20, 8, 8), 'pullup-mc': x3(0, 6, 9), 'carry-mc': x3(35, 40, 7) }
+  });
+  A.strictEqual(d.next, 'A');
+  A.strictEqual(d.pendingState.isDoubleDay, false);
+});
+t('spine debrief: today\'s second qualifying session earns the +5', function () {
+  // SEED has one BSS session at 30 (top reps, RPE 8): alone it is not enough.
+  A.ok(!M.getProgression('bss-a', SEED, FEEL.ok, 6) || M.getProgression('bss-a', SEED, FEEL.ok, 6).type !== 'progress');
+  var d = debrief({ session: 'A', sets: { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) } });
+  A.strictEqual(line(d, 'Bulgarian Split Squats'), 'Bulgarian Split Squats: start at 35 next session');
+  A.strictEqual(line(d, 'Push-Ups'), 'Push-Ups: 3 sets done');
+});
+t('spine debrief: an RPE 10 grind today holds, though history alone said +5', function () {
+  // SEED's rows qualify for 35 before today; today 30x12 at RPE 10.
+  A.strictEqual(M.getProgression('row', SEED, FEEL.ok, 6).type, 'progress');
+  var d = debrief({ session: 'B', state: { lastSession: 'A', lastDate: '2026-09-26', completedToday: [] },
+    sets: { 'sldl-b': x3(40, 8, 8), row: x3(30, 12, 10), 'carry-b': x3(35, 40, 7) } });
+  A.strictEqual(line(d, 'Single-Arm Rows'), 'Single-Arm Rows: hold at 30');
+});
+t('spine debrief: reps falling today at the same weight is flagged', function () {
+  var d = debrief({ session: 'B', state: { lastSession: 'A', lastDate: '2026-09-26', completedToday: [] },
+    sets: { 'sldl-b': x3(40, 6, 8), row: x3(30, 12, 8), 'carry-b': x3(35, 40, 7) } });
+  A.strictEqual(line(d, 'Single-Leg Deadlifts'), 'Single-Leg Deadlifts: Reps dropped at same weight — check form');
+});
+t('spine debrief: Rough today holds a load that would otherwise progress', function () {
+  var d = debrief({ session: 'A', readiness: FEEL.rough,
+    sets: { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) } });
+  A.strictEqual(line(d, 'Bulgarian Split Squats'), 'Bulgarian Split Squats: hold at 30');
+});
+t('spine debrief: the +5 it promises is the load the next Game Plan prefills', function () {
+  var sets = { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) };
+  var d = debrief({ session: 'A', sets: sets });
+  var saved = [sess(0, 'A', sets)].concat(SEED);
+  A.strictEqual(M.getSuggestedLoad('bss-c', saved, null, 7, false).weight, 35);
+  A.ok(/start at 35/.test(line(d, 'Bulgarian Split Squats')));
+});
+
 // --- summary -----------------------------------------------------------
 console.log('');
 if (failed.length) {
