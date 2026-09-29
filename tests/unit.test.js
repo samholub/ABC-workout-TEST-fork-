@@ -457,6 +457,11 @@ t('spine debrief: finishing A names B next, not A', function () {
   A.strictEqual(d.next, 'B');
   A.ok(/^Next: Session B/.test(d.debrief[d.debrief.length - 1]), d.debrief.join(' | '));
 });
+t('spine debrief: the balance advisory counts the session just finished', function () {
+  var logs = [sess(1, 'C', {}), sess(2, 'B', {}), sess(3, 'C', {}), sess(4, 'B', {}), sess(5, 'C', {}), sess(6, 'B', {})];
+  var d = debrief({ session: 'A', logs: logs, sets: { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) } });
+  A.strictEqual(d.debrief[d.debrief.length - 1], 'Next: Session B');
+});
 t('spine debrief: the second cycle session of a day names Modified C next', function () {
   var d = debrief({
     session: 'B', state: { lastSession: 'A', lastDate: TODAY, completedToday: ['A'] },
