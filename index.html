@@ -25,6 +25,7 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
 input[type="number"]{-moz-appearance:textfield}
 input[type="range"]{width:100%;accent-color:#F59E0B}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes flash{0%,100%{background-color:#065F46}50%{background-color:#10B981}}
 </style>
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8"></script>
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh"></script>
@@ -62,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=60;
+var APP_VERSION=61;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -399,9 +400,9 @@ document.addEventListener("visibilitychange",tick);
 return function(){clearInterval(ref.current);document.removeEventListener("visibilitychange",tick)}
 },[]);
 var pct=((duration-rem)/duration)*100;var m=Math.floor(rem/60),s=rem%60;
-return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 12px #0008"}},
+return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 12px #0008",animation:rem===0?"flash 0.6s 2":"none"}},
 e("div",{style:{flex:1,display:"flex",alignItems:"center",gap:10}},
-e("div",{style:{fontFamily:MONO,fontSize:24,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL}},m+":"+s.toString().padStart(2,"0")),
+e("div",{style:{fontFamily:MONO,fontSize:24,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL,animation:rem===0?"pulse 1s infinite":"none"}},m+":"+s.toString().padStart(2,"0")),
 adaptiveLabel&&e("div",{style:{fontSize:10,color:T.mut,marginTop:1}},adaptiveLabel),
 e("div",{style:{flex:1,height:3,background:T.inp,borderRadius:2,overflow:"hidden"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}}))),
 e("div",{style:{display:"flex",gap:5}},
