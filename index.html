@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
-var APP_VERSION=65;
+var APP_VERSION=66;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -365,7 +365,10 @@ return{session:absent,msg:"No "+absentLabel+" in last "+recent.length+" logged s
 // tap that starts a rest timer (the set check circle) and kept for the rest
 // of the session; playBeep then plays through it when the timer hits zero.
 var _audioCtx=null;
-function primeAudio(){try{var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;if(!_audioCtx)_audioCtx=new AC();if(_audioCtx.state==="suspended")_audioCtx.resume();return _audioCtx}catch(e){return null}}
+// Row 53: "playback" makes iOS treat the cues as media, so they play with the
+// ringer on silent (and pause other music, which Sam accepted).
+function setPlaybackSession(){try{if(navigator.audioSession&&navigator.audioSession.type!=="playback")navigator.audioSession.type="playback"}catch(e){}}
+function primeAudio(){setPlaybackSession();try{var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;if(!_audioCtx)_audioCtx=new AC();if(_audioCtx.state==="suspended")_audioCtx.resume();return _audioCtx}catch(e){return null}}
 function playBeep(){try{var ctx=primeAudio();if(!ctx)return;var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3)}catch(e){}}
 
 // Spoken cues (row 51). iOS only lets speechSynthesis talk after its first
@@ -373,7 +376,7 @@ function playBeep(){try{var ctx=primeAudio();if(!ctx)return;var o=ctx.createOsci
 // On unless the speaker button in the workout header turned it off (wk-vc).
 var _voicePrimed=false;
 function voiceOn(){return S.get(KEYS.voice)!==false}
-function primeVoice(){try{if(_voicePrimed||!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(" ");u.volume=0;window.speechSynthesis.speak(u);_voicePrimed=true}catch(e){}}
+function primeVoice(){setPlaybackSession();try{if(_voicePrimed||!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(" ");u.volume=0;window.speechSynthesis.speak(u);_voicePrimed=true}catch(e){}}
 function speak(t){try{if(!t||!voiceOn()||!window.speechSynthesis)return;window.speechSynthesis.cancel();window.speechSynthesis.speak(new SpeechSynthesisUtterance(t))}catch(e){}}
 // "8-10/leg" -> "8 to 10 per leg", "40 yd/side" -> "40 yards per side"
 function sayReps(r){return String(r||"").replace(/(\d+)-(\d+)/g,"$1 to $2").replace(/\s*yd\b/g," yards").replace(/\//g," per ")}

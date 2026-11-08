@@ -10,6 +10,7 @@ var expect = pw.expect;
 test('voice announces the first exercise, the rest, ten seconds and the next set; mute stops it', async function ({ page }) {
   await page.addInitScript(function () {
     window.__said = [];
+    Object.defineProperty(navigator, 'audioSession', { configurable: true, value: { type: 'auto' } });
     function U(t) { this.text = t; }
     window.SpeechSynthesisUtterance = U;
     Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
@@ -26,6 +27,8 @@ test('voice announces the first exercise, the rest, ten seconds and the next set
   await page.getByRole('button', { name: /Start Lifting/ }).click();
   await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
   expect((await said())[0]).toMatch(/^First: Bulgarian Split Squats, 3 sets of 8 to 10 per leg\./);
+  // Row 53: the tap that starts lifting switches iOS to media playback so cues play on silent.
+  expect(await page.evaluate(function () { return navigator.audioSession.type; })).toBe('playback');
 
   var numbers = page.locator('input[type="number"]');
   await numbers.nth(0).fill('35');
