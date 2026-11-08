@@ -66,7 +66,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
-var APP_VERSION=70;
+var APP_VERSION=71;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -194,7 +194,7 @@ function computeNextSession(state){var ls=state.lastSession;if(state.isDoubleDay
 // `today`. A completedToday from an earlier day is dropped here, so
 // isDoubleDay expires on the first save after the day rolls over even if the
 // mount-time rollover effect has not run.
-function nextCycleState(state,session,today){var ld=state.lastDate;var prev=ld&&ld.length===10&&ld!==today?[]:(state.completedToday||[]);var ct=prev.concat([session]);return{lastSession:session,lastDate:today,isDoubleDay:ct.filter(function(x){return CYCLE.indexOf(x)!==-1}).length>=2&&CYCLE.indexOf(session)!==-1,completedToday:ct,preTgu:session==="TGU"?(state.preTgu||computeNextSession(state)):undefined}}
+function nextCycleState(state,session,today){var ld=state.lastDate;var prev=ld&&ld.length===10&&ld!==today?[]:(state.completedToday||[]);var ct=prev.concat([session]);return{lastSession:session,lastDate:today,isDoubleDay:ct.indexOf("A")!==-1&&ct.indexOf("B")!==-1&&CYCLE.indexOf(session)!==-1,completedToday:ct,preTgu:session==="TGU"?(state.preTgu||computeNextSession(state)):undefined}}
 // Row 43: the cycle state comes from the logs (newest-first), not from a stored
 // copy, so deleting, importing or wiping history can never leave Next Up
 // counting a session the history does not show. It replays nextCycleState
@@ -216,6 +216,9 @@ weights.sort(function(a,b){return a-b});
 var mid=Math.floor(weights.length/2);
 return weights.length%2===0?weights[mid-1]:weights[mid]}
 
+// Most sets the program gives this movement in any session (row 75).
+function targetSets(exId){var g=getGroupIds(exId),n=0;Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(x){if(g.indexOf(x.id)!==-1&&x.sets>n)n=x.sets})});return n||1}
+// Row 71: when the fatigue trend fires, a +5 becomes a hold.
 function getProgression(exId,logs,readiness,sessionCount){
 var cfg=PROG[exId];if(!cfg||cfg.inc===0)return null;
 var groupIds=getGroupIds(exId);
@@ -226,23 +229,25 @@ var ex=l.exercises.find(function(x){return groupIds.indexOf(x.id)!==-1&&x.sets&&
 if(ex){var sets=ex.sets;var avgReps=sets.reduce(function(a,s){return a+(s.reps||0)},0)/sets.length;
 var rpes=sets.filter(function(s){return s.rpe>0});var avgRPE=rpes.length?rpes.reduce(function(a,s){return a+s.rpe},0)/rpes.length:0;
 var maxW=getWorkingWeight(sets);
-history.push({reps:avgReps,rpe:avgRPE,weight:maxW})}}
+// Row 75: a session counts toward +5 only if every set of the exercise was logged.
+history.push({reps:avgReps,rpe:avgRPE,weight:maxW,full:sets.length>=targetSets(exId)})}}
 if(history.length<2)return null;
 var h0=history[0],h1=history[1];
 var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
 if(rdScore<=4)return{type:"maintain",msg:"Feeling rough \u2014 hold current load"};
 var phase=getPeriodPhase(sessionCount||0);
 if(cfg.top>0){
-if(h0.reps>=cfg.top&&h1.reps>=cfg.top&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight){
+if(h0.full&&h1.full&&h0.reps>=cfg.top&&h1.reps>=cfg.top&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight){
 var msg="2 sessions at target reps + RPE \u2192 "+(h0.weight+cfg.inc)+" lbs";
 if(phase.phase==="early")msg="Reps and RPE on track \u2192 try "+(h0.weight+cfg.inc)+" lbs";
 if(phase.phase==="experienced")msg="Progression criteria met \u2192 "+(h0.weight+cfg.inc)+" lbs";
+if(getFatigueTrend(logs))return{type:"maintain",msg:"Fatigue trend \u2014 hold current load"};
 return{type:"progress",msg:msg,weight:h0.weight+cfg.inc}}
 if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
 if(h0.reps<h1.reps&&h0.weight===h1.weight)return{type:"caution",msg:"Reps dropped at same weight \u2014 check form"};
 }else{
-if(h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight)
-return{type:"progress",msg:"2 sessions at target RPE \u2192 "+(h0.weight+cfg.inc)+" lbs",weight:h0.weight+cfg.inc};
+if(h0.full&&h1.full&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight)
+return getFatigueTrend(logs)?{type:"maintain",msg:"Fatigue trend \u2014 hold current load"}:{type:"progress",msg:"2 sessions at target RPE \u2192 "+(h0.weight+cfg.inc)+" lbs",weight:h0.weight+cfg.inc};
 if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
 }return null}
 
@@ -258,8 +263,9 @@ var ex=l.exercises.find(function(x){return gids.indexOf(x.id)!==-1&&x.sets&&x.se
 if(ex){var w=getWorkingWeight(ex.sets);if(w>0){lastW=w;break}}}
 if(!lastW)return null;
 var prog=getProgression(exId,logs,readiness,sessionCount);
-if(prog&&prog.type==="progress")return{weight:prog.weight,reason:prog.msg};
+// Row 73: a same-day second session holds carries even when +5 is due.
 if(carryAdvisory)return{weight:lastW,reason:"Second session \u2014 maintain or lighten"};
+if(prog&&prog.type==="progress")return{weight:prog.weight,reason:prog.msg};
 if(prog)return{weight:lastW,reason:prog.msg};
 return{weight:lastW,reason:null}}
 
@@ -273,11 +279,12 @@ var rpes=ex.sets.filter(function(s){return s.rpe>0});var ar=rpes.length?Math.rou
 pts.push({date:l.date,weight:mw,reps:mr,rpe:ar})}}return pts.slice(-12)}
 
 function getSmartWarmup(sessionKey,readiness,daysSince){
-var score=readiness?readiness.sleep+readiness.soreness+readiness.motivation:7;
+// Row 76: untapped and OK both give Standard 3D.
+var score=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
 var wu;
 if(daysSince!==null&&daysSince>3)wu="enhanced";
 else if(score<=4)wu="enhanced";
-else if(score<=6){var s=sessionKey;if(s==="A"||s==="C"||s==="bss-c"||s==="sldl-c")wu="hip";else wu="standard"}
+else if(score<=5){var s=sessionKey;if(s==="A"||s==="C"||s==="bss-c"||s==="sldl-c")wu="hip";else wu="standard"}
 else wu="standard";
 return wu}
 
@@ -296,8 +303,11 @@ var recent=[];
 for(var i=0;i<logs.length&&recent.length<3;i++){
 var l=logs[i];if(l.manual)continue;
 // Get session RPE, or fall back to average exercise RPE
-var rpe=l.sessionRPE||0;
-if(!rpe&&l.exercises){var rpes=[];l.exercises.forEach(function(ex){if(ex.sets)ex.sets.forEach(function(s){if(s.rpe>0)rpes.push(s.rpe)})});if(rpes.length>0)rpe=rpes.reduce(function(a,v){return a+v},0)/rpes.length}
+// Row 72: effort is read against each exercise's target RPE, shifted so on target = 8
+// (pull-ups at their target 9 read as 8). Session Difficulty is the fallback.
+var rpe=0;
+if(l.exercises){var rpes=[];l.exercises.forEach(function(ex){var tg=PROG[ex.id]?PROG[ex.id].rpe:8;if(ex.sets)ex.sets.forEach(function(s){if(s.rpe>0)rpes.push(s.rpe-tg+8)})});if(rpes.length>0)rpe=rpes.reduce(function(a,v){return a+v},0)/rpes.length}
+if(!rpe)rpe=l.sessionRPE||0;
 if(!rpe)continue;
 var rd=l.readiness?(l.readiness.sleep+l.readiness.soreness+l.readiness.motivation):null;
 recent.push({rpe:rpe,rd:rd})}
@@ -307,11 +317,11 @@ var avgRPE=(recent[0].rpe+recent[1].rpe+recent[2].rpe)/3;
 // Row 63: readiness averages only the sessions where Feel was tapped.
 var rated=recent.filter(function(r){return r.rd!=null});var avgRd=rated.length?rated.reduce(function(a,r){return a+r.rd},0)/rated.length:0;
 // Pattern A: RPE clearly climbing — monotonic rise, most recent ≥ 8, spread ≥ 1.5
-if(recent[0].rpe>=8&&recent[0].rpe>=recent[1].rpe&&recent[1].rpe>=recent[2].rpe&&recent[0].rpe-recent[2].rpe>=1.5)
-return{msg:"RPE rising across last 3 sessions. Avoid pushing progression today."};
+if(recent[0].rpe>=8.5&&recent[0].rpe>=recent[1].rpe&&recent[1].rpe>=recent[2].rpe&&recent[0].rpe-recent[2].rpe>=1.5)
+return{msg:"RPE rising above target across last 3 sessions. Avoid pushing progression today."};
 // Pattern B: Sustained high effort + low readiness
-if(avgRPE>=7.5&&avgRd>0&&avgRd<=5)
-return{msg:"Avg RPE \u22657.5 with low readiness over last 3 sessions. Consider reducing load today."};
+if(avgRPE>=8&&avgRd>0&&avgRd<=5)
+return{msg:"Effort at or above target with low readiness over last 3 sessions. Consider reducing load today."};
 return null}
 
 // Consolidated pre-session intelligence — pure function returning per-exercise
@@ -322,7 +332,7 @@ var sesCount=getSessionCount(logs);var period=getPeriodPhase(sesCount);
 var fatigue=getFatigueTrend(logs);var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
 var isDouble=countTrainingToday((cycleState||{}).completedToday)>=1;
 var exercises=sess.exercises.map(function(ex){
-var prog=getProgression(ex.id,logs,readiness,sesCount);
+var prog=getProgression(ex.id,logs,readiness,sesCount);if(isDouble&&ex.isCarry&&prog&&prog.type==="progress")prog=null;
 var sug=getSuggestedLoad(ex.id,logs,readiness,sesCount,isDouble&&ex.isCarry);
 var lastSets=null;var gids=getGroupIds(ex.id);
 for(var i=0;i<logs.length;i++){var l=logs[i];if(!l.exercises)continue;
@@ -589,6 +599,8 @@ var _cm=useState(false),circuitMode=_cm[0],setCircuitMode=_cm[1];
 var _rd2=useState(null),readiness=_rd2[0],setReadiness=_rd2[1];
 var _ch=useState(null),chartEx=_ch[0],setChartEx=_ch[1];
 var _srpe=useState(0),sessionRPE=_srpe[0],setSessionRPE=_srpe[1];
+// Row 77: on the Complete screen, Session Difficulty starts at the rounded average set RPE.
+useEffect(function(){if(screen!=="complete"||sessionRPE)return;var r=[];Object.keys(exData).forEach(function(id){(exData[id]||[]).forEach(function(s){if(s.completed&&s.rpe>0)r.push(Number(s.rpe))})});if(r.length)setSessionRPE(Math.round(r.reduce(function(a,v){return a+v},0)/r.length))},[screen]);
 var _ft=useState(null),floatTimer=_ft[0],setFloatTimer=_ft[1];
 var _arl=useState(null),adaptiveRestLabel=_arl[0],setAdaptiveRestLabel=_arl[1];
 var _sd=useState(""),screenDir=_sd[0],setScreenDir=_sd[1];
@@ -876,7 +888,7 @@ carryWarn&&e("div",{style:STYLES.warnBannerCompact},e("div",{style:{fontSize:12,
 sess.exercises.map(function(ex){
 var exSets=exData[ex.id]||[];
 var isActive=activeEx===ex.id;
-var prog=getProgression(ex.id,logs,readiness,getSessionCount(logs));
+var prog=getProgression(ex.id,logs,readiness,getSessionCount(logs));if(carryWarn&&ex.isCarry&&prog&&prog.type==="progress")prog=null;
 var ghost=getGhostSets(ex.id,logs);
 var sugLoad=getSuggestedLoad(ex.id,logs,readiness,getSessionCount(logs),carryWarn&&ex.isCarry);
 return e(ExerciseCard,{key:ex.id,exercise:ex,setData:exSets,lastWeight:lastWeights[ex.id]||0,
@@ -923,7 +935,7 @@ sess.exercises.forEach(function(ex){
 var sets=(exData[ex.id]||[]).filter(function(s){return s.completed});
 if(!sets.length){if(ex.isCarry&&isDouble)debrief.push(ex.name+": skipped (double-day grip management)");return}
 var maxW=getWorkingWeight(sets);
-var prog=getProgression(ex.id,logsWithToday,readiness,getSessionCount(logs));
+var prog=getProgression(ex.id,logsWithToday,null,getSessionCount(logs));
 var cfg=PROG[ex.id];
 if(prog&&prog.type==="progress")debrief.push(ex.name+": start at "+prog.weight+" next session");
 else if(prog&&prog.type==="caution")debrief.push(ex.name+": "+prog.msg);
