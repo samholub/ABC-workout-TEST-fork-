@@ -161,3 +161,15 @@ test('un-checking and re-checking a logged set does not cue again', async functi
   await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0);
   expect((await played()).length).toBe(before);
 });
+
+// Row 88: the service worker downloads every clip for offline cues from the
+// CLIPS list in sw.js, so that list must match audio/ exactly.
+test('sw.js precache list matches the audio folder', async function () {
+  var sw = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
+  var m = /var CLIPS = (\[[^\]]*\]);/.exec(sw);
+  expect(m).not.toBeNull();
+  var listed = JSON.parse(m[1].replace(/'/g, '"')).sort();
+  var onDisk = fs.readdirSync(AUDIO).filter(function (f) { return /\.mp3$/.test(f); })
+    .map(function (f) { return f.slice(0, -4); }).sort();
+  expect(listed).toEqual(onDisk);
+});

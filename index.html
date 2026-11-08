@@ -85,7 +85,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
-var APP_VERSION=83;
+var APP_VERSION=84;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -428,11 +428,12 @@ var _voicePrimed=false,_clipEl=null,_clipQ=[];
 var SILENT_MP3="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//OEwAAAAAAAAAAAAEluZm8AAAAPAAAACQAABCAARUVFRUVFRUVFRUVdXV1dXV1dXV1dXXR0dHR0dHR0dHR0i4uLi4uLi4uLi4uioqKioqKioqKiorq6urq6urq6urq60dHR0dHR0dHR0dHo6Ojo6Ojo6Ojo6P//////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQD8AAAAAAAAAQgDeb0IwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//NExAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExFMAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKYAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NExKwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NExKwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
 function voiceOn(){return S.get(KEYS.voice)!==false}
 function clipEl(){if(!_clipEl){_clipEl=new Audio();_clipEl.preload="auto";var nx=function(){playNextClip()};_clipEl.addEventListener("ended",nx);_clipEl.addEventListener("error",nx)}return _clipEl}
-function playNextClip(){var k=_clipQ.shift();if(!k)return;var a=clipEl();a.src="./audio/"+k+".mp3";try{var p=a.play();if(p&&p.catch)p.catch(function(){_clipQ=[]})}catch(e){}}
-function primeVoice(){setPlaybackSession();if(_voicePrimed)return;try{var a=clipEl();a.src=SILENT_MP3;var p=a.play();_voicePrimed=true;if(p&&p.catch)p.catch(function(){_voicePrimed=false})}catch(e){}}
+function playNextClip(){var k=_clipQ.shift();if(!k)return;var a=clipEl();a.src="./audio/"+k+".mp3";try{var p=a.play();if(p&&p.catch)p.catch(function(err){if(err&&err.name==="AbortError")return;_voicePrimed=false;_clipQ=[]})}catch(e){}}
+function primeVoice(){setPlaybackSession();if(_voicePrimed)return;try{var a=clipEl();a.src=SILENT_MP3;var p=a.play();_voicePrimed=true;if(p&&p.catch)p.catch(function(err){if(err&&err.name==="AbortError")return;_voicePrimed=false})}catch(e){}}
 function stopVoice(){_clipQ=[];try{if(_clipEl)_clipEl.pause()}catch(e){}}
 function speak(keys){if(!voiceOn()||!keys)return;var q=keys.filter(Boolean);if(!q.length)return;stopVoice();_clipQ=q;playNextClip()}
 // Clip keys: the same slugs tools/phrases.js writes file names with.
+function nSets(n){return n+(n===1?" set":" sets")}
 function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}
 // "8-10/leg" -> "8 to 10 per leg", "40 yd/side" -> "40 yards per side" (rest card text)
 function sayReps(r){return String(r||"").replace(/(\d+)-(\d+)/g,"$1 to $2").replace(/\s*yd\b/g," yards").replace(/\//g," per ")}
@@ -534,7 +535,7 @@ var done=setData.filter(function(s){return s.completed}).length;
 var allDone=done===setData.length;
 var displayName=exercise.isCarry&&carryType==="farmer"?exercise.name.replace("Suitcase Carry","Farmer's Carry").replace("Carries","Farmer's Carry"):exercise.name;
 // A weight change carries to the later sets not yet touched or logged (row 86).
-var updateSet=function(i,f,v){var u=setData.slice();u[i]=Object.assign({},u[i]);u[i][f]=v;if(f==="weight"||f==="reps")u[i].touched=true;if(f==="weight")for(var j=i+1;j<u.length;j++){if(!u[j].completed&&!u[j].touched)u[j]=Object.assign({},u[j],{weight:v})}onUpdate(u)};
+var updateSet=function(i,f,v){if(f==="weight")v=Math.max(0,Math.min(Number(v)||0,2000));if(f==="reps")v=Math.max(0,Math.min(Number(v)||0,500));var u=setData.slice();u[i]=Object.assign({},u[i]);u[i][f]=v;if(f==="weight"||f==="reps")u[i].touched=true;if(f==="weight")for(var j=i+1;j<u.length;j++){if(!u[j].completed&&!u[j].touched)u[j]=Object.assign({},u[j],{weight:v})}onUpdate(u)};
 var toggleDone=function(i){primeAudio();primeVoice();var u=setData.slice();u[i]=Object.assign({},u[i]);u[i].completed=!u[i].completed;if(!u[i].completed)u[i].rpe=0;u[i].touched=true;onUpdate(u)};
 // An RPE chip on an unlogged set logs it (with whatever weight/reps it holds) and
 // so starts the rest timer; on a logged set it only changes the RPE. The "\u2014"
@@ -550,12 +551,12 @@ var bump=function(i,f,d){var cur=Number(setData[i][f])||0;updateSet(i,f,Math.max
 var wtLabel=function(st){return exercise.hasWeight?(st.weight?st.weight+" lb":"\u2013"):"Bodyweight"};
 var ready=progression&&progression.type==="progress";
 var note=progression?progression.msg:(suggestedLoad&&suggestedLoad.reason?suggestedLoad.reason:null);
-var circle=function(st,i,big){return e("div",{onClick:function(ev){ev.stopPropagation();setEditIdx(null);toggleDone(i)},style:{width:big?48:36,height:big?48:36,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:MONO,fontSize:big?20:16,fontWeight:600,background:st.completed?T.okD:"transparent",border:"2px solid "+(st.completed?T.ok:big?T.acc:T.brd),color:st.completed?T.okL:big?T.accL:T.mut}},st.completed?"\u2713":(i+1))};
+var circle=function(st,i,big){return e("div",{role:"button","aria-label":(st.completed?"Un-log set ":"Log set ")+(i+1),onClick:function(ev){ev.stopPropagation();setEditIdx(null);toggleDone(i)},style:{width:big?48:36,height:big?48:36,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:MONO,fontSize:big?20:16,fontWeight:600,background:st.completed?T.okD:"transparent",border:"2px solid "+(st.completed?T.ok:big?T.acc:T.brd),color:st.completed?T.okL:big?T.accL:T.mut}},st.completed?"\u2713":(i+1))};
 var stepper=function(i,f,step,unit){var st=setData[i];return e("div",{style:{flex:1,minWidth:0}},
 e("div",{style:{display:"flex",alignItems:"center",background:"rgba(0,0,0,.28)",borderRadius:14,padding:4}},
-e("button",{"aria-label":"Less",onClick:function(){bump(i,f,-step)},style:{width:44,height:52,border:"none",borderRadius:11,background:"rgba(255,255,255,.08)",color:T.txt,fontSize:24,cursor:"pointer",flexShrink:0}},"\u2212"),
+e("button",{"aria-label":(f==="weight"?"Less weight":"Fewer reps"),onClick:function(){bump(i,f,-step)},style:{width:44,height:52,border:"none",borderRadius:11,background:"rgba(255,255,255,.08)",color:T.txt,fontSize:24,cursor:"pointer",flexShrink:0}},"\u2212"),
 e("input",{className:"num",type:"number",inputMode:f==="weight"?"decimal":"numeric",onFocus:function(ev){var t=ev.target;setTimeout(function(){try{t.select()}catch(x){}},0)},value:st[f]||"",onChange:function(ev){updateSet(i,f,Number(ev.target.value))},placeholder:"0",style:{flex:1,minWidth:0,width:"100%",background:"transparent",border:"none",outline:"none",textAlign:"center",fontFamily:MONO,fontSize:32,fontWeight:600,color:st.touched||st.completed?T.hi:T.sec,padding:0}}),
-e("button",{"aria-label":"More",onClick:function(){bump(i,f,step)},style:{width:44,height:52,border:"none",borderRadius:11,background:"rgba(255,255,255,.08)",color:T.txt,fontSize:24,cursor:"pointer",flexShrink:0}},"+")),
+e("button",{"aria-label":(f==="weight"?"More weight":"More reps"),onClick:function(){bump(i,f,step)},style:{width:44,height:52,border:"none",borderRadius:11,background:"rgba(255,255,255,.08)",color:T.txt,fontSize:24,cursor:"pointer",flexShrink:0}},"+")),
 e("div",{style:{fontSize:13,color:T.mut,textAlign:"center",marginTop:5}},unit))};
 if(!isExpanded){
 return e("div",{onClick:onToggle,style:{display:"flex",alignItems:"center",gap:14,padding:"16px 6px",borderTop:"1px solid rgba(255,255,255,.065)",cursor:"pointer"}},
@@ -569,7 +570,7 @@ return e("div",{className:"glass",style:{borderRadius:24,margin:"4px 0 10px",pad
 e("div",{onClick:onToggle,style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,cursor:"pointer"}},
 e("div",{style:{flex:1,minWidth:0}},
 e("div",{style:{fontSize:22,fontWeight:700,color:T.hi,lineHeight:1.2}},displayName),
-e("div",{style:{fontSize:15,color:T.sec,marginTop:3}},exercise.sets+" sets of "+sayReps(exercise.reps))),
+e("div",{style:{fontSize:15,color:T.sec,marginTop:3}},nSets(exercise.sets)+" of "+sayReps(exercise.reps))),
 cues.length>0&&e("button",{onClick:function(ev){ev.stopPropagation();setShowCues(!showCues)},style:{background:"transparent",border:"1px solid "+(showCues?T.brdL:T.brd),borderRadius:18,padding:"6px 14px",fontSize:14,color:showCues?T.hi:T.sec,cursor:"pointer"}},"Form")),
 carryAdvisory&&!allDone&&e("div",{style:{fontSize:14,color:T.warn,marginTop:8}},"Second session today: skip or go lighter if your grip is tired."),
 note&&e("div",{style:{fontSize:14,color:ready?T.ok:T.sec,marginTop:8}},note),
@@ -676,7 +677,7 @@ useEffect(function(){var checkRollover=function(){setTodayKey(getLocalDateKey())
 // the Screen Wake Lock API is absent.
 useEffect(function(){if(!(screen==="workout"||screen==="complete")||!navigator.wakeLock)return;var lock=null,done=false;var req=function(){if(done||document.visibilityState!=="visible"||(lock&&!lock.released))return;navigator.wakeLock.request("screen").then(function(l){if(done)l.release().catch(function(){});else lock=l}).catch(function(){})};req();document.addEventListener("visibilitychange",req);return function(){done=true;document.removeEventListener("visibilitychange",req);if(lock)lock.release().catch(function(){})}},[screen==="workout"||screen==="complete"]);
 
-useEffect(function(){if(screen!=="workout")return;var id=setInterval(function(){var draft={session:currentSession,exData:exData,start:start,readiness:readiness,warmup:warmup,notes:notes,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()};S.set(KEYS.draft,draft)},5000);return function(){clearInterval(id)}},[screen,currentSession,exData,start,readiness,warmup,notes,sessionRPE,activeEx,circuitMode]);
+useEffect(function(){if(screen!=="workout")return;var save=function(){S.set(KEYS.draft,{session:currentSession,exData:exData,start:start,readiness:readiness,warmup:warmup,notes:notes,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()})};var hid=function(){if(document.visibilityState==="hidden")save()};var id=setInterval(save,5000);document.addEventListener("visibilitychange",hid);window.addEventListener("pagehide",save);return function(){clearInterval(id);document.removeEventListener("visibilitychange",hid);window.removeEventListener("pagehide",save)}},[screen,currentSession,exData,start,readiness,warmup,notes,sessionRPE,activeEx,circuitMode]);
 
 var getRec=useCallback(function(){return computeNextSession(cycleState)},[cycleState]);
 
@@ -690,7 +691,7 @@ var label=SESSIONS[ls]?SESSIONS[ls].label:ls;
 return"Last completed: "+label};
 
 var startSession=function(key){
-if(draftSession&&SESSIONS[draftSession.session]){if(!window.confirm("You have an unfinished "+SESSIONS[draftSession.session].label+" session. Discard it and start "+SESSIONS[key].label+" instead?"))return;clearDraft();setDraftSession(null)}
+if(draftSession&&SESSIONS[draftSession.session]){if(!window.confirm("You have an unfinished "+SESSIONS[draftSession.session].label+". Discard it and start "+SESSIONS[key].label+" instead?"))return;clearDraft();setDraftSession(null)}
 var sess=SESSIONS[key];var init={};var sesCount=getSessionCount(logs);var isDouble=countTrainingToday((cycleState||{}).completedToday)>=1;
 sess.exercises.forEach(function(ex){
 var sug=getSuggestedLoad(ex.id,logs,null,sesCount,isDouble&&ex.isCarry);
@@ -716,7 +717,7 @@ setExData(updated)};
 
 // The log entry for the session in progress, in the shape saveAndFinish writes.
 // The Complete screen uses it too, for the debrief and the export, before anything is saved.
-var buildSessionLog=function(){return{date:new Date().toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness||undefined,sessionRPE:sessionRPE||0,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})}};
+var buildSessionLog=function(){return{date:new Date(start||Date.now()).toISOString(),session:currentSession,warmup:warmup,duration:Math.round((Date.now()-start)/60000),notes:notes.notes,readiness:readiness||undefined,sessionRPE:sessionRPE||0,exercises:Object.keys(exData).map(function(id){return{id:id,sets:exData[id].filter(function(s){return s.completed})}})}};
 
 var saveAndFinish=function(){
 var sess=SESSIONS[currentSession];
@@ -736,7 +737,7 @@ setLastWeights(nw);setLogs(nl);clearDraft();home()
 
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
 var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setExported(false);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
-var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});if(!(S.set(KEYS.logs,nl)&&S.set(KEYS.state,deriveCycleState(nl,getLocalDateKey())))){alert("Storage error! The session was not deleted.");return}setLogs(nl);setConfirmDel(null);setExpandedLog(null)};
+var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});if(!(S.set(KEYS.logs,nl)&&S.set(KEYS.state,deriveCycleState(nl,getLocalDateKey())))){alert("Storage error! The session was not deleted.");return}setLogs(nl);setConfirmDel(null);setExpandedLog(null);setEditSnapshot(null);setEditingLogIdx(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
 var startEditLog=function(idx){
@@ -752,7 +753,7 @@ return Object.assign({},l,{exercises:updatedExercises});
 if(!S.set(KEYS.logs,nl)){alert("Storage error! The edit was not saved.");return}setLogs(nl);
 setEditSnapshot(null);setEditingLogIdx(null);
 };
-var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);if(!S.set(KEYS.logs,nl)){alert("Storage error! The session was not added.");return}setLogs(nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
+var addManualLog=function(){if(!newLog.date||newLog.date>getLocalDateKey())return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);if(!S.set(KEYS.logs,nl)){alert("Storage error! The session was not added.");return}setLogs(nl);setEditSnapshot(null);setEditingLogIdx(null);setExpandedLog(null);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
 var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});S.set(KEYS.sessions,0);setSessionCount(0);clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
 var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(ex){allEx[ex.id]=ex.name})});return allEx[id]||id};
 
@@ -814,7 +815,7 @@ e("div",{style:{flex:1,minWidth:0}},e("div",{style:{fontSize:18,fontWeight:600,c
 e("div",{style:{fontFamily:MONO,fontSize:18,color:T.mut}},avg?avg+" min":s2.time),
 e("div",{style:{color:T.mut,fontSize:16,transform:open?"rotate(90deg)":"none",transition:"transform .2s"}},"\u203A")),
 open&&e("div",{style:{padding:"0 18px 16px 54px"}},
-s2.exercises.map(function(x){var lw=lastWeights[x.id];return e("div",{key:x.id,style:{display:"flex",justifyContent:"space-between",gap:10,padding:"6px 0"}},e("div",null,e("div",{style:{fontSize:16,color:T.txt}},x.name),e("div",{style:{fontSize:14,color:T.mut}},x.sets+" sets of "+sayReps(x.reps))),x.hasWeight&&lw?e("div",{style:{fontFamily:MONO,fontSize:20,color:T.sec}},lw,e("span",{style:{fontFamily:"inherit",fontSize:13,color:T.mut,marginLeft:3}},"lb")):null)}),
+(function(){var pc=getPreSessionContext(k,logs,null,lastWeights,cycleState);var pw={};(pc?pc.exercises:[]).forEach(function(q){pw[q.id]=q.suggestedWeight});return s2.exercises.map(function(x){var lw=pw[x.id];return e("div",{key:x.id,style:{display:"flex",justifyContent:"space-between",gap:10,padding:"6px 0"}},e("div",null,e("div",{style:{fontSize:16,color:T.txt}},x.name),e("div",{style:{fontSize:14,color:T.mut}},nSets(x.sets)+" of "+sayReps(x.reps))),x.hasWeight&&lw?e("div",{style:{fontFamily:MONO,fontSize:20,color:T.sec}},lw,e("span",{style:{fontFamily:"inherit",fontSize:13,color:T.mut,marginLeft:3}},"lb")):null)})})(),
 e("button",{onClick:function(){setPreviewKey(null);startSession(k)},style:{marginTop:12,width:"100%",padding:"13px",borderRadius:14,border:"none",background:s2.color,color:T.bg,fontSize:16,fontWeight:700,cursor:"pointer"}},"Start "+s2.label)))})))),
 e("div",{className:"foot"},
 e("button",{className:"glass-btn",onClick:function(){setShowHist(true)},style:{width:"100%",borderRadius:16,padding:15,cursor:"pointer",color:T.txt,fontSize:17,fontWeight:600}},"History")),
@@ -831,19 +832,19 @@ return e("div",{style:STYLES.screen},
 e("div",{style:Object.assign({},STYLES.headerPad,{padding:"calc(6px + env(safe-area-inset-top,0px)) 20px 6px"})},
 e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
 e("button",{onClick:closeHist,style:{background:"transparent",border:"none",color:T.sec,fontSize:17,padding:"10px 0",cursor:"pointer"}},"\u2190 Back"),
-!showAddLog&&e("button",{className:"glass-btn",onClick:function(){setShowAddLog(true)},style:{borderRadius:18,color:T.txt,padding:"8px 16px",fontSize:16,cursor:"pointer"}},"Log past session")),
+!showAddLog&&e("button",{className:"glass-btn",onClick:function(){setShowAddLog(true);setTimeout(function(){var f=document.getElementById("add-log");if(f&&f.scrollIntoView)f.scrollIntoView({behavior:"smooth",block:"start"})},30)},style:{borderRadius:18,color:T.txt,padding:"8px 16px",fontSize:16,cursor:"pointer"}},"Log past session")),
 e("div",{style:{fontSize:32,fontWeight:700,color:T.hi,marginTop:4}},"History")),
 e("div",{style:{flex:1,overflowY:"auto",padding:"8px 16px",paddingBottom:"calc(30px + env(safe-area-inset-bottom,0px))",WebkitOverflowScrolling:"touch"}},
-showAddLog&&e("div",{className:"glass",style:{borderRadius:24,padding:"18px 16px",marginBottom:16}},
+showAddLog&&e("div",{id:"add-log",className:"glass",style:{borderRadius:24,padding:"18px 16px",marginBottom:16,scrollMarginTop:8}},
 e("div",{style:{fontSize:20,fontWeight:700,color:T.hi,marginBottom:14}},"Log a past session"),
 e("div",{style:{fontSize:15,color:T.sec,marginBottom:6}},"Date"),
-e("div",{style:{overflow:"hidden",borderRadius:12,marginBottom:14}},e("input",{type:"date",value:newLog.date,onChange:function(ev){setNewLog(Object.assign({},newLog,{date:ev.target.value}))},style:Object.assign({},inp,{colorScheme:"dark",minHeight:48})})),
+e("div",{style:{overflow:"hidden",borderRadius:12,marginBottom:14}},e("input",{type:"date",max:getLocalDateKey(),value:newLog.date,onChange:function(ev){setNewLog(Object.assign({},newLog,{date:ev.target.value}))},style:Object.assign({},inp,{colorScheme:"dark",minHeight:48})})),
 e("div",{style:{fontSize:15,color:T.sec,marginBottom:6}},"Session"),
 e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}},Object.keys(SESSIONS).map(function(k){var s2=SESSIONS[k],on=newLog.session===k;return e("button",{key:k,onClick:function(){setNewLog(Object.assign({},newLog,{session:k}))},style:{padding:"9px 14px",borderRadius:20,fontSize:16,cursor:"pointer",fontWeight:on?600:500,background:on?s2.color:"rgba(255,255,255,.07)",border:"none",color:on?T.bg:T.sec}},s2.label)})),
 e("textarea",{value:newLog.notes,onChange:function(ev){setNewLog(Object.assign({},newLog,{notes:ev.target.value}))},placeholder:"Notes (optional)",rows:2,style:Object.assign({},inp,{resize:"none",lineHeight:1.5,marginBottom:14})}),
 e("div",{style:{display:"flex",gap:10}},
 e("button",{className:"glass-btn",onClick:function(){setShowAddLog(false)},style:{flex:1,padding:14,borderRadius:14,color:T.sec,fontSize:17,cursor:"pointer"}},"Cancel"),
-e("button",{onClick:addManualLog,style:{flex:1,padding:14,border:"none",borderRadius:14,background:newLog.date?T.acc:"rgba(255,255,255,.06)",color:newLog.date?T.bg:T.mut,fontSize:17,fontWeight:700,cursor:newLog.date?"pointer":"default"}},"Save"))),
+e("button",{onClick:addManualLog,style:{flex:1,padding:14,border:"none",borderRadius:14,background:(newLog.date&&newLog.date<=getLocalDateKey())?T.acc:"rgba(255,255,255,.06)",color:(newLog.date&&newLog.date<=getLocalDateKey())?T.bg:T.mut,fontSize:17,fontWeight:700,cursor:(newLog.date&&newLog.date<=getLocalDateKey())?"pointer":"default"}},"Save"))),
 logs.length===0?e("div",{style:{color:T.sec,textAlign:"center",padding:"48px 20px",fontSize:17,lineHeight:1.5}},"No sessions yet. Each one you finish shows up here."):
 logs.map(function(l,i){var s2=SESSIONS[l.session];var d=new Date(l.date);var isExp=expandedLog===i;var clr=s2?s2.color:T.mut;
 var letter=l.session==="modC"?"C":l.session==="TGU"?"T":l.session;
@@ -862,9 +863,9 @@ e("div",{style:{fontSize:16,fontWeight:600,color:T.txt,marginBottom:6}},exNameLo
 e("div",{style:{display:"flex",gap:8,fontSize:13,color:T.mut,paddingLeft:30,marginBottom:4}},e("div",{style:{width:70,textAlign:"center"}},"lb"),e("div",{style:{width:60,textAlign:"center"}},"reps"),e("div",{style:{width:52,textAlign:"center"}},"RPE")),
 ex.sets.map(function(set,k){return e("div",{key:k,style:{display:"flex",alignItems:"center",gap:8,padding:"3px 0"}},
 e("div",{style:{width:22,fontSize:16,color:T.mut,textAlign:"center",fontFamily:MONO}},k+1),
-e("input",{type:"number",inputMode:"decimal","data-log-edit":true,defaultValue:set.weight||"",onBlur:function(ev){set.weight=Number(ev.target.value)||0},onClick:function(ev){ev.stopPropagation()},style:numIn(70)}),
-e("input",{type:"number",inputMode:"numeric","data-log-edit":true,defaultValue:set.reps||"",onBlur:function(ev){set.reps=Number(ev.target.value)||0},onClick:function(ev){ev.stopPropagation()},style:numIn(60)}),
-e("input",{type:"number",inputMode:"numeric","data-log-edit":true,defaultValue:set.rpe||"",onBlur:function(ev){var v=Number(ev.target.value)||0;set.rpe=Math.max(0,Math.min(v,10))},onClick:function(ev){ev.stopPropagation()},style:numIn(52)}))}))}),
+e("input",{type:"number",inputMode:"decimal","data-log-edit":true,defaultValue:set.weight||"",onChange:function(ev){set.weight=Number(ev.target.value)||0},onClick:function(ev){ev.stopPropagation()},style:numIn(70)}),
+e("input",{type:"number",inputMode:"numeric","data-log-edit":true,defaultValue:set.reps||"",onChange:function(ev){set.reps=Number(ev.target.value)||0},onClick:function(ev){ev.stopPropagation()},style:numIn(60)}),
+e("input",{type:"number",inputMode:"numeric","data-log-edit":true,defaultValue:set.rpe||"",onChange:function(ev){var v=Number(ev.target.value)||0;set.rpe=Math.max(0,Math.min(v,10))},onClick:function(ev){ev.stopPropagation()},style:numIn(52)}))}))}),
 e("div",{style:{display:"flex",gap:10,marginTop:6},onClick:function(ev){ev.stopPropagation()}},
 e("button",{className:"glass-btn",onClick:function(ev){ev.stopPropagation();setEditingLogIdx(null)},style:{flex:1,padding:12,borderRadius:14,color:T.sec,fontSize:16,cursor:"pointer"}},"Cancel"),
 e("button",{onClick:function(ev){ev.stopPropagation();
@@ -911,7 +912,7 @@ var other=ex.progression&&!offer?ex.progression.msg:(!ex.progression&&ex.suggest
 return e("div",{key:ex.id,style:{display:"flex",alignItems:"center",gap:12,padding:"15px 0",borderTop:ix?"1px solid rgba(255,255,255,.065)":"none"}},
 e("div",{style:{flex:1,minWidth:0}},
 e("div",{style:{fontSize:18,fontWeight:600,color:T.hi}},ex.name),
-e("div",{style:{fontSize:14,color:T.mut,marginTop:2}},ex.sets+" sets"+(last?", last time "+last:"")),
+e("div",{style:{fontSize:14,color:T.mut,marginTop:2}},nSets(ex.sets)+(last?", last time "+last:"")),
 offer&&e("div",{style:{fontSize:14,color:T.ok,marginTop:4}},ex.progression.msg),
 other&&e("div",{style:{fontSize:14,color:T.sec,marginTop:4}},other)),
 ex.suggestedWeight?e("div",{style:{textAlign:"right"}},e("span",{style:{fontFamily:MONO,fontSize:34,fontWeight:600,color:T.hi,lineHeight:1}},ex.suggestedWeight),e("span",{style:{fontSize:14,color:T.mut,marginLeft:4}},"lb")):e("div",{style:{fontSize:14,color:T.mut,textAlign:"right"}},ex.hasWeight===false||!(PROG[ex.id]&&PROG[ex.id].inc)?"Bodyweight":"Pick a weight"))})),
@@ -977,7 +978,7 @@ if(jd!==-1||uncompletedOrEdited)S.set(KEYS.draft,{session:currentSession,exData:
 // Row 65: after an exercise's last set too (standard mode cues the next exercise).
 var fresh=jd!==-1&&!cuedRef.current[ex.id+":"+jd];if(jd!==-1)cuedRef.current[ex.id+":"+jd]=true;
 var leftEx=sess.exercises.find(function(x){return!(x.id===ex.id?ns:(u[x.id]||[])).every(function(s){return s.completed})});
-if(fresh&&leftEx){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=(jd<ns.length-1||circuitMode)?(nextSetCue(ex.id,u)||{}):{cue:introCue(leftEx,u,"Next: "),label:exLabel(leftEx)+"\n"+leftEx.sets+" sets of "+sayReps(leftEx.reps)};setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc.cue,nextLabel:nc.label});speak(["rest-"+adaptedDur])}
+if(fresh&&leftEx){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=(jd<ns.length-1||circuitMode)?(nextSetCue(ex.id,u)||{}):{cue:introCue(leftEx,u,"Next: "),label:exLabel(leftEx)+"\n"+nSets(leftEx.sets)+" of "+sayReps(leftEx.reps)};setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc.cue,nextLabel:nc.label});speak(["rest-"+adaptedDur])}
 var justDone=ns.every(function(s){return s.completed});
 if(justDone&&fresh){var nextEx=null;for(var ni=0;ni<sess.exercises.length;ni++){var nid=sess.exercises[ni].id;var nsets=nid===ex.id?ns:(u[nid]||[]);if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
 if(nextEx)setTimeout(function(){setActiveEx(nextEx)},400);else speak(["session-done"])}}})})),
@@ -1011,7 +1012,7 @@ var cfg=PROG[ex.id];
 if(prog&&prog.type==="progress")debrief.push(ex.name+": "+maxW+" again, or "+prog.weight+" if it felt easy");
 else if(prog&&prog.type==="caution")debrief.push(ex.name+": "+prog.msg);
 else if(maxW>0)debrief.push(ex.name+": hold at "+maxW);
-else if(!cfg||cfg.inc===0)debrief.push(ex.name+": "+sets.length+" sets done");
+else if(!cfg||cfg.inc===0)debrief.push(ex.name+": "+sets.length+(sets.length===1?" set":" sets")+" done");
 });
 var balAdv=getBalanceAdvisory(logsWithToday,next);
 var nextLabel=SESSIONS[next]?SESSIONS[next].label:next;
