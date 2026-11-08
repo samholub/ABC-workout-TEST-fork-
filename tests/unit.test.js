@@ -46,9 +46,10 @@ function t(name, fn) {
 
 // --- getProgression ----------------------------------------------------
 // 'row' config: { top: 12, inc: 5, rpe: 8 }
+// Full sessions: row 75 counts a session toward +5 only with every set logged.
 var twoGoodRowSessions = [
-  log({ ago: 2, sets: [[30, 12, 7], [30, 12, 7]] }),
-  log({ ago: 5, sets: [[30, 12, 7], [30, 12, 7]] })
+  log({ ago: 2, sets: [[30, 12, 7], [30, 12, 7], [30, 12, 7]] }),
+  log({ ago: 5, sets: [[30, 12, 7], [30, 12, 7], [30, 12, 7]] })
 ];
 
 t('getProgression: two sessions at target reps and RPE means add weight', function () {
@@ -260,6 +261,38 @@ t('getFatigueTrend: sessions where Feel was never tapped do not count as low rea
   var rough = { sleep: 1, soreness: 1, motivation: 1 };
   var low = [log({ ago: 1, sessionRPE: 8, readiness: rough }), log({ ago: 3, sessionRPE: 8 }), log({ ago: 5, sessionRPE: 8 })];
   A.ok(M.getFatigueTrend(low), 'a tapped Rough with high RPE still warns');
+});
+
+// --- Review 2 decisions (rows 71-76) -------------------------------------
+t('row 75: a session with sets missing does not count toward +5', function () {
+  var partial = [log({ ago: 2, sets: [[30, 12, 7]] }), log({ ago: 5, sets: [[30, 12, 7], [30, 12, 7], [30, 12, 7]] })];
+  var p = M.getProgression('row', partial, READY, 10);
+  A.ok(!p || p.type !== 'progress', JSON.stringify(p));
+});
+t('row 71: a fatigue trend turns a due +5 into a hold', function () {
+  var rough = { sleep: 1, soreness: 1, motivation: 1 };
+  var logs = [1, 3, 5].map(function (ago) { return log({ ago: ago, readiness: rough, sets: [[30, 12, 8], [30, 12, 8], [30, 12, 8]] }); });
+  A.ok(M.getFatigueTrend(logs), 'trend fires');
+  var p = M.getProgression('row', logs, READY, 10);
+  A.strictEqual(p.type, 'maintain');
+  A.strictEqual(M.getSuggestedLoad('row', logs, READY, 10, false).weight, 30);
+});
+t('row 72: pull-ups at their target RPE 9 do not read as rising effort', function () {
+  function pu(ago, rpe) { return log({ ago: ago, id: 'pullup', sets: [[0, 8, rpe], [0, 8, rpe], [0, 8, rpe]] }); }
+  A.strictEqual(M.getFatigueTrend([pu(1, 9), pu(3, 8), pu(5, 7.5)]), null);
+});
+t('row 73: a same-day second session holds carries even when +5 is due', function () {
+  var logs = [log({ ago: 2, id: 'carry-a', sets: [[50, 40, 7], [50, 40, 7], [50, 40, 7]] }), log({ ago: 5, id: 'carry-a', sets: [[50, 40, 7], [50, 40, 7], [50, 40, 7]] })];
+  A.strictEqual(M.getSuggestedLoad('carry-a', logs, READY, 10, true).weight, 50);
+  A.strictEqual(M.getSuggestedLoad('carry-a', logs, READY, 10, false).weight, 55);
+});
+t('row 74: only an A+B day leads to Modified C', function () {
+  var s = M.nextCycleState({ lastSession: null, lastDate: null, completedToday: [] }, 'C', '2026-11-01');
+  s = M.nextCycleState(s, 'A', '2026-11-01');
+  A.strictEqual(s.isDoubleDay, false);
+  A.strictEqual(M.computeNextSession(s), 'B');
+  var ab = M.nextCycleState(M.nextCycleState({ lastSession: null, lastDate: null, completedToday: [] }, 'A', '2026-11-02'), 'B', '2026-11-02');
+  A.strictEqual(M.computeNextSession(ab), 'modC');
 });
 
 // --- countTrainingToday ------------------------------------------------
@@ -574,10 +607,11 @@ t('spine debrief: reps falling today at the same weight is flagged', function ()
     sets: { 'sldl-b': x3(40, 6, 8), row: x3(30, 12, 8), 'carry-b': x3(35, 40, 7) } });
   A.strictEqual(line(d, 'Single-Leg Deadlifts'), 'Single-Leg Deadlifts: Reps dropped at same weight — check form');
 });
-t('spine debrief: Rough today holds a load that would otherwise progress', function () {
+t('spine debrief: Rough today does not change the advice for next time (row 64)', function () {
+  // The debrief shows what the next Game Plan will say; Feel is asked again then.
   var d = debrief({ session: 'A', readiness: FEEL.rough,
     sets: { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) } });
-  A.strictEqual(line(d, 'Bulgarian Split Squats'), 'Bulgarian Split Squats: hold at 30');
+  A.ok(/start at 35/.test(line(d, 'Bulgarian Split Squats')), line(d, 'Bulgarian Split Squats'));
 });
 t('spine debrief: the +5 it promises is the load the next Game Plan prefills', function () {
   var sets = { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) };
