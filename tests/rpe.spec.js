@@ -12,10 +12,10 @@ test('RPE chips log a set once and Rough stores readiness 1-1-1', async function
   await page.goto('/index.html');
   await expect(page.getByText('Recommended')).toBeVisible();
   await page.getByRole('button', { name: /^Session A/ }).last().click();
-  await expect(page.getByText('Your Game Plan')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Start lifting/i })).toBeVisible();
 
   await page.getByRole('button', { name: 'Rough', exact: true }).click();
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
 
   var skip = page.getByRole('button', { name: 'Skip', exact: true });
@@ -30,14 +30,16 @@ test('RPE chips log a set once and Rough stores readiness 1-1-1', async function
   await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
   await expect(skip).toBeVisible();
 
-  // Dismiss the timer, then a different chip must not log again or restart it.
+  // Dismiss the timer, reopen the logged set (row 68: tap its line), then a
+  // different chip must change its RPE only: no new set, no timer.
   await skip.click();
   await expect(skip).toHaveCount(0);
+  await page.getByText('35 \u00d7 9', { exact: true }).click();
   await page.getByRole('button', { name: '9', exact: true }).first().click();
   await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
   await expect(skip).toHaveCount(0);
 
-  await page.getByRole('button', { name: /Finish Session/ }).click();
+  await page.getByRole('button', { name: /Finish session/i }).click();
   await page.getByRole('button', { name: 'Save & Done' }).click();
   await expect(page.getByText('Last completed: Session A')).toBeVisible();
 

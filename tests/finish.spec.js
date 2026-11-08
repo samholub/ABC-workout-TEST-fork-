@@ -14,8 +14,8 @@ test('a finished session survives a reload and advances Next Up', async function
   await expect(page.getByText('First session → starting with A')).toBeVisible();
 
   await page.getByRole('button', { name: /^Session A/ }).last().click();
-  await expect(page.getByText('Your Game Plan')).toBeVisible();
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await expect(page.getByRole('button', { name: /Start lifting/i })).toBeVisible();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
 
   // Log one set: weight, reps, then an RPE chip (which logs the set).
@@ -26,7 +26,7 @@ test('a finished session survives a reload and advances Next Up', async function
   await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
 
   // Finish -> debrief -> Save & Done.
-  await page.getByRole('button', { name: /Finish Session/ }).click();
+  await page.getByRole('button', { name: /Finish session/i }).click();
   await page.getByRole('button', { name: 'Save & Done' }).click();
 
   // Cold reload: everything below must come from storage.

@@ -25,7 +25,7 @@ async function logOneSet(page) {
 
 async function startSession(page, letter) {
   await page.getByRole('button', { name: new RegExp('^Session ' + letter) }).last().click();
-  await expect(page.getByText('Your Game Plan')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Start lifting/i })).toBeVisible();
 }
 
 test('every discard path leaves logs and the recommendation untouched', async function ({ page }) {
@@ -34,9 +34,9 @@ test('every discard path leaves logs and the recommendation untouched', async fu
 
   // Save one real session so logs and cycle state are not empty.
   await startSession(page, 'A');
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   await logOneSet(page);
-  await page.getByRole('button', { name: /Finish Session/ }).click();
+  await page.getByRole('button', { name: /Finish session/i }).click();
   await page.getByRole('button', { name: 'Save & Done' }).click();
   await expect(page.getByText('Last completed: Session A')).toBeVisible();
   var before = await snapshot(page);
@@ -45,12 +45,12 @@ test('every discard path leaves logs and the recommendation untouched', async fu
 
   // 1. X, then Discard on the unfinished-session banner.
   await startSession(page, 'B');
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   await logOneSet(page);
-  await page.getByRole('button', { name: '✕' }).first().click();
-  await expect(page.getByText('Unfinished session found')).toBeVisible();
+  await page.getByRole('button', { name: 'Leave session' }).first().click();
+  await expect(page.getByText(/ is still open$/)).toBeVisible();
   await page.getByRole('button', { name: 'Discard' }).click();
-  await expect(page.getByText('Unfinished session found')).toHaveCount(0);
+  await expect(page.getByText(/ is still open$/)).toHaveCount(0);
   expect(await snapshot(page), 'X then banner Discard').toEqual(before);
 
   // 2. Cancel on the Game Plan.
@@ -61,9 +61,9 @@ test('every discard path leaves logs and the recommendation untouched', async fu
 
   // 3. Finish with no sets, then confirm Discard.
   await startSession(page, 'B');
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Finish Session/ }).click();
+  await page.getByRole('button', { name: /Finish session/i }).click();
   page.once('dialog', function (d) { d.accept(); });
   await page.getByRole('button', { name: 'Save & Done' }).click();
   await expect(page.getByText('Recommended')).toBeVisible();

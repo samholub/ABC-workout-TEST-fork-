@@ -35,7 +35,7 @@ test('cues announce the first exercise, the rest, ten seconds and the next set; 
 
   await expect(page.getByText('Recommended')).toBeVisible();
   await page.getByRole('button', { name: /^Session A/ }).last().click();
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
   await expect.poll(played).toEqual(expect.arrayContaining(['first-bulgarian-split-squats-3-8-10-leg', 'cue-bss-a']));
   // Row 53: the tap that starts lifting switches iOS to media playback.
@@ -48,7 +48,7 @@ test('cues announce the first exercise, the rest, ten seconds and the next set; 
   await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
   await expect.poll(played).toContain('rest-90');
   // Row 52: the rest card names the next set.
-  await expect(page.getByText(/^Next: Bulgarian Split Squats · set 2 of 3/)).toBeVisible();
+  await expect(page.getByText(/^Set 2 of 3, (35 lb, )?8 to 10 per leg$/)).toBeVisible();
 
   await page.clock.fastForward(81000);
   await expect.poll(played).toContain('ten-seconds');
@@ -63,7 +63,7 @@ test('cues announce the first exercise, the rest, ten seconds and the next set; 
   expect(await page.evaluate(function () { return localStorage.getItem('wk-vc'); })).toBe('false');
   var before = (await played()).length;
   await page.getByRole('button', { name: /Next/ }).first().click();
-  await page.getByRole('button', { name: '8', exact: true }).nth(1).click();
+  await page.getByRole('button', { name: '8', exact: true }).first().click();
   await expect(page.getByText('2/9 sets', { exact: true })).toBeVisible();
   expect((await played()).length).toBe(before);
 });
@@ -118,12 +118,12 @@ test('the rest after an exercise ends cues the next exercise', async function ({
   await page.goto('/index.html');
   var played = function () { return page.evaluate(function () { return window.__played.slice(); }); };
   await page.getByRole('button', { name: /^Session A/ }).last().click();
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   for (var i = 0; i < 3; i++) {
-    await page.getByRole('button', { name: '8', exact: true }).nth(i).click();
+    await page.getByRole('button', { name: '8', exact: true }).first().click();
     await expect(page.getByText((i + 1) + '/9 sets', { exact: true })).toBeVisible();
   }
-  await expect(page.getByText(/^Next: Push-Ups \u00b7 3 sets of 8 to 15/)).toBeVisible();
+  await expect(page.getByText('Up next').locator('..').getByText('3 sets of 8 to 15')).toBeVisible();
   await page.clock.fastForward(91000);
   await expect.poll(played).toEqual(expect.arrayContaining(['next-push-ups-3-8-15', 'cue-pushup']));
 });
@@ -135,9 +135,29 @@ test('circuit mode opens the next exercise when the rest ends', async function (
   await page.goto('/index.html');
   await page.getByRole('button', { name: /^Session A/ }).last().click();
   await page.getByRole('button', { name: /Circuit/ }).click();
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   await page.getByRole('button', { name: '8', exact: true }).first().click();
-  await expect(page.getByText('3 sets x 8-15')).toHaveCount(0);
+  await expect(page.getByText('3 sets of 8 to 15')).toHaveCount(0);
   await page.clock.fastForward(91000);
-  await expect(page.getByText('3 sets x 8-15')).toBeVisible();
+  await expect(page.getByText('3 sets of 8 to 15')).toBeVisible();
+});
+
+// Row 79: re-logging a set (un-check, check again) is silent and starts no timer.
+test('un-checking and re-checking a logged set does not cue again', async function ({ page }) {
+  await page.addInitScript(fakeAudio);
+  await page.clock.install();
+  await page.goto('/index.html');
+  var played = function () { return page.evaluate(function () { return window.__played.slice(); }); };
+  await page.getByRole('button', { name: /^Session A/ }).last().click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
+  await page.getByRole('button', { name: '8', exact: true }).first().click();
+  await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Skip', exact: true }).click();
+  var before = (await played()).length;
+  await page.getByText('\u2713', { exact: true }).first().click();
+  await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '8', exact: true }).first().click();
+  await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0);
+  expect((await played()).length).toBe(before);
 });
