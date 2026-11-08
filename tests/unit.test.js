@@ -119,7 +119,7 @@ t('getSuggestedLoad: a second session today advises maintaining', function () {
     log({ ago: 1, id: 'carry-a', sets: [[35, 40, 7]] })
   ], READY, 10, true);
   A.strictEqual(s.weight, 35);
-  A.ok(/maintain or lighten/i.test(s.reason), s.reason);
+  A.ok(/same weight or lighter/i.test(s.reason), s.reason);
 });
 // --- getFatigueTrend ---------------------------------------------------
 t('getFatigueTrend: monotonic RPE rise of 1.5+ ending at 8 or above', function () {
@@ -128,7 +128,7 @@ t('getFatigueTrend: monotonic RPE rise of 1.5+ ending at 8 or above', function (
     log({ ago: 4, sessionRPE: 8.5, sets: [[30, 10, 8.5]] }),
     log({ ago: 7, sessionRPE: 7, sets: [[30, 10, 7]] })
   ]);
-  A.ok(r && /RPE rising/.test(r.msg), JSON.stringify(r));
+  A.ok(r && /kept getting harder/.test(r.msg), JSON.stringify(r));
 });
 t('getFatigueTrend: sustained high effort against low readiness', function () {
   var r = M.getFatigueTrend([1, 4, 7].map(function (ago) {
@@ -138,7 +138,7 @@ t('getFatigueTrend: sustained high effort against low readiness', function () {
       sets: [[30, 10, 8]]
     });
   }));
-  A.ok(r && /low readiness/.test(r.msg), JSON.stringify(r));
+  A.ok(r && /low energy lately/.test(r.msg), JSON.stringify(r));
 });
 t('getFatigueTrend edge: under three sessions, and manual logs are skipped', function () {
   A.strictEqual(M.getFatigueTrend([]), null);
@@ -397,35 +397,35 @@ t('spine cycle: day rollover drops yesterday\'s sessions but keeps the rotation'
 // --- getRec / getRecReason ---------------------------------------------
 t('spine rec: no history recommends A as the first session', function () {
   A.deepStrictEqual(M.recFor({ lastSession: null, completedToday: [] }),
-    { rec: 'A', reason: 'First session → starting with A' });
+    { rec: 'A', reason: 'Your first session starts with A' });
 });
 t('spine rec: after A, B or C the next in the rotation, naming the last one', function () {
   [['A', 'B'], ['B', 'C'], ['C', 'A']].forEach(function (p) {
     A.deepStrictEqual(M.recFor({ lastSession: p[0], completedToday: [] }),
-      { rec: p[1], reason: 'Last completed: Session ' + p[0] });
+      { rec: p[1], reason: 'Up next after Session ' + p[0] });
   });
 });
 t('spine rec: after Modified C the cycle restarts at A', function () {
   A.deepStrictEqual(M.recFor({ lastSession: 'modC', completedToday: [] }),
-    { rec: 'A', reason: 'Last was Modified C → restarting cycle at A' });
+    { rec: 'A', reason: 'After Modified C, the cycle starts again at A' });
 });
 t('spine rec: after TGU the cycle resumes where it was, or resets to A', function () {
   A.deepStrictEqual(M.recFor({ lastSession: 'TGU', preTgu: 'C', completedToday: [] }),
-    { rec: 'C', reason: 'Last was TGU → resuming cycle' });
+    { rec: 'C', reason: 'Back to the cycle after Get-Ups' });
   A.deepStrictEqual(M.recFor({ lastSession: 'TGU', preTgu: 'modC', completedToday: [] }),
-    { rec: 'modC', reason: 'Last was TGU → resuming cycle' });
+    { rec: 'modC', reason: 'Back to the cycle after Get-Ups' });
   A.deepStrictEqual(M.recFor({ lastSession: 'TGU', completedToday: [] }),
-    { rec: 'A', reason: 'Cycle reset to A' });
+    { rec: 'A', reason: 'Starting the cycle again at A' });
 });
 t('spine rec: a double day recommends Modified C, the same day and the next', function () {
   A.deepStrictEqual(M.recFor({ lastSession: 'B', isDoubleDay: true, completedToday: ['A', 'B'] }),
-    { rec: 'modC', reason: 'Double day → Modified C' });
+    { rec: 'modC', reason: 'A and B done today, so a lighter C' });
   A.deepStrictEqual(M.recFor({ lastSession: 'B', isDoubleDay: true, completedToday: [] }),
-    { rec: 'modC', reason: 'Double day → Modified C' });
+    { rec: 'modC', reason: 'A and B done today, so a lighter C' });
 });
 t('spine rec: an unrecognised last session resets to A and says so', function () {
   A.deepStrictEqual(M.recFor({ lastSession: 'bogus', completedToday: [] }),
-    { rec: 'A', reason: 'Cycle reset to A' });
+    { rec: 'A', reason: 'Starting the cycle again at A' });
 });
 
 // --- Feel: the Rough-readiness hold ------------------------------------
@@ -455,7 +455,7 @@ t('spine progression: RPE 10 at target reps holds the load', function () {
   var logs = [sess(1, 'B', { row: x3(30, 12, 10) })].concat(SEED);
   var p = M.getProgression('row', logs, FEEL.ok, logs.length);
   A.strictEqual(p.type, 'maintain');
-  A.ok(/RPE above target/.test(p.msg), p.msg);
+  A.ok(/Felt hard last time/.test(p.msg), p.msg);
 });
 t('spine progression: an RPE 10 session one back also blocks the +5', function () {
   var logs = [sess(1, 'B', { row: x3(30, 12, 7) }), sess(3, 'B', { row: x3(30, 12, 10) })];
@@ -517,7 +517,7 @@ function rpeRun(rpes, rd) {   // newest first
 t('spine fatigue: rising 7 -> 8 -> 9 fires, from set RPE when sessionRPE is absent', function () {
   var logs = rpeRun([9, 8, 7], FEEL.good).map(function (l) { delete l.sessionRPE; return l; });
   var r = M.getFatigueTrend(logs);
-  A.ok(r && /RPE rising/.test(r.msg), JSON.stringify(r));
+  A.ok(r && /kept getting harder/.test(r.msg), JSON.stringify(r));
 });
 t('spine fatigue: rising but ending below 8 stays quiet', function () {
   A.strictEqual(M.getFatigueTrend(rpeRun([7.5, 6.5, 6], FEEL.good)), null);
@@ -525,7 +525,7 @@ t('spine fatigue: rising but ending below 8 stays quiet', function () {
 t('spine fatigue: flat at RPE 8 is quiet with OK readiness, fires with Rough', function () {
   A.strictEqual(M.getFatigueTrend(rpeRun([8, 8, 8], FEEL.ok)), null);
   var r = M.getFatigueTrend(rpeRun([8, 8, 8], FEEL.rough));
-  A.ok(r && /low readiness/.test(r.msg), JSON.stringify(r));
+  A.ok(r && /low energy lately/.test(r.msg), JSON.stringify(r));
 });
 t('spine fatigue: falling 9 -> 8 -> 7 stays quiet', function () {
   A.strictEqual(M.getFatigueTrend(rpeRun([7, 8, 9], FEEL.ok)), null);
@@ -534,7 +534,7 @@ t('spine fatigue: sessions with no RPE at all are skipped, not counted', functio
   var logs = rpeRun([9, 8, 7], FEEL.good);
   logs.splice(1, 0, sess(2, 'B', { row: x3(30, 12, 0) }));
   var r = M.getFatigueTrend(logs);
-  A.ok(r && /RPE rising/.test(r.msg), JSON.stringify(r));
+  A.ok(r && /kept getting harder/.test(r.msg), JSON.stringify(r));
 });
 
 // --- debrief: next session and load advice from today's sets -----------
@@ -570,7 +570,7 @@ t('spine debrief: the second cycle session of a day names Modified C next', func
   });
   A.strictEqual(d.next, 'modC');
   A.strictEqual(d.pendingState.isDoubleDay, true);
-  A.strictEqual(line(d, 'Carries'), 'Carries: skipped (double-day grip management)');
+  A.strictEqual(line(d, 'Carries'), 'Carries: skipped to rest your grip');
 });
 t('spine debrief: finishing TGU names the session it interrupted', function () {
   var d = debrief({ session: 'TGU', state: { lastSession: 'B', lastDate: '2026-09-26', completedToday: [] }, sets: { tgu: [[20, 5, 7]] } });
@@ -607,7 +607,7 @@ t('spine debrief: hold at is the working weight, not one heavy outlier set', fun
 t('spine debrief: reps falling today at the same weight is flagged', function () {
   var d = debrief({ session: 'B', state: { lastSession: 'A', lastDate: '2026-09-26', completedToday: [] },
     sets: { 'sldl-b': x3(40, 6, 8), row: x3(30, 12, 8), 'carry-b': x3(35, 40, 7) } });
-  A.strictEqual(line(d, 'Single-Leg Deadlifts'), 'Single-Leg Deadlifts: Reps dropped at same weight — check form');
+  A.strictEqual(line(d, 'Single-Leg Deadlifts'), 'Single-Leg Deadlifts: Fewer reps than last time. Slow down and watch your form');
 });
 t('spine debrief: Rough today does not change the advice for next time (row 64)', function () {
   // The debrief shows what the next Game Plan will say; Feel is asked again then.

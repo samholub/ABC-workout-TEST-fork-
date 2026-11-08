@@ -11,7 +11,7 @@ var expect = pw.expect;
 test('a finished session survives a reload and advances Next Up', async function ({ page }) {
   await page.goto('/index.html');
   await expect(page.getByText('Recommended')).toBeVisible();
-  await expect(page.getByText('First session → starting with A')).toBeVisible();
+  await expect(page.getByText('Your first session starts with A')).toBeVisible();
 
   await page.getByRole('button', { name: /^Session A/ }).last().click();
   await expect(page.getByRole('button', { name: /Start lifting/i })).toBeVisible();
@@ -34,8 +34,8 @@ test('a finished session survives a reload and advances Next Up', async function
   await page.reload();
   await expect(page.getByText('Recommended')).toBeVisible();
 
-  // "Last completed" names the session and Next Up has advanced to B.
-  await expect(page.getByText('Last completed: Session A')).toBeVisible();
+  // "Up next after" names the session and Next Up has advanced to B.
+  await expect(page.getByText('Up next after Session A')).toBeVisible();
   await expect(page.getByRole('button', { name: /Recommended/ }))
     .toContainText('Session B');
 

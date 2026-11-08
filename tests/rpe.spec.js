@@ -41,7 +41,7 @@ test('RPE chips log a set once and Rough stores readiness 1-1-1', async function
 
   await page.getByRole('button', { name: /Finish session/i }).click();
   await page.getByRole('button', { name: 'Save & Done' }).click();
-  await expect(page.getByText('Last completed: Session A')).toBeVisible();
+  await expect(page.getByText('Up next after Session A')).toBeVisible();
 
   var log = await page.evaluate(function () { return JSON.parse(localStorage.getItem('wk-lg'))[0]; });
   expect(log.readiness).toEqual({ sleep: 1, soreness: 1, motivation: 1 });
