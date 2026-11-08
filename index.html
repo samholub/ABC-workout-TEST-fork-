@@ -93,7 +93,7 @@ if(typeof React==="undefined"||typeof ReactDOM==="undefined"){window.__rawExport
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",logMode:"wk-lm",workSecs:"wk-ws",backupTs:"wk-bk",schemaVersion:"wk-schema-version"};
-var APP_VERSION=86;
+var APP_VERSION=87;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -459,7 +459,8 @@ function cueSet(name,k,n,w,reps){return["set-"+slug(name)+"-"+(k+1)+"-of-"+n,lbK
 
 // ── RestTimer ──
 // Timed sets (row 90): counts the set down, then logs it with the numbers shown.
-function WorkTimer(props){var secs=props.secs||60;var _r=useState(secs),rem=_r[0],setRem=_r[1];var endRef=useRef(props.ends||Date.now()+secs*1000);var fired=useRef(false);
+function WorkTimer(props){var secs=props.secs||60;var _r=useState(secs),rem=_r[0],setRem=_r[1];var endRef=useRef(props.ends||Date.now()+secs*1000);var fired=useRef(endRef.current<=Date.now());
+useEffect(function(){if(fired.current&&props.onHold)props.onHold()},[]);
 useEffect(function(){var tick=function(){var r=Math.max(0,Math.ceil((endRef.current-Date.now())/1000));setRem(r);if(r<=0&&!fired.current){fired.current=true;clearInterval(id);props.onZero()}};var id=setInterval(tick,500);document.addEventListener("visibilitychange",tick);tick();return function(){clearInterval(id);document.removeEventListener("visibilitychange",tick)}},[]);
 var m=Math.floor(rem/60),s=rem%60,lines=(props.label||"").split("\n");
 return e("div",{className:"glass reveal",style:{position:"sticky",top:0,zIndex:50,borderRadius:26,padding:"14px 18px 16px",margin:"0 0 12px"}},
@@ -475,7 +476,7 @@ lines[1]&&e("div",{style:{fontSize:16,color:T.sec,marginTop:3}},lines[1]))}
 function RestTimer(props){
 var duration=props.duration||90,onDone=props.onDone,adaptiveLabel=props.adaptiveLabel;
 var _r=useState(duration),rem=_r[0],setRem=_r[1];
-var beeped=useRef(false);var tenSaid=useRef(false);
+var beeped=useRef(!!(props.ends&&props.ends<=Date.now()));var tenSaid=useRef(!!(props.ends&&props.ends-Date.now()<=10000));
 var ref=useRef(null);
 var endRef=useRef(props.ends||Date.now()+duration*1000);
 useEffect(function(){
@@ -692,7 +693,7 @@ var _srpe=useState(0),sessionRPE=_srpe[0],setSessionRPE=_srpe[1];
 var cuedRef=useRef({});
 useEffect(function(){if(screen!=="workout"||!activeEx)return;var t=setTimeout(function(){var el=document.getElementById("ex-"+activeEx);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:"smooth",block:"nearest"})},60);return function(){clearTimeout(t)}},[activeEx]);
 // Fewer taps (row 90): handlers per exercise, so a tap anywhere or a timed set can log the current set.
-var setHandlers=useRef({});var logRef=useRef(null);
+var setHandlers=useRef({});var logRef=useRef(null);var kbOpen=useRef(false);
 var _lm=useState(function(){return S.get(KEYS.logMode)==="timed"?"timed":"tap"}),logMode=_lm[0],setLogModeState=_lm[1];
 var _ws=useState(function(){return S.get(KEYS.workSecs)||60}),workSecs=_ws[0],setWorkSecsState=_ws[1];
 var setLogMode=function(m){setLogModeState(m);S.set(KEYS.logMode,m)};var setWorkSecs=function(v){setWorkSecsState(v);S.set(KEYS.workSecs,v)};
@@ -785,7 +786,7 @@ if(totalDone===0){if(window.confirm("No sets completed. Discard this session?"))
 var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var ww=getWorkingWeight(sets.filter(function(s){return s.completed}));if(ww)nw[ex.id]=ww});
 var log=buildSessionLog();
-var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
+var nlFull=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)});var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
 var ns=deriveCycleState(nl,getLocalDateKey());
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
 if(!ok){alert("Couldn't save the workout. Your phone may be out of space. It's still open here, so nothing is lost.");return}
@@ -818,9 +819,9 @@ var _lb=useState(function(){return S.get(KEYS.backupTs)||null}),lastBackup=_lb[0
 var _rm=useState(null),restoreMsg=_rm[0],setRestoreMsg=_rm[1];var _pr=useState(null),pendingRestore=_pr[0],setPendingRestore=_pr[1];
 var doBackup=function(){var data={app:"abc-cycle-tracker",version:2,exportDate:new Date().toISOString(),logs:S.get(KEYS.logs)||[],weights:S.get(KEYS.weights)||{},carry:S.get(KEYS.carry),rest:S.get(KEYS.rest),videos:S.get(KEYS.videos)||{},sessions:S.get(KEYS.sessions)||0,voice:S.get(KEYS.voice),logMode:S.get(KEYS.logMode),workSecs:S.get(KEYS.workSecs)};
 saveJsonFile("abc-workout-backup-"+getLocalDateKey()+".json",data).then(function(ok){if(ok){var t=Date.now();S.set(KEYS.backupTs,t);setLastBackup(t)}})};
-var readRestore=function(file){setRestoreMsg(null);var r=new FileReader();r.onload=function(){var d=null;try{d=JSON.parse(r.result)}catch(x){}var raw=d&&(d.logs||d["wk-lg"]);if(!d||!Array.isArray(raw)){setRestoreMsg("That file isn't a backup from this app.");return}var vl=validateLogs(raw);setPendingRestore({data:d,logs:vl,date:d.exportDate||null})};r.onerror=function(){setRestoreMsg("Couldn't read that file.")};r.readAsText(file)};
+var readRestore=function(file){setRestoreMsg(null);var r=new FileReader();r.onload=function(){var d=null;try{d=JSON.parse(r.result)}catch(x){}var raw=d&&(d.logs||d["wk-lg"]);if(!d||!Array.isArray(raw)){setRestoreMsg("That file isn't a backup from this app.");return}var vl=validateLogs(raw);if(!vl.length){setRestoreMsg("That file has no sessions to restore.");return}setPendingRestore({data:d,logs:vl,date:d.exportDate||null})};r.onerror=function(){setRestoreMsg("Couldn't read that file.")};r.readAsText(file)};
 // Data-loss token: replaces the whole log. Only after the confirm below, newest-first, cycle state re-derived.
-var applyRestore=function(){var p=pendingRestore;if(!p)return;var nl2=p.logs.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);var d=p.data;
+var applyRestore=function(){var p=pendingRestore;if(!p)return;try{localStorage.setItem("wk-lg-prev",JSON.stringify(logs))}catch(x){}var nl2=p.logs.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);var d=p.data;
 if(!S.set(KEYS.logs,nl2)){setPendingRestore(null);setRestoreMsg("Couldn't restore. Your phone may be out of space. Nothing was changed.");return}
 S.set(KEYS.state,deriveCycleState(nl2,getLocalDateKey()));if(d.weights&&typeof d.weights==="object")S.set(KEYS.weights,d.weights);if(d.videos&&typeof d.videos==="object")S.set(KEYS.videos,d.videos);if(d.carry)S.set(KEYS.carry,d.carry);if(d.rest)S.set(KEYS.rest,d.rest);if(typeof d.sessions==="number")S.set(KEYS.sessions,d.sessions);
 clearDraft();setPendingRestore(null);window.location.reload()};
@@ -889,7 +890,7 @@ open&&e("div",{className:"reveal",style:{padding:"0 18px 16px 54px"}},
 e("button",{onClick:function(){setPreviewKey(null);startSession(k)},style:{marginTop:12,width:"100%",padding:"13px",borderRadius:14,border:"none",background:s2.color,color:T.bg,fontSize:16,fontWeight:700,cursor:"pointer"}},"Start "+s2.label)))})))),
 e("div",{className:"foot"},
 e("button",{className:"glass-btn",onClick:function(){setShowHist(true)},style:{width:"100%",borderRadius:16,padding:15,cursor:"pointer",color:T.txt,fontSize:17,fontWeight:600}},"History")),
-showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,onClose:function(){setShowSettings(false);setRestoreMsg(null)},onReset:clearAll,logMode:logMode,setLogMode:setLogMode,workSecs:workSecs,setWorkSecs:setWorkSecs,lastBackup:lastBackup,onBackup:doBackup,onRestoreFile:readRestore,restoreMsg:restoreMsg}),pendingRestore&&e(ConfirmDialog,{title:"Restore this backup?",message:"The backup"+(pendingRestore.date?" from "+new Date(pendingRestore.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):"")+" has "+pendingRestore.logs.length+(pendingRestore.logs.length===1?" session":" sessions")+". It replaces the "+logs.length+(logs.length===1?" session":" sessions")+" on this phone.",confirmLabel:"Restore",onCancel:function(){setPendingRestore(null)},onConfirm:applyRestore}))
+showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,onClose:function(){setShowSettings(false);setRestoreMsg(null)},onReset:clearAll,logMode:logMode,setLogMode:setLogMode,workSecs:workSecs,setWorkSecs:setWorkSecs,lastBackup:lastBackup,onBackup:doBackup,onRestoreFile:readRestore,restoreMsg:restoreMsg}),pendingRestore&&e(ConfirmDialog,{title:"Restore this backup?",message:"The backup"+(pendingRestore.date?" from "+new Date(pendingRestore.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):"")+" has "+pendingRestore.logs.length+(pendingRestore.logs.length===1?" session":" sessions")+". It replaces the "+logs.length+(logs.length===1?" session":" sessions")+" on this phone"+(draftSession?", and closes the unfinished workout":"")+".",confirmLabel:"Restore",onCancel:function(){setPendingRestore(null)},onConfirm:applyRestore}))
 }
 
 // ── Screen: History ──
@@ -1025,7 +1026,7 @@ e("div",{style:{textAlign:"center"}},e("div",{style:{fontSize:17,fontWeight:700,
 e("div",{style:{display:"flex",alignItems:"center"}},warmupData&&e("button",{onClick:function(){setShowWarmupRef(!showWarmupRef)},style:{height:44,background:"transparent",border:"none",color:showWarmupRef?T.hi:T.mut,padding:"0 8px",fontSize:14,cursor:"pointer"}},"Warm-up"),e("button",{"aria-label":voice?"Mute voice cues":"Turn on voice cues",onClick:toggleVoice,style:{width:44,height:44,background:"transparent",border:"none",color:voice?T.txt:T.mut,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},e("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 9h4l5-4v14l-5-4H4z"}),voice?e("path",{d:"M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"}):e("path",{d:"M17 9l5 6M22 9l-5 6"}))))),
 e("div",{style:{height:3,background:T.inp,borderRadius:2,margin:"8px 6px 0",overflow:"hidden"}},e("div",{className:"bar",style:{transform:"scaleX("+(done/total)+")",background:sess.color,transition:"transform .3s var(--ease)"}}))),
 showWarmupRef&&warmupData&&e("div",{style:{padding:"8px 16px",background:"#1F2226",borderBottom:"1px solid #353C42",flexShrink:0}},e("div",{style:{fontSize:12,fontWeight:600,color:"#E8BE6A",marginBottom:6}},warmupData.label),warmupData.steps.map(function(s,i){return e("div",{key:i,style:{fontSize:12,color:"#CFC9BD",lineHeight:1.5,marginBottom:3}},s)})),
-e("div",{className:"padfoot",onClick:function(ev){var t=ev.target;if(t&&t.closest&&t.closest("button,input,a,select,textarea,label,[role=button],[data-notap]"))return;if(floatTimer&&!restZero)return;logCurrent()},style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScrolling:"touch"}},
+e("div",{className:"padfoot",onPointerDown:function(){var ae=document.activeElement;kbOpen.current=!!(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"))},onClick:function(ev){var t=ev.target;if(t&&t.closest&&t.closest("button,input,a,select,textarea,label,[role=button],[data-notap]"))return;var ae=document.activeElement;if(kbOpen.current||(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"))){kbOpen.current=false;if(ae&&ae.blur)ae.blur();return}if(floatTimer&&!restZero)return;logCurrent()},style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScrolling:"touch"}},
 floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,ends:floatTimer.ends,adaptiveLabel:adaptiveRestLabel,nextCue:floatTimer.nextCue,nextLabel:floatTimer.nextLabel,onZero:function(){advanceCircuit(floatTimer.exId);setRestZero(true);if(logMode==="timed"){setFloatTimer(null);setAdaptiveRestLabel(null);startWork(0)}},onDone:function(){setFloatTimer(null);setAdaptiveRestLabel(null);setRestZero(false);advanceCircuit(floatTimer.exId);startWork(0)}}),
 work&&!floatTimer&&e(WorkTimer,{key:work.key,secs:work.secs,ends:work.ends,label:(function(){var t=currentTarget();return t?exLabel(t.ex)+"\n"+"Set "+(t.idx+1)+" of "+t.total:""})(),onZero:function(){setWork(null);if(logRef.current)logRef.current()},onDone:function(){setWork(null);if(logRef.current)logRef.current()},onHold:function(){setWork(null)}}),
 sess.exercises.map(function(ex){
@@ -1055,7 +1056,7 @@ isExpanded:isActive,onToggle:function(){setActiveEx(isActive?null:ex.id)},
 onUpdate:handleSets})})),
 e("div",{className:"foot"},
 (function(){if(allDone||work||(floatTimer&&!restZero))return null;var t=currentTarget();return t?e("div",{style:{textAlign:"center",fontSize:15,color:T.sec,marginBottom:10}},"Tap anywhere to log set "+(t.idx+1)+" of "+t.total):null})(),
-e("button",{onClick:function(){setScreen("complete")},className:allDone?undefined:"glass-btn",style:{width:"100%",padding:16,background:allDone?sess.color:undefined,border:allDone?"none":undefined,borderRadius:16,cursor:"pointer",color:allDone?T.bg:T.sec,fontSize:17,fontWeight:allDone?700:500}},allDone?"Complete session":"Finish session early")))
+e("button",{onClick:function(){setWork(null);setScreen("complete")},className:allDone?undefined:"glass-btn",style:{width:"100%",padding:16,background:allDone?sess.color:undefined,border:allDone?"none":undefined,borderRadius:16,cursor:"pointer",color:allDone?T.bg:T.sec,fontSize:17,fontWeight:allDone?700:500}},allDone?"Complete session":"Finish session early")))
 }
 
 // ── Screen: Session Complete ──

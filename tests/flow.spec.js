@@ -116,3 +116,70 @@ test('backup round trip: restore replaces the history after a confirm', async fu
   expect(lg.length).toBe(1);
   expect(lg[0].exercises[0].sets[0].weight).toBe(30);
 });
+
+// Review fixes (row 94).
+async function startA(page) {
+  await page.getByRole('button', { name: /^Session A/ }).last().click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
+}
+
+test('tapping away to close the number keyboard does not log the set', async function ({ page }) {
+  await page.addInitScript(fakeAudio);
+  await page.clock.install();
+  await page.goto('/index.html');
+  await startA(page);
+  var inp = page.locator('input.num').first();
+  await inp.click();
+  await inp.fill('35');
+  await page.getByText('Set 1 of 3', { exact: true }).click();
+  await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
+  // With the keyboard closed, the next tap logs it.
+  await page.getByText('Set 1 of 3', { exact: true }).click();
+  await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
+});
+
+test('timed set: Finish early, wait, Back to session logs nothing', async function ({ page }) {
+  await page.addInitScript(function () { localStorage.setItem('wk-lm', JSON.stringify('timed')); localStorage.setItem('wk-ws', JSON.stringify(45)); });
+  await page.addInitScript(fakeAudio);
+  await page.clock.install();
+  await page.goto('/index.html');
+  await startA(page);
+  await expect(page.getByText('Logs itself at 0:00')).toBeVisible();
+  await page.getByRole('button', { name: /Finish session early/ }).click();
+  await page.clock.fastForward(60000);
+  await page.getByRole('button', { name: /Back to session/ }).click();
+  await page.clock.runFor(1000);
+  await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
+});
+
+test('a rest that ended before Complete and Back does not cue again', async function ({ page }) {
+  await page.addInitScript(fakeAudio);
+  await page.clock.install();
+  await page.goto('/index.html');
+  await startA(page);
+  await page.getByText('Set 1 of 3', { exact: true }).click();
+  await page.clock.fastForward(91000);
+  await page.clock.runFor(1000);
+  var n = (await played(page)).length;
+  await page.getByRole('button', { name: /Finish session early/ }).click();
+  await page.getByRole('button', { name: /Back to session/ }).click();
+  await page.clock.runFor(1500);
+  expect((await played(page)).slice(n)).toEqual([]);
+});
+
+test('a backup file with no valid sessions is refused and history stays', async function ({ page }, info) {
+  await page.addInitScript(function () {
+    if (localStorage.getItem('wk-lg')) return;
+    localStorage.setItem('wk-lg', JSON.stringify([
+      { date: new Date('2026-11-02T12:00:00').toISOString(), session: 'B', duration: 15, exercises: [] },
+      { date: new Date('2026-11-01T12:00:00').toISOString(), session: 'A', duration: 15, exercises: [] }]));
+  });
+  await page.goto('/index.html');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  var f = info.outputPath('bad.json');
+  fs.writeFileSync(f, JSON.stringify({ logs: [{ when: 'x' }] }));
+  await page.locator('input[type=file]').setInputFiles(f);
+  await expect(page.getByText('That file has no sessions to restore.')).toBeVisible();
+  var lg = await page.evaluate(function () { return JSON.parse(localStorage.getItem('wk-lg')); });
+  expect(lg.length).toBe(2);
+});

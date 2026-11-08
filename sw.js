@@ -2,7 +2,7 @@
 // files each carry their own literal copy of the number instead of sharing
 // a symbol. tests/gate.js fails the build if they disagree or if index.html
 // changed without this number moving.
-var APP_VERSION = 86;
+var APP_VERSION = 87;
 var CACHE_NAME = 'abc-workout-v' + APP_VERSION;
 // Spoken-cue clips (audio/) live in their own cache so a version bump does
 // not throw them away; bump this name only when the clips are re-recorded.
@@ -34,7 +34,7 @@ function rangeReply(resp, request) {
     var len = buf.byteLength;
     var start = m[1] ? parseInt(m[1], 10) : (m[2] ? Math.max(0, len - parseInt(m[2], 10)) : 0);
     var end = m[1] && m[2] ? Math.min(parseInt(m[2], 10), len - 1) : len - 1;
-    if (start >= len) return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + len } });
+    if (start >= len || end < start) return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + len } });
     return new Response(buf.slice(start, end + 1), { status: 206, headers: {
       'Content-Type': 'audio/mpeg', 'Accept-Ranges': 'bytes',
       'Content-Range': 'bytes ' + start + '-' + end + '/' + len,
@@ -59,7 +59,11 @@ self.addEventListener('install', function(event) {
           return carry();
         }).catch(carry);
       });
-      return local.then(function() { return Promise.all(cdn); });
+      return local.then(function() { return Promise.all(cdn); }).then(function() {
+        // Row 94: clips download here, while the old worker still serves pages;
+        // in activate they held up every page open until all of them were fetched.
+        return precacheClips().catch(function() {});
+      });
     }).then(function() {
       return self.skipWaiting();
     })
@@ -75,8 +79,6 @@ self.addEventListener('activate', function(event) {
       );
     }).then(function() {
       return self.clients.claim();
-    }).then(function() {
-      return precacheClips().catch(function() {});
     })
   );
 });
