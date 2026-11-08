@@ -66,7 +66,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
-var APP_VERSION=72;
+var APP_VERSION=73;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -138,14 +138,14 @@ var CYCLE=["A","B","C"];
 
 // ===== PROGRESSION ENGINE CONFIG =====
 var PROG={
-"bss-a":{top:10,inc:5,rpe:8},"bss-c":{top:10,inc:5,rpe:8},
+"bss-a":{top:10,inc:2.5,rpe:8},"bss-c":{top:10,inc:2.5,rpe:8},
 pushup:{top:15,inc:0,rpe:8},
-"carry-a":{top:0,inc:5,rpe:7},"carry-b":{top:0,inc:5,rpe:7},"carry-mc":{top:0,inc:5,rpe:7},
-"sldl-b":{top:10,inc:5,rpe:8},"sldl-c":{top:10,inc:5,rpe:8},
-row:{top:12,inc:5,rpe:8},
+"carry-a":{top:0,inc:2.5,rpe:7},"carry-b":{top:0,inc:2.5,rpe:7},"carry-mc":{top:0,inc:2.5,rpe:7},
+"sldl-b":{top:10,inc:2.5,rpe:8},"sldl-c":{top:10,inc:2.5,rpe:8},
+row:{top:12,inc:2.5,rpe:8},
 pullup:{top:0,inc:0,rpe:9},"pullup-mc":{top:0,inc:0,rpe:9},
 ohp:{top:10,inc:2.5,rpe:8},
-tgu:{top:5,inc:5,rpe:7}
+tgu:{top:5,inc:2.5,rpe:7}
 };
 
 // Exercise ID groups - same movement tracked together for charts/progression
@@ -238,16 +238,16 @@ if(rdScore<=4)return{type:"maintain",msg:"Feeling rough \u2014 hold current load
 var phase=getPeriodPhase(sessionCount||0);
 if(cfg.top>0){
 if(h0.full&&h1.full&&h0.reps>=cfg.top&&h1.reps>=cfg.top&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight){
-var msg="2 sessions at target reps + RPE \u2192 "+(h0.weight+cfg.inc)+" lbs";
-if(phase.phase==="early")msg="Reps and RPE on track \u2192 try "+(h0.weight+cfg.inc)+" lbs";
-if(phase.phase==="experienced")msg="Progression criteria met \u2192 "+(h0.weight+cfg.inc)+" lbs";
+// Row 80: maintenance first. Going up is offered, never pushed: the load stays
+// put and this note says a step up is there if he wants it.
+var msg="Ready for "+(h0.weight+cfg.inc)+" lbs if you want it";
 if(getFatigueTrend(logs))return{type:"maintain",msg:"Fatigue trend \u2014 hold current load"};
 return{type:"progress",msg:msg,weight:h0.weight+cfg.inc}}
 if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
 if(h0.reps<h1.reps&&h0.weight===h1.weight)return{type:"caution",msg:"Reps dropped at same weight \u2014 check form"};
 }else{
 if(h0.full&&h1.full&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight)
-return getFatigueTrend(logs)?{type:"maintain",msg:"Fatigue trend \u2014 hold current load"}:{type:"progress",msg:"2 sessions at target RPE \u2192 "+(h0.weight+cfg.inc)+" lbs",weight:h0.weight+cfg.inc};
+return getFatigueTrend(logs)?{type:"maintain",msg:"Fatigue trend \u2014 hold current load"}:{type:"progress",msg:"Ready for "+(h0.weight+cfg.inc)+" lbs if you want it",weight:h0.weight+cfg.inc};
 if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
 }return null}
 
@@ -265,7 +265,7 @@ if(!lastW)return null;
 var prog=getProgression(exId,logs,readiness,sessionCount);
 // Row 73: a same-day second session holds carries even when +5 is due.
 if(carryAdvisory)return{weight:lastW,reason:"Second session \u2014 maintain or lighten"};
-if(prog&&prog.type==="progress")return{weight:prog.weight,reason:prog.msg};
+if(prog&&prog.type==="progress")return{weight:lastW,reason:prog.msg,offer:prog.weight};
 if(prog)return{weight:lastW,reason:prog.msg};
 return{weight:lastW,reason:null}}
 
@@ -544,20 +544,7 @@ return e("div",{key:i},e("div",{style:{padding:"6px 0",opacity:set.completed?0.6
 function ConfirmDialog(props){return e("div",{style:STYLES.dialogOverlay,onClick:props.onCancel},e("div",{style:{position:"absolute",inset:0,background:"#000000cc"}}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.dialogBox},e("div",{style:{fontSize:17,fontWeight:700,color:T.hi,marginBottom:8}},props.title),e("div",{style:{fontSize:14,color:T.sec,lineHeight:1.5,marginBottom:20}},props.message),e("div",{style:STYLES.footerBtnRow},e("button",{onClick:props.onCancel,style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.txt,fontSize:14,fontWeight:500,cursor:"pointer"}},"Cancel"),e("button",{onClick:props.onConfirm,style:{flex:1,padding:"12px",background:props.danger?T.errD:T.acc,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}},props.confirmLabel||"Confirm"))))}
 
 // ── SettingsSheet ──
-function SettingsSheet(props){var restDur=props.restDur,setRestDur=props.setRestDur,onClose=props.onClose,onReset=props.onReset,onExport=props.onExport,logs=props.logs,lastWeights=props.lastWeights,videoUrls=props.videoUrls,cycleState=props.cycleState;var _imp=useState(""),importStatus=_imp[0],setImportStatus=_imp[1];
-var _pi=useState(null),pendingImport=_pi[0],setPendingImport=_pi[1];
-var exportData=function(){onExport(null);setImportStatus("Backup created");setTimeout(function(){setImportStatus("")},2500)};
-var validateImport=function(data){if(!data||typeof data!=="object")return"File is not a valid JSON object";if(!Array.isArray(data.logs))return"Missing or invalid session logs";var vl=validateLogs(data.logs);if(vl.length===0&&data.logs.length>0)return"No valid log entries found (missing dates or sessions)";if(vl.length===0)return"Backup contains no session logs";data._validatedLogs=vl;data._validatedState=validateState(data.state);if(data.weights&&typeof data.weights!=="object")return"Invalid weights data";return null};
-var importData=function(){var input=document.createElement("input");input.type="file";input.accept=".json";input.onchange=function(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e2){try{var data=JSON.parse(e2.target.result);var err=validateImport(data);if(err){setImportStatus("Error: "+err);return}setPendingImport(data);setImportStatus("")}catch(ex){setImportStatus("Error: could not parse file")}};reader.readAsText(file)};input.click()};
-var applyImport=function(){var data=pendingImport;if(!data)return;try{localStorage.setItem("wk-lg-prev",localStorage.getItem(KEYS.logs)||"[]")}catch(e){}var vLogs=(data._validatedLogs||validateLogs(data.logs)).slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)});var vState=data._validatedState||validateState(data.state);var ok=S.set(KEYS.logs,vLogs)&&S.set(KEYS.state,vState);if(data.weights&&typeof data.weights==="object")ok=ok&&S.set(KEYS.weights,data.weights);if(data.videos&&typeof data.videos==="object")ok=ok&&S.set(KEYS.videos,data.videos);if(data.carry)ok=ok&&S.set(KEYS.carry,data.carry);if(data.rest)ok=ok&&S.set(KEYS.rest,data.rest);if(typeof data.sessions==="number")ok=ok&&S.set(KEYS.sessions,data.sessions);if(!ok){alert("Storage error! Import failed. Please free up space on your device.");return}setPendingImport(null);setImportStatus("Imported! Reloading...");setTimeout(function(){window.location.reload()},1500)};
-var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),e("div",{style:{marginTop:16,borderTop:"1px solid #292524",paddingTop:16}},
-e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:10}},"Data Management"),
-e("div",{style:{display:"flex",gap:8,marginBottom:8}},
-e("button",{onClick:exportData,style:{flex:1,padding:"12px",background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:13,cursor:"pointer"}},"\u{1F4E5} Export Backup"),
-e("button",{onClick:importData,style:{flex:1,padding:"12px",background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:13,cursor:"pointer"}},"\u{1F4E4} Import Backup")),
-importStatus&&e("div",{style:{fontSize:12,color:importStatus.indexOf("Error")!==-1?T.err:importStatus.indexOf("Backup created")!==-1?"#3B82F6":T.ok,marginBottom:4}},importStatus),
-pendingImport&&e("div",{style:{background:"#1a1a0a",border:"1px solid #854d0e",borderRadius:10,padding:"12px",marginBottom:8}},e("div",{style:{fontSize:13,color:T.warn,fontWeight:600,marginBottom:6}},"\u26a0 Replace all data?"),e("div",{style:{fontSize:12,color:T.sec,lineHeight:1.5,marginBottom:4}},pendingImport.logs.length+" sessions"+(pendingImport.exportDate?" \u00b7 exported "+new Date(pendingImport.exportDate).toLocaleDateString():"")),e("div",{style:{fontSize:11,color:T.mut,marginBottom:10}},"This will overwrite your current "+logs.length+" sessions. Cannot be undone."),e("div",{style:{display:"flex",gap:8}},e("button",{onClick:function(){setPendingImport(null)},style:{flex:1,padding:"10px",background:T.inp,border:"1px solid "+T.brd,borderRadius:8,color:T.txt,fontSize:13,cursor:"pointer"}},"Cancel"),e("button",{onClick:applyImport,style:{flex:1,padding:"10px",background:"#854d0e",border:"none",borderRadius:8,color:"#FDE68A",fontSize:13,fontWeight:600,cursor:"pointer"}},"Replace Data"))),
-e("div",{style:{fontSize:11,color:"#57534E",lineHeight:1.4,marginBottom:8}},"Export creates a JSON backup. Import restores from a previous backup.")),
+function SettingsSheet(props){var restDur=props.restDur,setRestDur=props.setRestDur,onClose=props.onClose,onReset=props.onReset,logs=props.logs,lastWeights=props.lastWeights,videoUrls=props.videoUrls,cycleState=props.cycleState;var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),
 e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:16}},e("button",{onClick:function(){setShowDanger(!showDanger)},style:{width:"100%",background:"transparent",border:"1px solid #292524",borderRadius:12,padding:"14px 16px",cursor:"pointer",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",null,e("div",{style:{fontSize:14,fontWeight:600,color:"#78716C"}},"Danger Zone"),e("div",{style:{fontSize:12,color:"#57534E",marginTop:2}},"Reset all app data")),e("span",{style:{color:"#57534E",fontSize:14}},showDanger?"\u25B2":"\u25BC")),showDanger&&e("div",{style:{marginTop:10,padding:"16px",background:"#1a0a0a",border:"1px solid rgba(153,27,27,0.27)",borderRadius:12}},e("div",{style:{fontSize:13,color:"#A8A29E",marginBottom:12,lineHeight:1.5}},"Permanently deletes all data. Cannot be undone."),e("button",{onClick:function(){setConfirmReset(true)},style:{width:"100%",padding:"12px",background:"#991B1B",border:"none",borderRadius:10,color:"#FCA5A5",fontSize:14,fontWeight:600,cursor:"pointer"}},"Delete All Data")))),confirmReset&&e(ConfirmDialog,{title:"Delete All Data?",message:"This will permanently erase everything. Are you sure?",confirmLabel:"Delete Everything",danger:true,onCancel:function(){setConfirmReset(false)},onConfirm:function(){setConfirmReset(false);onReset()}}))}
 
 // ========================================================================
@@ -691,9 +678,6 @@ var nc=sessionCount+1;S.set(KEYS.sessions,nc);setSessionCount(nc);
 setLastWeights(nw);setLogs(nl);clearDraft();home()
 };
 
-// pendingLog: the session being completed, so a backup taken from the Complete
-// screen includes it (and counts it) before Save & Done has written it.
-var exportBackup=function(pendingLog){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:pendingLog?[pendingLog].concat(logs):logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur,sessions:sessionCount+(pendingLog?1:0)};saveJsonFile("abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json",data)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
 var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setExported(false);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
 var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});if(!(S.set(KEYS.logs,nl)&&S.set(KEYS.state,deriveCycleState(nl,getLocalDateKey())))){alert("Storage error! The session was not deleted.");return}setLogs(nl);setConfirmDel(null);setExpandedLog(null)};
@@ -753,7 +737,7 @@ e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,alignContent:
 Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];var avg=getAvgTime(k,logs);return e("button",{key:k,onClick:function(){startSession(k)},style:{background:"#1C1917",border:"1px solid "+(k===rec?s.color+"66":"#292524"),borderRadius:12,padding:"10px 12px",cursor:"pointer",textAlign:"left",minHeight:70,display:"flex",flexDirection:"column",justifyContent:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:1}},e("div",{style:{width:7,height:7,borderRadius:"50%",background:s.color}}),e("div",{style:{fontSize:14,fontWeight:600,color:"#F5F5F4"}},s.label)),e("div",{style:{fontSize:11,color:"#78716C"}},s.time+(avg?" \u00b7 Avg: "+avg+"m total":"")),s.subtitle&&e("div",{style:{fontSize:10,color:"#57534E",fontStyle:"italic"}},s.subtitle))})))),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:0})},
 e("div",{style:{display:"grid",gridTemplateColumns:"1fr",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowHist(true)},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"📋 History"))),
-showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,onClose:function(){setShowSettings(false)},onReset:clearAll,onExport:exportBackup,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
+showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,onClose:function(){setShowSettings(false)},onReset:clearAll,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
 }
 
 // ── Screen: History ──
@@ -926,8 +910,6 @@ var totalDone=sess.exercises.reduce(function(a,x){return a+(exData[x.id]||[]).fi
 // state it is about to write, not the stale pre-save cycleState (row 18).
 var pendingState=nextCycleState(cycleState,currentSession,getLocalDateKey());
 var next=computeNextSession(pendingState);
-// Every 10th saved session, counted by the stored counter, not logs.length.
-var showExportPrompt=(sessionCount+1)%10===0;
 // Progression should reflect today's just-completed sets, not just history
 // saved before this session started (row 19), without writing anything.
 var todayLog=buildSessionLog();
@@ -942,7 +924,7 @@ if(!sets.length){if(ex.isCarry&&isDouble)debrief.push(ex.name+": skipped (double
 var maxW=getWorkingWeight(sets);
 var prog=getProgression(ex.id,logsWithToday,null,getSessionCount(logs));
 var cfg=PROG[ex.id];
-if(prog&&prog.type==="progress")debrief.push(ex.name+": start at "+prog.weight+" next session");
+if(prog&&prog.type==="progress")debrief.push(ex.name+": "+maxW+" again, or "+prog.weight+" if it felt easy");
 else if(prog&&prog.type==="caution")debrief.push(ex.name+": "+prog.msg);
 else if(maxW>0)debrief.push(ex.name+": hold at "+maxW);
 else if(!cfg||cfg.inc===0)debrief.push(ex.name+": "+sets.length+" sets done");
@@ -976,8 +958,6 @@ e("div",{style:{display:"flex",gap:4}},
 // Notes
 e("div",{style:{width:"100%",maxWidth:380,margin:"0 auto",marginBottom:10}},
 e("div",{style:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,overflow:"hidden"}},e("textarea",{value:notes.notes,onChange:function(ev){setNotes({notes:ev.target.value})},placeholder:"Quick notes...",rows:2,style:{width:"100%",background:"transparent",border:"none",color:T.txt,padding:"12px 14px",fontSize:14,resize:"none",outline:"none",lineHeight:1.5}})))),
-// Periodic backup reminder
-showExportPrompt&&e("button",{onClick:function(){exportBackup(todayLog);setExported(true);setTimeout(function(){setExported(false)},2500)},style:{width:"100%",maxWidth:380,margin:"0 auto 10px",display:"block",padding:"12px",background:exported?"#052e1c":"#292524",border:"1px solid "+(exported?T.ok+"66":"#44403C"),borderRadius:10,color:exported?T.okL:"#E7E5E4",fontSize:13,fontWeight:500,cursor:"pointer"}},exported?"Backup saved!":"\u{1F4E5} Export Backup (includes this session)"),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 20px 12px"})},
 e("button",{onClick:saveAndFinish,style:{width:"100%",padding:"14px",background:sess.color,border:"none",borderRadius:12,color:"#fff",fontSize:16,fontWeight:600,cursor:"pointer"}},"Save & Done")))
 }

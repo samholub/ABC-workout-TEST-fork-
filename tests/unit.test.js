@@ -55,8 +55,8 @@ var twoGoodRowSessions = [
 t('getProgression: two sessions at target reps and RPE means add weight', function () {
   var p = M.getProgression('row', twoGoodRowSessions, READY, 10);
   A.strictEqual(p.type, 'progress');
-  A.strictEqual(p.weight, 35);              // 30 + inc 5
-  A.ok(/35 lbs/.test(p.msg), 'message names the new weight: ' + p.msg);
+  A.strictEqual(p.weight, 32.5);            // 30 + inc 2.5, offered not pushed (row 80)
+  A.ok(/32.5 lbs/.test(p.msg), 'message names the step up: ' + p.msg);
 });
 t('getProgression edge: low readiness overrides a qualifying history', function () {
   var p = M.getProgression('row', twoGoodRowSessions, WIPED, 10);
@@ -98,9 +98,10 @@ t('getProgression edge: RPE-only exercises also require the same weight both ses
 });
 
 // --- getSuggestedLoad --------------------------------------------------
-t('getSuggestedLoad: follows the progression engine when it fires', function () {
+t('getSuggestedLoad: maintenance first, a due step up is offered, not prefilled (row 80)', function () {
   var s = M.getSuggestedLoad('row', twoGoodRowSessions, READY, 10, false);
-  A.strictEqual(s.weight, 35);
+  A.strictEqual(s.weight, 30);
+  A.strictEqual(s.offer, 32.5);
   A.ok(s.reason);
 });
 t('getSuggestedLoad: falls back to last working weight', function () {
@@ -284,7 +285,7 @@ t('row 72: pull-ups at their target RPE 9 do not read as rising effort', functio
 t('row 73: a same-day second session holds carries even when +5 is due', function () {
   var logs = [log({ ago: 2, id: 'carry-a', sets: [[50, 40, 7], [50, 40, 7], [50, 40, 7]] }), log({ ago: 5, id: 'carry-a', sets: [[50, 40, 7], [50, 40, 7], [50, 40, 7]] })];
   A.strictEqual(M.getSuggestedLoad('carry-a', logs, READY, 10, true).weight, 50);
-  A.strictEqual(M.getSuggestedLoad('carry-a', logs, READY, 10, false).weight, 55);
+  A.strictEqual(M.getSuggestedLoad('carry-a', logs, READY, 10, false).offer, 52.5);
 });
 t('row 74: only an A+B day leads to Modified C', function () {
   var s = M.nextCycleState({ lastSession: null, lastDate: null, completedToday: [] }, 'C', '2026-11-01');
@@ -435,10 +436,11 @@ t('spine feel: Rough holds the load on a history that would progress', function 
   A.strictEqual(s.weight, 30, 'held at the last working weight');
   A.ok(/rough/i.test(s.reason), s.reason);
 });
-t('spine feel: OK, Good and no tap all progress the same history', function () {
+t('spine feel: OK, Good and no tap all offer the same step up', function () {
   [FEEL.ok, FEEL.good, null].forEach(function (rd) {
     var s = M.getSuggestedLoad('row', SEED, rd, SEED.length, false);
-    A.strictEqual(s.weight, 35, 'readiness ' + JSON.stringify(rd));
+    A.strictEqual(s.weight, 30, 'readiness ' + JSON.stringify(rd));
+    A.strictEqual(s.offer, 32.5, 'readiness ' + JSON.stringify(rd));
   });
 });
 
@@ -447,7 +449,7 @@ t('spine progression: exactly top reps at exactly target RPE twice qualifies', f
   // row: top 12, rpe 8. SEED's last two rows are 30x12 @8 and @7.
   var p = M.getProgression('row', SEED, FEEL.ok, SEED.length);
   A.strictEqual(p.type, 'progress');
-  A.strictEqual(p.weight, 35);
+  A.strictEqual(p.weight, 32.5);
 });
 t('spine progression: RPE 10 at target reps holds the load', function () {
   var logs = [sess(1, 'B', { row: x3(30, 12, 10) })].concat(SEED);
@@ -469,7 +471,7 @@ t('spine progression: same-weight rule, top reps at a new weight starts the coun
   logs = [sess(0, 'C', { 'bss-c': x3(30, 10, 8) })].concat(logs);
   p = M.getProgression('bss-a', logs, FEEL.ok, 3);
   A.strictEqual(p.type, 'progress');
-  A.strictEqual(p.weight, 35);
+  A.strictEqual(p.weight, 32.5);
 });
 t('spine progression: one heavy outlier set does not move the working weight', function () {
   var logs = [
@@ -478,7 +480,7 @@ t('spine progression: one heavy outlier set does not move the working weight', f
   ];
   var p = M.getProgression('row', logs, FEEL.ok, 2);
   A.strictEqual(p.type, 'progress');
-  A.strictEqual(p.weight, 35, 'progresses from the working weight 30, not the 35 outlier');
+  A.strictEqual(p.weight, 32.5, 'progresses from the working weight 30, not the 35 outlier');
 });
 t('spine progression: below top reps, or no RPE logged, never progresses', function () {
   var short = [sess(1, 'B', { row: x3(30, 11, 7) }), sess(3, 'B', { row: x3(30, 11, 7) })];
@@ -497,7 +499,7 @@ t('spine progression: carries progress on two same-weight sessions at target RPE
   // carry-a / carry-b / carry-mc are one group; SEED has 35 @7 in A and B.
   var p = M.getProgression('carry-mc', SEED, FEEL.ok, SEED.length);
   A.strictEqual(p.type, 'progress');
-  A.strictEqual(p.weight, 40);
+  A.strictEqual(p.weight, 37.5);
 });
 t('spine progression: carries at RPE 8 hold, and without RPE never progress', function () {
   var hard = [sess(1, 'A', { 'carry-a': x3(35, 40, 8) })].concat(SEED);
@@ -586,7 +588,7 @@ t('spine debrief: today\'s second qualifying session earns the +5', function () 
   // SEED has one BSS session at 30 (top reps, RPE 8): alone it is not enough.
   A.ok(!M.getProgression('bss-a', SEED, FEEL.ok, 6) || M.getProgression('bss-a', SEED, FEEL.ok, 6).type !== 'progress');
   var d = debrief({ session: 'A', sets: { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) } });
-  A.strictEqual(line(d, 'Bulgarian Split Squats'), 'Bulgarian Split Squats: start at 35 next session');
+  A.strictEqual(line(d, 'Bulgarian Split Squats'), 'Bulgarian Split Squats: 30 again, or 32.5 if it felt easy');
   A.strictEqual(line(d, 'Push-Ups'), 'Push-Ups: 3 sets done');
 });
 t('spine debrief: an RPE 10 grind today holds, though history alone said +5', function () {
@@ -611,14 +613,16 @@ t('spine debrief: Rough today does not change the advice for next time (row 64)'
   // The debrief shows what the next Game Plan will say; Feel is asked again then.
   var d = debrief({ session: 'A', readiness: FEEL.rough,
     sets: { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) } });
-  A.ok(/start at 35/.test(line(d, 'Bulgarian Split Squats')), line(d, 'Bulgarian Split Squats'));
+  A.ok(/or 32.5 if it felt easy/.test(line(d, 'Bulgarian Split Squats')), line(d, 'Bulgarian Split Squats'));
 });
-t('spine debrief: the +5 it promises is the load the next Game Plan prefills', function () {
+t('spine debrief: the step up it offers is the one the next Game Plan offers (row 80)', function () {
   var sets = { 'bss-a': x3(30, 10, 8), pushup: x3(0, 12, 7), 'carry-a': x3(35, 40, 7) };
   var d = debrief({ session: 'A', sets: sets });
   var saved = [sess(0, 'A', sets)].concat(SEED);
-  A.strictEqual(M.getSuggestedLoad('bss-c', saved, null, 7, false).weight, 35);
-  A.ok(/start at 35/.test(line(d, 'Bulgarian Split Squats')));
+  var sug = M.getSuggestedLoad('bss-c', saved, null, 7, false);
+  A.strictEqual(sug.weight, 30);
+  A.strictEqual(sug.offer, 32.5);
+  A.ok(/or 32.5 if it felt easy/.test(line(d, 'Bulgarian Split Squats')));
 });
 t('history chart: a session point is the working weight, not the heaviest set', function () {
   var pts = M.getExHistory('row', [log({ ago: 1, id: 'row', sets: [[30, 10, 8], [30, 10, 8], [35, 6, 9]] })]);
