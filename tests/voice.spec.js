@@ -141,3 +141,23 @@ test('circuit mode opens the next exercise when the rest ends', async function (
   await page.clock.fastForward(91000);
   await expect(page.getByText('3 sets x 8-15')).toBeVisible();
 });
+
+// Row 79: re-logging a set (un-check, check again) is silent and starts no timer.
+test('un-checking and re-checking a logged set does not cue again', async function ({ page }) {
+  await page.addInitScript(fakeAudio);
+  await page.clock.install();
+  await page.goto('/index.html');
+  var played = function () { return page.evaluate(function () { return window.__played.slice(); }); };
+  await page.getByRole('button', { name: /^Session A/ }).last().click();
+  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: '8', exact: true }).first().click();
+  await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Skip', exact: true }).click();
+  var before = (await played()).length;
+  await page.getByText('\u2713', { exact: true }).first().click();
+  await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '8', exact: true }).first().click();
+  await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0);
+  expect((await played()).length).toBe(before);
+});
