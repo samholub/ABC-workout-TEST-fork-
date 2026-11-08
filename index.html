@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>ABC Cycle Tracker</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="ABC Workout">
 <meta name="theme-color" content="#14171A">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQUJDIEN5Y2xlIFRyYWNrZXIiLCJzaG9ydF9uYW1lIjoiQUJDIFdvcmtvdXQiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBDMEEwOSIsInRoZW1lX2NvbG9yIjoiIzBDMEEwOSIsImljb25zIjpbXX0=">
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQUJDIEN5Y2xlIFRyYWNrZXIiLCJzaG9ydF9uYW1lIjoiQUJDIFdvcmtvdXQiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzE0MTcxQSIsInRoZW1lX2NvbG9yIjoiIzE0MTcxQSIsImljb25zIjpbXX0=">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMUMxOTE3Ii8+PHRleHQgeD0iOTAiIHk9IjEwNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSIgZm9udC13ZWlnaHQ9IjgwMCIgZm9udC1zaXplPSI2MCIgZmlsbD0iI0Y1OUUwQiI+QUJDPC90ZXh0Pjwvc3ZnPg==">
 <link rel="preload" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <style>
@@ -36,9 +36,9 @@ button:active{transform:scale(.97);filter:brightness(1.08)}
 .glass-btn{border-top-color:rgba(255,255,255,.16)!important;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.05));-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
 .hair+.hair{border-top:1px solid rgba(255,255,255,.065)}
 /* Bottom actions float over the page, which scrolls underneath them. */
-.foot{position:absolute;left:0;right:0;bottom:0;z-index:40;padding:30px 20px max(10px,env(safe-area-inset-bottom));background:linear-gradient(to top,rgba(20,23,26,.94) 48%,rgba(20,23,26,0));pointer-events:none}
+.foot{position:absolute;left:0;right:0;bottom:0;z-index:40;padding:30px 20px max(8px,calc(env(safe-area-inset-bottom) - 12px));background:linear-gradient(to top,rgba(20,23,26,.94) 48%,rgba(20,23,26,0));pointer-events:none}
 .foot>*{pointer-events:auto}
-.padfoot{padding-bottom:calc(118px + env(safe-area-inset-bottom)) !important}
+.padfoot{padding-bottom:calc(106px + env(safe-area-inset-bottom)) !important}
 .num{caret-color:transparent}
 .num:focus{background:rgba(217,164,65,.10)!important;border-radius:10px}
 input[type="date"]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block}
@@ -85,7 +85,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
-var APP_VERSION=81;
+var APP_VERSION=82;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
