@@ -62,8 +62,8 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
-var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",voiceName:"wk-vn",schemaVersion:"wk-schema-version"};
-var APP_VERSION=67;
+var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
+var APP_VERSION=69;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -192,6 +192,12 @@ function computeNextSession(state){var ls=state.lastSession;if(state.isDoubleDay
 // isDoubleDay expires on the first save after the day rolls over even if the
 // mount-time rollover effect has not run.
 function nextCycleState(state,session,today){var ld=state.lastDate;var prev=ld&&ld.length===10&&ld!==today?[]:(state.completedToday||[]);var ct=prev.concat([session]);return{lastSession:session,lastDate:today,isDoubleDay:ct.filter(function(x){return CYCLE.indexOf(x)!==-1}).length>=2&&CYCLE.indexOf(session)!==-1,completedToday:ct,preTgu:session==="TGU"?(state.preTgu||computeNextSession(state)):undefined}}
+// Row 43: the cycle state comes from the logs (newest-first), not from a stored
+// copy, so deleting, importing or wiping history can never leave Next Up
+// counting a session the history does not show. It replays nextCycleState
+// oldest-first by local day; then, as the day rollover does, a completedToday
+// from an earlier day is dropped. Manual logs count like any other session.
+function deriveCycleState(logs,today){var st={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};for(var i=(logs||[]).length-1;i>=0;i--){var l=logs[i];if(!l||!l.session||!l.date)continue;st=nextCycleState(st,l.session,getLocalDateKey(new Date(l.date)))}if(st.lastDate&&st.lastDate!==today)st=Object.assign({},st,{completedToday:[]});return st}
 
 // Session count and training focus — based on sessions logged, not calendar
 function getSessionCount(logs){var c=0;for(var i=0;i<logs.length;i++){if(!logs[i].manual)c++}return c}
@@ -371,25 +377,27 @@ function setPlaybackSession(){try{if(navigator.audioSession&&navigator.audioSess
 function primeAudio(){setPlaybackSession();try{var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;if(!_audioCtx)_audioCtx=new AC();if(_audioCtx.state==="suspended")_audioCtx.resume();return _audioCtx}catch(e){return null}}
 function playBeep(){try{var ctx=primeAudio();if(!ctx)return;var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3)}catch(e){}}
 
-// Spoken cues (row 51). iOS only lets speechSynthesis talk after its first
-// call happens inside a tap, so primeVoice runs in the same taps as primeAudio.
-// On unless the speaker button in the workout header turned it off (wk-vc).
-var _voicePrimed=false;
+// Spoken cues (rows 51, 55). Each cue is a list of clips recorded ahead of time
+// in audio/ (built by tools/phrases.js and tools/make-audio.py; re-run both when
+// an exercise name, rep target, form cue or rest option changes). They play
+// through one <audio> element, which iOS treats as media, so they sound with the
+// ringer on silent. The element is unlocked by playing a silent clip inside the
+// first tap (primeVoice); later cues reuse it. On unless muted (wk-vc).
+var _voicePrimed=false,_clipEl=null,_clipQ=[];
+var SILENT_MP3="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//OEwAAAAAAAAAAAAEluZm8AAAAPAAAACQAABCAARUVFRUVFRUVFRUVdXV1dXV1dXV1dXXR0dHR0dHR0dHR0i4uLi4uLi4uLi4uioqKioqKioqKiorq6urq6urq6urq60dHR0dHR0dHR0dHo6Ojo6Ojo6Ojo6P//////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQD8AAAAAAAAAQgDeb0IwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//NExAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExFMAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKYAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NExKwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NExKwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
 function voiceOn(){return S.get(KEYS.voice)!==false}
-function primeVoice(){setPlaybackSession();try{if(_voicePrimed||!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(" ");u.volume=0;window.speechSynthesis.speak(u);_voicePrimed=true}catch(e){}}
-// Row 54: the most natural English voice the device exposes (Premium, then
-// Enhanced, then a known natural name), unless one was picked in Settings.
-// The novelty/Eloquence voices are never used.
-var NOVELTY_VOICE=/\b(eloquence|eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley|albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy)\b/i;
-function voiceScore(v){return(/premium/i.test(v.name)?8:/enhanced/i.test(v.name)?6:0)+(/^(ava|zoe|samantha|evan|nathan|joelle|noelle|tom|susan|allison|serena|daniel|karen|moira|tessa)\b/i.test(v.name)?2:0)+(/^en[-_]US/i.test(v.lang)?1:0)}
-function englishVoices(){try{return(window.speechSynthesis.getVoices()||[]).filter(function(v){return/^en/i.test(v.lang)&&!NOVELTY_VOICE.test(v.name)}).sort(function(a,b){return voiceScore(b)-voiceScore(a)})}catch(e){return[]}}
-function pickVoice(){var vs=englishVoices();var want=S.get(KEYS.voiceName);for(var i=0;i<vs.length;i++)if(vs[i].name===want)return vs[i];return vs[0]||null}
-function sayWith(t,v){try{if(!t||!window.speechSynthesis)return;window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(t);if(v){u.voice=v;u.lang=v.lang}window.speechSynthesis.speak(u)}catch(e){}}
-function speak(t){if(voiceOn())sayWith(t,pickVoice())}
-// "8-10/leg" -> "8 to 10 per leg", "40 yd/side" -> "40 yards per side"
+function clipEl(){if(!_clipEl){_clipEl=new Audio();_clipEl.preload="auto";var nx=function(){playNextClip()};_clipEl.addEventListener("ended",nx);_clipEl.addEventListener("error",nx)}return _clipEl}
+function playNextClip(){var k=_clipQ.shift();if(!k)return;var a=clipEl();a.src="./audio/"+k+".mp3";try{var p=a.play();if(p&&p.catch)p.catch(function(){_clipQ=[]})}catch(e){}}
+function primeVoice(){setPlaybackSession();if(_voicePrimed)return;try{var a=clipEl();a.src=SILENT_MP3;var p=a.play();_voicePrimed=true;if(p&&p.catch)p.catch(function(){_voicePrimed=false})}catch(e){}}
+function stopVoice(){_clipQ=[];try{if(_clipEl)_clipEl.pause()}catch(e){}}
+function speak(keys){if(!voiceOn()||!keys)return;var q=keys.filter(Boolean);if(!q.length)return;stopVoice();_clipQ=q;playNextClip()}
+// Clip keys: the same slugs tools/phrases.js writes file names with.
+function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}
+// "8-10/leg" -> "8 to 10 per leg", "40 yd/side" -> "40 yards per side" (rest card text)
 function sayReps(r){return String(r||"").replace(/(\d+)-(\d+)/g,"$1 to $2").replace(/\s*yd\b/g," yards").replace(/\//g," per ")}
-function sayRest(sec){return sec%60===0?(sec/60)+(sec===60?" minute":" minutes"):sec+" seconds"}
-function cueSet(name,k,n,w,reps){return name+", set "+(k+1)+" of "+n+(w?", "+w+" pounds":"")+", "+sayReps(reps)}
+// Weights are recorded in 2.5 lb steps up to 300; anything else is left unsaid.
+function lbKey(w){w=Number(w);return w>0&&w<=300&&(w*2)%5===0?"lb-"+String(w).replace(".","-"):null}
+function cueSet(name,k,n,w,reps){return["set-"+slug(name)+"-"+(k+1)+"-of-"+n,lbKey(w),"reps-"+slug(reps)]}
 
 
 // ========================================================================
@@ -408,7 +416,7 @@ useEffect(function(){
 var tick=function(){
 var r=Math.max(0,Math.ceil((endRef.current-Date.now())/1000));
 setRem(r);
-if(r>0&&r<=10&&duration>10&&!tenSaid.current){tenSaid.current=true;speak("Ten seconds")}
+if(r>0&&r<=10&&duration>10&&!tenSaid.current){tenSaid.current=true;speak(["ten-seconds"])}
 if(r<=0){if(ref.current){clearInterval(ref.current);ref.current=null}if(!beeped.current){if(props.nextCue&&voiceOn())speak(props.nextCue);else playBeep();beeped.current=true}}
 };
 tick();
@@ -524,9 +532,7 @@ var exportData=function(){onExport(null);setImportStatus("Backup saved!");setTim
 var validateImport=function(data){if(!data||typeof data!=="object")return"File is not a valid JSON object";if(!Array.isArray(data.logs))return"Missing or invalid session logs";var vl=validateLogs(data.logs);if(vl.length===0&&data.logs.length>0)return"No valid log entries found (missing dates or sessions)";if(vl.length===0)return"Backup contains no session logs";data._validatedLogs=vl;data._validatedState=validateState(data.state);if(data.weights&&typeof data.weights!=="object")return"Invalid weights data";return null};
 var importData=function(){var input=document.createElement("input");input.type="file";input.accept=".json";input.onchange=function(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e2){try{var data=JSON.parse(e2.target.result);var err=validateImport(data);if(err){setImportStatus("Error: "+err);return}setPendingImport(data);setImportStatus("")}catch(ex){setImportStatus("Error: could not parse file")}};reader.readAsText(file)};input.click()};
 var applyImport=function(){var data=pendingImport;if(!data)return;var vLogs=(data._validatedLogs||validateLogs(data.logs)).slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)});var vState=data._validatedState||validateState(data.state);var ok=S.set(KEYS.logs,vLogs)&&S.set(KEYS.state,vState);if(data.weights&&typeof data.weights==="object")ok=ok&&S.set(KEYS.weights,data.weights);if(data.videos&&typeof data.videos==="object")ok=ok&&S.set(KEYS.videos,data.videos);if(data.carry)ok=ok&&S.set(KEYS.carry,data.carry);if(data.rest)ok=ok&&S.set(KEYS.rest,data.rest);if(typeof data.sessions==="number")ok=ok&&S.set(KEYS.sessions,data.sessions);if(!ok){alert("Storage error! Import failed. Please free up space on your device.");return}setPendingImport(null);setImportStatus("Imported! Reloading...");setTimeout(function(){window.location.reload()},1500)};
-var _vt=useState(0),voiceTick=_vt[0],setVoiceTick=_vt[1];useEffect(function(){var ss=window.speechSynthesis;if(!ss||!ss.addEventListener)return;var f=function(){setVoiceTick(function(n){return n+1})};ss.addEventListener("voiceschanged",f);return function(){ss.removeEventListener("voiceschanged",f)}},[]);var voices=englishVoices(),curVoice=pickVoice();
-var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),
-voices.length>0&&e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Voice"),e("div",{style:{display:"flex",flexDirection:"column",gap:6}},voices.slice(0,10).map(function(v){var sel=curVoice&&curVoice.name===v.name;return e("button",{key:v.name+v.lang,onClick:function(){S.set(KEYS.voiceName,v.name);setVoiceTick(voiceTick+1);setPlaybackSession();sayWith("Rest 90 seconds. Next: Push-Ups, set 2 of 3.",v)},style:{padding:"10px 12px",borderRadius:10,fontSize:14,textAlign:"left",fontWeight:sel?700:400,background:sel?"#F59E0B":"#292524",border:"1px solid "+(sel?"#F59E0B":"#44403C"),color:sel?"#1C1917":"#A8A29E",cursor:"pointer"}},v.name+" \u00b7 "+v.lang)})),e("div",{style:{fontSize:11,color:"#57534E",marginTop:6}},"Tap to hear it. More natural voices: iPhone Settings \u203a Accessibility \u203a Spoken Content \u203a Voices.")),e("div",{style:{marginTop:16,borderTop:"1px solid #292524",paddingTop:16}},
+var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),e("div",{style:{marginTop:16,borderTop:"1px solid #292524",paddingTop:16}},
 e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:10}},"Data Management"),
 e("div",{style:{display:"flex",gap:8,marginBottom:8}},
 e("button",{onClick:exportData,style:{flex:1,padding:"12px",background:"#292524",border:"1px solid #44403C",borderRadius:10,color:"#E7E5E4",fontSize:13,cursor:"pointer"}},"\u{1F4E5} Export Backup"),
@@ -543,12 +549,14 @@ e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:16}},e("but
 
 function App(){
 var _scr=useState("home"),screen=_scr[0],setScreen=_scr[1];
-var _cs=useState(function(){return validateState(S.get(KEYS.state))}),cycleState=_cs[0],setCycleState=_cs[1];
+// Local day, ticked by the rollover effect; the cycle state is derived from it and the logs (row 43).
+var _td=useState(getLocalDateKey),todayKey=_td[0],setTodayKey=_td[1];
 var _cur=useState(null),currentSession=_cur[0],setCurrent=_cur[1];
 var _wu=useState(null),warmup=_wu[0],setWarmup=_wu[1];
 var _ed=useState({}),exData=_ed[0],setExData=_ed[1];
 var _lw=useState(function(){return S.get(KEYS.weights)||{}}),lastWeights=_lw[0],setLastWeights=_lw[1];
 var _lg=useState(function(){return validateLogs(S.get(KEYS.logs))}),logs=_lg[0],setLogs=_lg[1];
+var cycleState=deriveCycleState(logs,todayKey);
 // Sessions saved on this device, kept apart from logs.length so the 1000-session
 // trim and deletions in History do not move the every-10th backup nudge. Seeded
 // from the logs the first time the key is missing.
@@ -580,10 +588,10 @@ var _df=useState(function(){return S.get(KEYS.draft)||null}),draftSession=_df[0]
 
 var setRestDur=function(v){setRestDurState(v);S.set(KEYS.rest,v)};
 var _vo=useState(function(){return voiceOn()}),voice=_vo[0],setVoice=_vo[1];
-var toggleVoice=function(){var v=!voice;setVoice(v);S.set(KEYS.voice,v);if(!v){try{window.speechSynthesis.cancel()}catch(e){}}else{primeVoice();speak("Voice on")}};
+var toggleVoice=function(){var v=!voice;setVoice(v);S.set(KEYS.voice,v);if(!v)stopVoice();else{primeVoice();speak(["voice-on"])}};
 // Row 51 cue text. exLabel matches the card title (Farmer's Carry when chosen).
 var exLabel=function(ex){return ex.isCarry&&carryType==="farmer"?ex.name.replace("Suitcase Carry","Farmer's Carry").replace("Carries","Farmer's Carry"):ex.name};
-var introCue=function(ex,u,lead){var w=ex.hasWeight&&u[ex.id]&&u[ex.id][0]?u[ex.id][0].weight:0;var fc=(FORM_CUES[ex.id]||[])[0];return lead+exLabel(ex)+", "+ex.sets+" sets of "+sayReps(ex.reps)+(w?", start at "+w+" pounds":"")+"."+(fc?" "+fc+".":"")};
+var introCue=function(ex,u,lead){var w=ex.hasWeight&&u[ex.id]&&u[ex.id][0]?u[ex.id][0].weight:0;return[(lead==="First: "?"first-":"next-")+slug(exLabel(ex))+"-"+ex.sets+"-"+slug(ex.reps),lbKey(w),(FORM_CUES[ex.id]||[]).length?"cue-"+ex.id:null]};
 // What comes after this rest: the next open set of the same exercise, or in
 // circuit mode of the next exercise with sets left (same walk as the timer's onDone).
 var nextSetCue=function(exId,u){var order=SESSIONS[currentSession].exercises;var idx=order.findIndex(function(x){return x.id===exId});var pick=null;
@@ -591,7 +599,7 @@ if(circuitMode){for(var ci=1;ci<=order.length;ci++){var x=order[(idx+ci)%order.l
 if(!pick)return null;var ps=u[pick.id]||[];var k=ps.findIndex(function(s){return!s.completed});if(k===-1)return null;
 var w=pick.hasWeight?ps[k].weight:0;return{cue:cueSet(exLabel(pick),k,ps.length,w,pick.reps),label:"Next: "+exLabel(pick)+" \u00b7 set "+(k+1)+" of "+ps.length+(w?" \u00b7 "+w+" lb":"")+" \u00b7 "+sayReps(pick.reps).replace(" per "," / ")}};
 
-useEffect(function(){var checkRollover=function(){setCycleState(function(prev){var today=getLocalDateKey();var ld=prev.lastDate;var ldKey=ld?(ld.length===10?ld:getLocalDateKey(new Date(ld))):null;if(ldKey&&ldKey!==today){var updated=Object.assign({},prev,{completedToday:[]});S.set(KEYS.state,updated);return updated}return prev})};checkRollover();var id=setInterval(checkRollover,60000);document.addEventListener("visibilitychange",checkRollover);return function(){clearInterval(id);document.removeEventListener("visibilitychange",checkRollover)}},[]);
+useEffect(function(){var checkRollover=function(){setTodayKey(getLocalDateKey())};checkRollover();var id=setInterval(checkRollover,60000);document.addEventListener("visibilitychange",checkRollover);return function(){clearInterval(id);document.removeEventListener("visibilitychange",checkRollover)}},[]);
 
 // Keep the screen awake while lifting (row 45): held on the workout and complete
 // screens, released anywhere else (Save & Done and X both go home). iOS drops the
@@ -648,12 +656,12 @@ var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var ww=getWorkingWeight(sets.filter(function(s){return s.completed}));if(ww)nw[ex.id]=ww});
 var log=buildSessionLog();
 var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
-var ns=nextCycleState(cycleState,currentSession,getLocalDateKey());
+var ns=deriveCycleState(nl,getLocalDateKey());
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
 if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
 if(trimmed)alert("Oldest session removed to stay within storage limits.");
 var nc=sessionCount+1;S.set(KEYS.sessions,nc);setSessionCount(nc);
-setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
+setLastWeights(nw);setLogs(nl);clearDraft();home()
 };
 
 // pendingLog: the session being completed, so a backup taken from the Complete
@@ -661,7 +669,7 @@ setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 var exportBackup=function(pendingLog){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:pendingLog?[pendingLog].concat(logs):logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur,sessions:sessionCount+(pendingLog?1:0)};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
 var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setExported(false);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
-var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
+var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);S.set(KEYS.state,deriveCycleState(nl,getLocalDateKey()));setConfirmDel(null);setExpandedLog(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
 var startEditLog=function(idx){
@@ -678,7 +686,7 @@ setLogs(nl);S.set(KEYS.logs,nl);
 setEditSnapshot(null);setEditingLogIdx(null);
 };
 var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);setLogs(nl);S.set(KEYS.logs,nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
-var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});S.set(KEYS.sessions,0);setSessionCount(0);clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
+var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});S.set(KEYS.sessions,0);setSessionCount(0);clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
 var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(ex){allEx[ex.id]=ex.name})});return allEx[id]||id};
 
 var rec=getRec();
@@ -873,10 +881,10 @@ var old=exData[ex.id];
 var jd=ns.findIndex(function(s,i){return s.completed&&!(old&&old[i]&&old[i].completed)});
 var uncompletedOrEdited=old&&ns.some(function(s,i){return old[i]&&old[i].completed&&(s.completed!==old[i].completed||s.weight!==old[i].weight||s.reps!==old[i].reps)});
 if(jd!==-1||uncompletedOrEdited)S.set(KEYS.draft,{session:currentSession,exData:u,start:start,readiness:readiness,warmup:warmup,notes:notes,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()});
-if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=nextSetCue(ex.id,u)||{};setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc.cue,nextLabel:nc.label});speak("Rest "+sayRest(adaptedDur))}
+if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=nextSetCue(ex.id,u)||{};setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc.cue,nextLabel:nc.label});speak(["rest-"+adaptedDur])}
 var justDone=ns.every(function(s){return s.completed});
 if(justDone){var nextEx=null;for(var ni=0;ni<sess.exercises.length;ni++){var nid=sess.exercises[ni].id;var nsets=nid===ex.id?ns:(u[nid]||[]);if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
-if(nextEx){setTimeout(function(){setActiveEx(nextEx)},400);speak(introCue(sess.exercises.find(function(x){return x.id===nextEx}),u,"Next: "))}else speak("Session done. Tap Complete Session.")}}})})),
+if(nextEx){setTimeout(function(){setActiveEx(nextEx)},400);speak(introCue(sess.exercises.find(function(x){return x.id===nextEx}),u,"Next: "))}else speak(["session-done"])}}})})),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 16px 12px"})},
 e("button",{onClick:function(){setScreen("complete")},style:{width:"100%",padding:16,background:allDone?sess.color:"#292524",border:allDone?"none":"1px solid #44403C",borderRadius:14,cursor:"pointer",color:allDone?"#fff":"#A8A29E",fontSize:16,fontWeight:700}},allDone?"Complete Session \u2713":"Finish Session ("+done+"/"+total+" sets)")))
 }

@@ -32,7 +32,7 @@ exception: it walks the array backwards and does **not** reverse the result,
 so its points come back oldest-first — which is the order `ProgressChart`
 plots them in. Read its last element for the most recent session, not index 0.
 
-## The two deployed files
+## The deployed files
 
 - `index.html` — the entire application.
 - `sw.js` — the service worker: cache-first for assets, network-first for
@@ -41,7 +41,12 @@ plots them in. Read its last element for the most recent session, not index 0.
   falling back to the cached page, or a 503 if there is none. A deploy is
   therefore live on the next open rather than the one after it.
 
-Nothing else ships. `manifest` and icons are inlined as data URIs in
+Besides those two, `audio/` ships: one mp3 per spoken-cue clip (rows 51, 55).
+`tools/phrases.js` lists every clip key and its words from the app's own data;
+`tools/make-audio.py` records them with the Kokoro voice. When an exercise
+name, set count, rep target, first form cue or rest option changes, re-run both
+and commit the new clips; `tests/voice.spec.js` fails if any cue the app can
+build has no clip. `manifest` and icons are inlined as data URIs in
 `index.html`.
 
 ## `reference/`

@@ -196,6 +196,58 @@ t('nextCycleState: isDoubleDay expires on the first save after the day rolls ove
   A.strictEqual(M.computeNextSession(tgu), 'modC');
 });
 
+// --- deriveCycleState (row 43) ----------------------------------------
+// Logs at local noon on a given day, newest-first like the app stores them.
+function at(day, session, manual) { return { date: new Date(day + 'T12:00:00').toISOString(), session: session, manual: !!manual, exercises: [] }; }
+// What saveAndFinish used to store after saving these sessions in this order.
+function chain(list) {
+  return list.reduce(function (st, p) { return M.nextCycleState(st, p[1], p[0]); },
+    { lastSession: null, lastDate: null, isDoubleDay: false, completedToday: [] });
+}
+t('deriveCycleState: matches the old saved chain for a plain cycle', function () {
+  var seq = [['2026-11-01', 'A'], ['2026-11-03', 'B'], ['2026-11-05', 'C']];
+  var logs = seq.slice().reverse().map(function (p) { return at(p[0], p[1]); });
+  var d = M.deriveCycleState(logs, '2026-11-05');
+  A.deepStrictEqual(d, chain(seq));
+  A.strictEqual(M.computeNextSession(d), 'A');
+});
+t('deriveCycleState: deleting the newest log steps Next Up back', function () {
+  var logs = [at('2026-11-05', 'C'), at('2026-11-03', 'B'), at('2026-11-01', 'A')];
+  A.strictEqual(M.computeNextSession(M.deriveCycleState(logs, '2026-11-06')), 'A');
+  A.strictEqual(M.computeNextSession(M.deriveCycleState(logs.slice(1), '2026-11-06')), 'C');
+});
+t('deriveCycleState: no logs means a fresh start at A', function () {
+  var d = M.deriveCycleState([], '2026-11-06');
+  A.strictEqual(d.lastSession, null);
+  A.strictEqual(M.computeNextSession(d), 'A');
+});
+t('deriveCycleState: an imported older file gives that file\'s Next Up', function () {
+  var older = [at('2026-10-02', 'A'), at('2026-10-01', 'C')];
+  A.strictEqual(M.computeNextSession(M.deriveCycleState(older, '2026-11-06')), 'B');
+});
+t('deriveCycleState: TGU in the middle of a cycle resumes it', function () {
+  var logs = [at('2026-11-04', 'TGU'), at('2026-11-03', 'B'), at('2026-11-01', 'A')];
+  var d = M.deriveCycleState(logs, '2026-11-05');
+  A.strictEqual(d.lastSession, 'TGU');
+  A.strictEqual(M.computeNextSession(d), 'C');
+});
+t('deriveCycleState: A and B on one day give Modified C next, and only today counts as today', function () {
+  var logs = [at('2026-11-05', 'B'), at('2026-11-05', 'A'), at('2026-11-03', 'C')];
+  var same = M.deriveCycleState(logs, '2026-11-05');
+  A.strictEqual(same.isDoubleDay, true);
+  A.deepStrictEqual(same.completedToday, ['A', 'B']);
+  var next = M.deriveCycleState(logs, '2026-11-06');
+  A.deepStrictEqual(next.completedToday, [], 'yesterday is not today');
+  A.strictEqual(M.computeNextSession(next), 'modC');
+  var after = M.deriveCycleState([at('2026-11-06', 'modC')].concat(logs), '2026-11-06');
+  A.strictEqual(after.isDoubleDay, false);
+  A.strictEqual(M.computeNextSession(after), 'A');
+});
+t('deriveCycleState: a manual log counts like a finished one', function () {
+  var logs = [at('2026-11-04', 'A', true)];
+  A.strictEqual(M.computeNextSession(M.deriveCycleState(logs, '2026-11-05')), 'B');
+});
+
 // --- countTrainingToday ------------------------------------------------
 t('countTrainingToday: counts A, B, C and Modified C, not TGU', function () {
   A.strictEqual(M.countTrainingToday(['A', 'B', 'C', 'modC']), 4);
