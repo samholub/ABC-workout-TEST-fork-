@@ -19,7 +19,8 @@ test('deleting the newest session from History steps Next Up back', async functi
   await expect(page.getByRole('button', { name: /Recommended/ })).toContainText('Session C');
 
   await page.getByRole('button', { name: /History/ }).click();
-  await page.getByRole('button', { name: '\u{1F5D1}' }).first().click();
+  await page.getByText('Session B', { exact: true }).first().click();
+  await page.getByRole('button', { name: 'Delete session' }).click();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.getByRole('button', { name: /^←|Back|Home/ }).first().click();
 
