@@ -1,4 +1,4 @@
-// Smoke journey (BACKLOG row 51): spoken cues.
+// Smoke journey (BACKLOG rows 51 and 52): spoken cues and the rest card.
 //
 // speechSynthesis is replaced with a recorder so the test reads what would be
 // said. The clock is faked so the 90-second rest runs instantly.
@@ -33,6 +33,9 @@ test('voice announces the first exercise, the rest, ten seconds and the next set
   await page.getByRole('button', { name: '8', exact: true }).first().click();
   await expect(page.getByText('1/9 sets', { exact: true })).toBeVisible();
   expect(await said()).toContain('Rest 90 seconds');
+  // Row 52: the rest card names the next set.
+  await expect(page.getByText(/^Next: Bulgarian Split Squats \u00b7 set 2 of 3/)).toBeVisible();
+  await page.screenshot({ path: 'test-results/rest-card.png' });
 
   await page.clock.fastForward(81000);
   await expect.poll(said).toContain('Ten seconds');
