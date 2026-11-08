@@ -62,8 +62,8 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
-var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",schemaVersion:"wk-schema-version"};
-var APP_VERSION=63;
+var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
+var APP_VERSION=64;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -368,6 +368,18 @@ var _audioCtx=null;
 function primeAudio(){try{var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;if(!_audioCtx)_audioCtx=new AC();if(_audioCtx.state==="suspended")_audioCtx.resume();return _audioCtx}catch(e){return null}}
 function playBeep(){try{var ctx=primeAudio();if(!ctx)return;var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;o.type="sine";g.gain.setValueAtTime(0.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3)}catch(e){}}
 
+// Spoken cues (row 51). iOS only lets speechSynthesis talk after its first
+// call happens inside a tap, so primeVoice runs in the same taps as primeAudio.
+// On unless the speaker button in the workout header turned it off (wk-vc).
+var _voicePrimed=false;
+function voiceOn(){return S.get(KEYS.voice)!==false}
+function primeVoice(){try{if(_voicePrimed||!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(" ");u.volume=0;window.speechSynthesis.speak(u);_voicePrimed=true}catch(e){}}
+function speak(t){try{if(!t||!voiceOn()||!window.speechSynthesis)return;window.speechSynthesis.cancel();window.speechSynthesis.speak(new SpeechSynthesisUtterance(t))}catch(e){}}
+// "8-10/leg" -> "8 to 10 per leg", "40 yd/side" -> "40 yards per side"
+function sayReps(r){return String(r||"").replace(/(\d+)-(\d+)/g,"$1 to $2").replace(/\s*yd\b/g," yards").replace(/\//g," per ")}
+function sayRest(sec){return sec%60===0?(sec/60)+(sec===60?" minute":" minutes"):sec+" seconds"}
+function cueSet(name,k,n,w,reps){return name+", set "+(k+1)+" of "+n+(w?", "+w+" pounds":"")+", "+sayReps(reps)}
+
 
 // ========================================================================
 // 8. UI COMPONENTS
@@ -378,14 +390,15 @@ function playBeep(){try{var ctx=primeAudio();if(!ctx)return;var o=ctx.createOsci
 function RestTimer(props){
 var duration=props.duration||90,onDone=props.onDone,adaptiveLabel=props.adaptiveLabel;
 var _r=useState(duration),rem=_r[0],setRem=_r[1];
-var beeped=useRef(false);
+var beeped=useRef(false);var tenSaid=useRef(false);
 var ref=useRef(null);
 var endRef=useRef(Date.now()+duration*1000);
 useEffect(function(){
 var tick=function(){
 var r=Math.max(0,Math.ceil((endRef.current-Date.now())/1000));
 setRem(r);
-if(r<=0){if(ref.current){clearInterval(ref.current);ref.current=null}if(!beeped.current){playBeep();beeped.current=true}}
+if(r>0&&r<=10&&duration>10&&!tenSaid.current){tenSaid.current=true;speak("Ten seconds")}
+if(r<=0){if(ref.current){clearInterval(ref.current);ref.current=null}if(!beeped.current){if(props.nextCue&&voiceOn())speak(props.nextCue);else playBeep();beeped.current=true}}
 };
 tick();
 ref.current=setInterval(tick,1000);
@@ -454,11 +467,11 @@ var done=setData.filter(function(s){return s.completed}).length;
 var allDone=done===setData.length;
 var displayName=exercise.isCarry&&carryType==="farmer"?exercise.name.replace("Suitcase Carry","Farmer's Carry").replace("Carries","Farmer's Carry"):exercise.name;
 var updateSet=function(i,f,v){var u=setData.slice();u[i]=Object.assign({},u[i]);u[i][f]=v;if(f==="weight"||f==="reps")u[i].touched=true;onUpdate(u)};
-var toggleDone=function(i){primeAudio();var u=setData.slice();u[i]=Object.assign({},u[i]);u[i].completed=!u[i].completed;if(!u[i].completed)u[i].rpe=0;u[i].touched=true;onUpdate(u)};
+var toggleDone=function(i){primeAudio();primeVoice();var u=setData.slice();u[i]=Object.assign({},u[i]);u[i].completed=!u[i].completed;if(!u[i].completed)u[i].rpe=0;u[i].touched=true;onUpdate(u)};
 // An RPE chip on an unlogged set logs it (with whatever weight/reps it holds) and
 // so starts the rest timer; on a logged set it only changes the RPE. The "\u2014"
 // chip clears the RPE of a logged set and does nothing on an unlogged one.
-var tapRPE=function(i,v){var set=setData[i];if(v===null){if(set.completed)updateSet(i,"rpe",0);return}if(set.completed){updateSet(i,"rpe",set.rpe===v?0:v);return}primeAudio();var u=setData.slice();u[i]=Object.assign({},u[i],{rpe:v,completed:true,touched:true});onUpdate(u)};
+var tapRPE=function(i,v){var set=setData[i];if(v===null){if(set.completed)updateSet(i,"rpe",0);return}if(set.completed){updateSet(i,"rpe",set.rpe===v?0:v);return}primeAudio();primeVoice();var u=setData.slice();u[i]=Object.assign({},u[i],{rpe:v,completed:true,touched:true});onUpdate(u)};
 var weightSummary="";
 if(done>0){var ws=setData.filter(function(s){return s.completed&&s.weight}).map(function(s){return s.weight});if(ws.length>0)weightSummary=ws[ws.length-1]+" lbs"}
 // Ghost summary for collapsed
@@ -552,6 +565,17 @@ var _sd=useState(""),screenDir=_sd[0],setScreenDir=_sd[1];
 var _df=useState(function(){return S.get(KEYS.draft)||null}),draftSession=_df[0],setDraftSession=_df[1];
 
 var setRestDur=function(v){setRestDurState(v);S.set(KEYS.rest,v)};
+var _vo=useState(function(){return voiceOn()}),voice=_vo[0],setVoice=_vo[1];
+var toggleVoice=function(){var v=!voice;setVoice(v);S.set(KEYS.voice,v);if(!v){try{window.speechSynthesis.cancel()}catch(e){}}else{primeVoice();speak("Voice on")}};
+// Row 51 cue text. exLabel matches the card title (Farmer's Carry when chosen).
+var exLabel=function(ex){return ex.isCarry&&carryType==="farmer"?ex.name.replace("Suitcase Carry","Farmer's Carry").replace("Carries","Farmer's Carry"):ex.name};
+var introCue=function(ex,u,lead){var w=ex.hasWeight&&u[ex.id]&&u[ex.id][0]?u[ex.id][0].weight:0;var fc=(FORM_CUES[ex.id]||[])[0];return lead+exLabel(ex)+", "+ex.sets+" sets of "+sayReps(ex.reps)+(w?", start at "+w+" pounds":"")+"."+(fc?" "+fc+".":"")};
+// What comes after this rest: the next open set of the same exercise, or in
+// circuit mode of the next exercise with sets left (same walk as the timer's onDone).
+var nextSetCue=function(exId,u){var order=SESSIONS[currentSession].exercises;var idx=order.findIndex(function(x){return x.id===exId});var pick=null;
+if(circuitMode){for(var ci=1;ci<=order.length;ci++){var x=order[(idx+ci)%order.length];if(!(u[x.id]||[]).every(function(s){return s.completed})){pick=x;break}}}else pick=order[idx];
+if(!pick)return"";var ps=u[pick.id]||[];var k=ps.findIndex(function(s){return!s.completed});if(k===-1)return"";
+return cueSet(exLabel(pick),k,ps.length,pick.hasWeight?ps[k].weight:0,pick.reps)};
 
 useEffect(function(){var checkRollover=function(){setCycleState(function(prev){var today=getLocalDateKey();var ld=prev.lastDate;var ldKey=ld?(ld.length===10?ld:getLocalDateKey(new Date(ld))):null;if(ldKey&&ldKey!==today){var updated=Object.assign({},prev,{completedToday:[]});S.set(KEYS.state,updated);return updated}return prev})};checkRollover();var id=setInterval(checkRollover,60000);document.addEventListener("visibilitychange",checkRollover);return function(){clearInterval(id);document.removeEventListener("visibilitychange",checkRollover)}},[]);
 
@@ -791,7 +815,7 @@ wuId!=="skip"&&e("button",{onClick:function(){setWarmup("skip")},style:{minHeigh
 e("div",{style:{display:"flex",gap:6,marginBottom:8}},
 [{v:false,l:"Standard",d:"All sets per exercise, then next"},{v:true,l:"Circuit",d:"Rotate exercises each set"}].map(function(opt){var sel=circuitMode===opt.v;return e("button",{key:opt.l,onClick:function(){setCircuitMode(opt.v)},style:{flex:1,minHeight:44,padding:"8px 10px",borderRadius:10,cursor:"pointer",background:sel?T.inp:"transparent",border:"1px solid "+(sel?T.brdL:T.inp),textAlign:"left"}},e("div",{style:{fontSize:13,fontWeight:sel?600:400,color:sel?T.hi:T.mut}},opt.l),e("div",{style:{fontSize:11,color:T.mut,marginTop:2}},opt.d))}))),
 e("div",{style:STYLES.footerBar},
-e("button",{onClick:function(){if(!warmup)setWarmup(wuId);setScreen("workout")},style:{width:"100%",padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"Start Lifting \uD83C\uDFCB")))
+e("button",{onClick:function(){if(!warmup)setWarmup(wuId);primeAudio();primeVoice();var fx=sess.exercises[0];if(fx)speak(introCue(fx,exData,"First: "));setScreen("workout")},style:{width:"100%",padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"Start Lifting \uD83C\uDFCB")))
 }
 
 // ── Screen: Active Workout ──
@@ -810,11 +834,11 @@ e("div",{style:Object.assign({},STYLES.headerPad,{background:T.bg,padding:"calc(
 e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
 e("button",{onClick:home,style:{background:"#292524",border:"none",borderRadius:8,color:"#A8A29E",padding:"6px 12px",fontSize:13,cursor:"pointer"}},"\u2715"),
 e("div",{style:{textAlign:"center"}},e("div",{style:{fontSize:15,fontWeight:700,color:sess.color}},sess.label+(circuitMode?" \u00b7 Circuit":"")),e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8}},e("span",{style:{fontSize:12,color:"#78716C"}},done+"/"+total+" sets"),e(ElapsedClock,{start:start,targetMin:getAvgTime(currentSession,logs)||parseInt(sess.time)||15,done:done,total:total}))),
-e("div",{style:{display:"flex",gap:6}},warmupData&&e("button",{onClick:function(){setShowWarmupRef(!showWarmupRef)},style:{background:showWarmupRef?"#292524":"transparent",border:"1px solid "+(showWarmupRef?"#57534E":"#44403C"),borderRadius:8,color:showWarmupRef?"#FBBF24":"#78716C",padding:"6px 8px",fontSize:11,cursor:"pointer",fontWeight:600}},"WU"))),
+e("div",{style:{display:"flex",gap:6}},e("button",{"aria-label":voice?"Mute voice cues":"Turn on voice cues",onClick:toggleVoice,style:{background:"transparent",border:"1px solid #44403C",borderRadius:8,color:voice?"#FBBF24":"#78716C",padding:"6px 8px",fontSize:13,cursor:"pointer"}},voice?"\u{1F50A}":"\u{1F507}"),warmupData&&e("button",{onClick:function(){setShowWarmupRef(!showWarmupRef)},style:{background:showWarmupRef?"#292524":"transparent",border:"1px solid "+(showWarmupRef?"#57534E":"#44403C"),borderRadius:8,color:showWarmupRef?"#FBBF24":"#78716C",padding:"6px 8px",fontSize:11,cursor:"pointer",fontWeight:600}},"WU"))),
 e("div",{style:{height:3,background:"#292524",borderRadius:2,marginTop:8,overflow:"hidden"}},e("div",{style:{height:"100%",width:(done/total*100)+"%",background:sess.color,transition:"width 0.3s"}}))),
 showWarmupRef&&warmupData&&e("div",{style:{padding:"8px 16px",background:"#1a1a14",borderBottom:"1px solid #3d3d00",flexShrink:0}},e("div",{style:{fontSize:12,fontWeight:600,color:"#FBBF24",marginBottom:6}},warmupData.icon+" "+warmupData.label),warmupData.steps.map(function(s,i){return e("div",{key:i,style:{fontSize:12,color:"#D4D4AA",lineHeight:1.5,marginBottom:3}},s)})),
 e("div",{style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScrolling:"touch"}},
-floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,adaptiveLabel:adaptiveRestLabel,onDone:function(){setFloatTimer(null);setAdaptiveRestLabel(null);
+floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,adaptiveLabel:adaptiveRestLabel,nextCue:floatTimer.nextCue,onDone:function(){setFloatTimer(null);setAdaptiveRestLabel(null);
 if(circuitMode){var sess2=SESSIONS[currentSession];var curIdx=sess2.exercises.findIndex(function(x){return x.id===floatTimer.exId});
 var nextEx=null;for(var ci=1;ci<=sess2.exercises.length;ci++){var ni=(curIdx+ci)%sess2.exercises.length;var nid=sess2.exercises[ni].id;var nsets=exData[nid]||[];if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
 if(nextEx)setTimeout(function(){setActiveEx(nextEx)},200)}}}),
@@ -835,10 +859,10 @@ var old=exData[ex.id];
 var jd=ns.findIndex(function(s,i){return s.completed&&!(old&&old[i]&&old[i].completed)});
 var uncompletedOrEdited=old&&ns.some(function(s,i){return old[i]&&old[i].completed&&(s.completed!==old[i].completed||s.weight!==old[i].weight||s.reps!==old[i].reps)});
 if(jd!==-1||uncompletedOrEdited)S.set(KEYS.draft,{session:currentSession,exData:u,start:start,readiness:readiness,warmup:warmup,notes:notes,sessionRPE:sessionRPE,activeEx:activeEx,circuitMode:circuitMode,ts:Date.now()});
-if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur})}
+if(jd!==-1&&jd<ns.length-1){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=nextSetCue(ex.id,u);setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc});speak("Rest "+sayRest(adaptedDur))}
 var justDone=ns.every(function(s){return s.completed});
 if(justDone){var nextEx=null;for(var ni=0;ni<sess.exercises.length;ni++){var nid=sess.exercises[ni].id;var nsets=nid===ex.id?ns:(u[nid]||[]);if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
-if(nextEx)setTimeout(function(){setActiveEx(nextEx)},400)}}})})),
+if(nextEx){setTimeout(function(){setActiveEx(nextEx)},400);speak(introCue(sess.exercises.find(function(x){return x.id===nextEx}),u,"Next: "))}else speak("Session done. Tap Complete Session.")}}})})),
 e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 16px 12px"})},
 e("button",{onClick:function(){setScreen("complete")},style:{width:"100%",padding:16,background:allDone?sess.color:"#292524",border:allDone?"none":"1px solid #44403C",borderRadius:14,cursor:"pointer",color:allDone?"#fff":"#A8A29E",fontSize:16,fontWeight:700}},allDone?"Complete Session \u2713":"Finish Session ("+done+"/"+total+" sets)")))
 }
