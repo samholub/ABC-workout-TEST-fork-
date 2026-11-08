@@ -56,7 +56,7 @@ t('getProgression: two sessions at target reps and RPE means add weight', functi
   var p = M.getProgression('row', twoGoodRowSessions, READY, 10);
   A.strictEqual(p.type, 'progress');
   A.strictEqual(p.weight, 32.5);            // 30 + inc 2.5, offered not pushed (row 80)
-  A.ok(/32.5 lbs/.test(p.msg), 'message names the step up: ' + p.msg);
+  A.ok(/32.5 lb/.test(p.msg), 'message names the step up: ' + p.msg);
 });
 t('getProgression edge: low readiness overrides a qualifying history', function () {
   var p = M.getProgression('row', twoGoodRowSessions, WIPED, 10);

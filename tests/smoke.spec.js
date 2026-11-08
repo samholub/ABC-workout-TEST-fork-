@@ -29,13 +29,13 @@ test('a session survives backing out and resuming', async function ({ page }) {
 
   // --- Session A -------------------------------------------------------
   await page.getByRole('button', { name: /^Session A/ }).last().click();
-  await expect(page.getByText('Your Game Plan')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Start lifting/i })).toBeVisible();
 
   // --- Start Lifting ----------------------------------------------------
   // The Game Plan is the only screen between Home and lifting. Feel defaults
   // to OK and is left untouched here; the warm-up row is left on its
   // suggestion.
-  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: /Start lifting/i }).click();
   await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
 
   // --- fill and complete one set ---------------------------------------
@@ -59,11 +59,11 @@ test('a session survives backing out and resuming', async function ({ page }) {
   await page.waitForTimeout(DRAFT_TICK_MS + 1000);
 
   // --- back out with the X ----------------------------------------------
-  await page.getByRole('button', { name: '✕' }).first().click();
+  await page.getByRole('button', { name: 'Leave session' }).first().click();
 
   // --- home shows the banner --------------------------------------------
   await expect(
-    page.getByText('Unfinished session found'),
+    page.getByText(/ is still open$/),
     'the X button must leave the draft intact so the banner appears'
   ).toBeVisible({ timeout: 5000 });
 
@@ -71,11 +71,9 @@ test('a session survives backing out and resuming', async function ({ page }) {
   await page.getByRole('button', { name: 'Resume' }).click();
   await expect(page.getByText('2/9 sets', { exact: true })).toBeVisible();
 
-  var resumedWeight = page.locator('input[type="number"]').nth(0);
-  await expect(resumedWeight, 'the logged set survives the round trip')
-    .toHaveValue('35');
-  var resumedReps = page.locator('input[type="number"]').nth(1);
-  await expect(resumedReps).toHaveValue('9');
+  // Logged sets show as one line each (row 68): 35 x 9.
+  await expect(page.getByText('35 \u00d7 9', { exact: true }).first(), 'the logged set survives the round trip')
+    .toBeVisible();
 
   expect(consoleErrors, 'console errors during the journey').toEqual([]);
 });

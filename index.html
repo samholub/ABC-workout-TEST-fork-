@@ -7,25 +7,25 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ABC Workout">
-<meta name="theme-color" content="#0C0A09">
+<meta name="theme-color" content="#14171A">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQUJDIEN5Y2xlIFRyYWNrZXIiLCJzaG9ydF9uYW1lIjoiQUJDIFdvcmtvdXQiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBDMEEwOSIsInRoZW1lX2NvbG9yIjoiIzBDMEEwOSIsImljb25zIjpbXX0=">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMUMxOTE3Ii8+PHRleHQgeD0iOTAiIHk9IjEwNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSIgZm9udC13ZWlnaHQ9IjgwMCIgZm9udC1zaXplPSI2MCIgZmlsbD0iI0Y1OUUwQiI+QUJDPC90ZXh0Pjwvc3ZnPg==">
-<link rel="preload" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden;background:#0C0A09}
-body{font-family:'DM Sans',-apple-system,sans-serif;color:#F5F5F4}
+html,body{height:100%;overflow:hidden;background:#14171A}
+body{font-family:'Barlow',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;color:#F0ECE4}
 #root{position:fixed;top:0;left:0;right:0;bottom:0;overflow:hidden;display:flex;flex-direction:column}
 input,select,textarea,button{font-family:inherit}
 input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 input[type="number"]{-moz-appearance:textfield}
-input[type="range"]{width:100%;accent-color:#F59E0B}
+input[type="range"]{width:100%;accent-color:#D9A441}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-@keyframes flash{0%,100%{background-color:#065F46}50%{background-color:#10B981}}
+@keyframes flash{0%,100%{background-color:#2F4A3A}50%{background-color:#7FB38F}}
 </style>
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8"></script>
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh"></script>
@@ -61,12 +61,12 @@ input[type="range"]{width:100%;accent-color:#F59E0B}
 "use strict";
 // Row 59: if React never loaded (offline with nothing cached), show a plain page
 // that can still save the training history, then stop.
-if(typeof React==="undefined"||typeof ReactDOM==="undefined"){window.__rawExport=function(){var d={version:21,exportDate:new Date().toISOString(),emergency:true};["wk-lg","wk-st","wk-wt","wk-vd","wk-cr","wk-rs","wk-sc"].forEach(function(k){try{d[k]=JSON.parse(localStorage.getItem(k))}catch(e){}});d.logs=d["wk-lg"];d.state=d["wk-st"];d.weights=d["wk-wt"];saveJsonFile("abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json",d)};document.body.innerHTML='<div style="font-family:sans-serif;color:#E7E5E4;background:#0C0A09;min-height:100vh;padding:40px 24px"><h2>App could not load</h2><p>No connection and the app files are not cached. Your history is still on this phone.</p><button onclick="__rawExport()" style="padding:14px 18px;font-size:16px;border-radius:10px;border:none;background:#F59E0B;color:#1C1917">Save a backup</button><p style="color:#A8A29E">Then reopen the app when you have signal.</p></div>';throw new Error("React unavailable")}
+if(typeof React==="undefined"||typeof ReactDOM==="undefined"){window.__rawExport=function(){var d={version:21,exportDate:new Date().toISOString(),emergency:true};["wk-lg","wk-st","wk-wt","wk-vd","wk-cr","wk-rs","wk-sc"].forEach(function(k){try{d[k]=JSON.parse(localStorage.getItem(k))}catch(e){}});d.logs=d["wk-lg"];d.state=d["wk-st"];d.weights=d["wk-wt"];saveJsonFile("abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json",d)};document.body.innerHTML='<div style="font-family:sans-serif;color:#E6E2DA;background:#14171A;min-height:100vh;padding:40px 24px"><h2>App could not load</h2><p>No connection and the app files are not cached. Your history is still on this phone.</p><button onclick="__rawExport()" style="padding:14px 18px;font-size:16px;border-radius:10px;border:none;background:#D9A441;color:#1D2125">Save a backup</button><p style="color:#A3ABB0">Then reopen the app when you have signal.</p></div>';throw new Error("React unavailable")}
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
-var APP_VERSION=73;
+var APP_VERSION=77;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -89,9 +89,10 @@ function validateState(raw){var def={lastSession:null,lastDate:null,isDoubleDay:
 //    Centralized color palette — use T.xxx throughout
 // ========================================================================
 
-var T={bg:"#0C0A09",card:"#1C1917",inp:"#292524",brd:"#44403C",brdL:"#57534E",mut:"#78716C",sec:"#A8A29E",txt:"#E7E5E4",hi:"#F5F5F4",acc:"#F59E0B",accL:"#FBBF24",ok:"#10B981",okL:"#6EE7B7",okD:"#166534",okBr:"#22C55E",warn:"#FBBF24",err:"#EF4444",errD:"#991B1B",errL:"#FCA5A5",pk:"#EC4899",pkL:"#F9A8D4",pkD:"#44203C",A:"#F59E0B",B:"#3B82F6",C:"#10B981",modC:"#8B5CF6",TGU:"#EC4899"};
+var T={bg:"#14171A",card:"#1D2125",inp:"#272C31",brd:"#353C42",brdL:"#4A5259",mut:"#737C83",sec:"#A3ABB0",txt:"#E6E2DA",hi:"#F0ECE4",acc:"#D9A441",accL:"#E8BE6A",ok:"#7FB38F",okL:"#A9D3B4",okD:"#2F4A3A",okBr:"#7FB38F",warn:"#E8BE6A",err:"#D9735B",errD:"#6E3529",errL:"#E8A493",pk:"#C98BB0",pkL:"#DDB3CB",pkD:"#3A2733",A:"#D9A441",B:"#6E9BD1",C:"#6FAFA4",modC:"#9C8AD6",TGU:"#C98BB0"};
 
-var MONO="'JetBrains Mono',monospace";
+// Numbers (weights, reps, timer) use the condensed cut: readable at a glance from the floor.
+var MONO="'Barlow Condensed',sans-serif";
 var STYLES={
 screen:{height:"100%",display:"flex",flexDirection:"column",background:T.bg},
 headerPad:{padding:"calc(14px + env(safe-area-inset-top,0px)) 16px 10px",flexShrink:0},
@@ -102,8 +103,8 @@ scrollBodyPx:{flex:1,overflowY:"auto",padding:"0 14px",display:"flex",flexDirect
 footerBar:{flexShrink:0,background:T.bg,borderTop:"1px solid "+T.inp,padding:"12px 14px 12px"},
 footerBtnRow:{display:"flex",gap:8},
 card:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,padding:"12px 14px"},
-warnBanner:{background:"#1a1a0a",border:"1px solid #854d0e44",borderRadius:10,padding:"10px 14px",marginBottom:10},
-warnBannerCompact:{background:"#1a1a0a",border:"1px solid #854d0e44",borderRadius:10,padding:"8px 14px"},
+warnBanner:{background:"#22201A",border:"1px solid #854d0e44",borderRadius:10,padding:"10px 14px",marginBottom:10},
+warnBannerCompact:{background:"#22201A",border:"1px solid #854d0e44",borderRadius:10,padding:"8px 14px"},
 closeBtn:{background:T.inp,border:"none",borderRadius:8,color:T.sec,padding:"6px 12px",fontSize:13,cursor:"pointer"},
 sectionLabel:{fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1.5,fontWeight:600},
 sessionLabel:{fontSize:13,textTransform:"uppercase",letterSpacing:2,fontWeight:700},
@@ -126,7 +127,7 @@ var FORM_CUES={"bss-a":["Push the floor away with your front foot","Front shin v
 
 var CARRY_TYPES={suitcase:{label:"Suitcase",desc:"One hand, more core"},farmer:{label:"Farmer's",desc:"Both hands, heavier"}};
 
-var SESSIONS={A:{label:"Session A",time:"15 min",color:"#F59E0B",exercises:[{id:"bss-a",name:"Bulgarian Split Squats",sets:3,reps:"8-10/leg",hasWeight:true},{id:"pushup",name:"Push-Ups",sets:3,reps:"8-15",hasWeight:false},{id:"carry-a",name:"Suitcase Carry",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true}]},B:{label:"Session B",time:"15 min",color:"#3B82F6",exercises:[{id:"sldl-b",name:"Single-Leg Deadlifts",sets:3,reps:"8-10/leg",hasWeight:true},{id:"row",name:"Single-Arm Rows",sets:3,reps:"8-12/arm",hasWeight:true},{id:"carry-b",name:"Carries",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true}]},C:{label:"Session C",time:"20 min",color:"#10B981",exercises:[{id:"bss-c",name:"Bulgarian Split Squats",sets:3,reps:"8-10/leg",hasWeight:true},{id:"pullup",name:"Pull-Ups / Chin-Ups",sets:3,reps:"max reps",hasWeight:false,note:"Sets 1-2: Pull-ups. Final set: Chin-ups"},{id:"sldl-c",name:"Single-Leg Deadlifts",sets:3,reps:"8-10/leg",hasWeight:true}]},modC:{label:"Modified C",time:"15-18 min",color:"#8B5CF6",subtitle:"After A+B double-day",exercises:[{id:"ohp",name:"SA Overhead Press",sets:3,reps:"8-10/arm",hasWeight:true},{id:"pullup-mc",name:"Pull-Ups / Chin-Ups",sets:3,reps:"max reps",hasWeight:false,note:"Sets 1-2: Pull-ups. Final set: Chin-ups"},{id:"carry-mc",name:"Carries",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true,note:"From dropped B session"}]},TGU:{label:"Turkish Get-Up",time:"15 min",color:"#EC4899",subtitle:"Optional variety session",exercises:[{id:"tgu",name:"Turkish Get-Up",sets:1,reps:"5/side",hasWeight:true,note:"Light-moderate weight. Movement quality focus"}]}};
+var SESSIONS={A:{label:"Session A",time:"15 min",color:"#D9A441",exercises:[{id:"bss-a",name:"Bulgarian Split Squats",sets:3,reps:"8-10/leg",hasWeight:true},{id:"pushup",name:"Push-Ups",sets:3,reps:"8-15",hasWeight:false},{id:"carry-a",name:"Suitcase Carry",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true}]},B:{label:"Session B",time:"15 min",color:"#6E9BD1",exercises:[{id:"sldl-b",name:"Single-Leg Deadlifts",sets:3,reps:"8-10/leg",hasWeight:true},{id:"row",name:"Single-Arm Rows",sets:3,reps:"8-12/arm",hasWeight:true},{id:"carry-b",name:"Carries",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true}]},C:{label:"Session C",time:"20 min",color:"#7FB38F",exercises:[{id:"bss-c",name:"Bulgarian Split Squats",sets:3,reps:"8-10/leg",hasWeight:true},{id:"pullup",name:"Pull-Ups / Chin-Ups",sets:3,reps:"max reps",hasWeight:false,note:"Sets 1-2: Pull-ups. Final set: Chin-ups"},{id:"sldl-c",name:"Single-Leg Deadlifts",sets:3,reps:"8-10/leg",hasWeight:true}]},modC:{label:"Modified C",time:"15-18 min",color:"#9C8AD6",subtitle:"After A+B double-day",exercises:[{id:"ohp",name:"SA Overhead Press",sets:3,reps:"8-10/arm",hasWeight:true},{id:"pullup-mc",name:"Pull-Ups / Chin-Ups",sets:3,reps:"max reps",hasWeight:false,note:"Sets 1-2: Pull-ups. Final set: Chin-ups"},{id:"carry-mc",name:"Carries",sets:3,reps:"40 yd/side",hasWeight:true,isCarry:true,note:"From dropped B session"}]},TGU:{label:"Turkish Get-Up",time:"15 min",color:"#C98BB0",subtitle:"Optional variety session",exercises:[{id:"tgu",name:"Turkish Get-Up",sets:1,reps:"5/side",hasWeight:true,note:"Light-moderate weight. Movement quality focus"}]}};
 
 var WARMUPS=[{id:"enhanced",label:"Enhanced 3D",time:"8-10 min",icon:"\u{1F525}",steps:["Hip Mobility (3 min): 90/90 transitions 5-8/side, deep squat hold 30-60s, hip circles 10 each","3D Lunge Matrix (3 min): 2x5 each - forward, lateral, curtsy lunges","Upper Body (2-3 min): Thoracic rotations 8/side, scapular pulls or dead hang, face pulls if band available, easy push-ups 5-8","Integration (1 min): Inchworms 3-5, World's Greatest Stretch 3-5/side"]},{id:"standard",label:"Standard 3D",time:"5 min",icon:"\u26a1",steps:["2x5 each direction: Forward lunges, lateral lunges, curtsy lunges"]},{id:"hip",label:"Hip Mobility",time:"5 min",icon:"\u{1F9B5}",steps:["General movement (1 min): Jumping jacks, arm circles","Hip mobility (2 min): Leg swings fwd/back 10 each, side-to-side 10 each, hip circles 10 each","Movement prep (2 min): BW squats 10, easy push-ups 5-10, dead hang 30s"]},{id:"quick",label:"Emergency",time:"1-3 min",icon:"\u{1F4A8}",steps:["20 jumping jacks + 10 bodyweight squats. That's it. Go."]}];
 
@@ -204,7 +205,7 @@ function deriveCycleState(logs,today){var st={lastSession:null,lastDate:null,isD
 
 // Session count and training focus — based on sessions logged, not calendar
 function getSessionCount(logs){var c=0;for(var i=0;i<logs.length;i++){if(!logs[i].manual)c++}return c}
-function getPeriodPhase(sessionCount){if(sessionCount<=8)return{phase:"early",msg:"Establish working weights",clr:"#60A5FA"};if(sessionCount<=20)return{phase:"building",msg:"Build consistency",clr:"#A78BFA"};if(sessionCount<=40)return{phase:"established",msg:"Normal progression",clr:"#FBBF24"};return{phase:"experienced",msg:"Maintain and progress",clr:"#10B981"}}
+function getPeriodPhase(sessionCount){if(sessionCount<=8)return{phase:"early",msg:"Establish working weights",clr:"#8DB3DE"};if(sessionCount<=20)return{phase:"building",msg:"Build consistency",clr:"#B3A6E0"};if(sessionCount<=40)return{phase:"established",msg:"Normal progression",clr:"#E8BE6A"};return{phase:"experienced",msg:"Maintain and progress",clr:"#7FB38F"}}
 function getWorkingWeight(sets){
 var weights=sets.filter(function(s){return s.weight>0}).map(function(s){return s.weight});
 if(weights.length===0)return 0;
@@ -240,14 +241,14 @@ if(cfg.top>0){
 if(h0.full&&h1.full&&h0.reps>=cfg.top&&h1.reps>=cfg.top&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight){
 // Row 80: maintenance first. Going up is offered, never pushed: the load stays
 // put and this note says a step up is there if he wants it.
-var msg="Ready for "+(h0.weight+cfg.inc)+" lbs if you want it";
+var msg="Ready for "+(h0.weight+cfg.inc)+" lb if you want it";
 if(getFatigueTrend(logs))return{type:"maintain",msg:"Fatigue trend \u2014 hold current load"};
 return{type:"progress",msg:msg,weight:h0.weight+cfg.inc}}
 if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
 if(h0.reps<h1.reps&&h0.weight===h1.weight)return{type:"caution",msg:"Reps dropped at same weight \u2014 check form"};
 }else{
 if(h0.full&&h1.full&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight)
-return getFatigueTrend(logs)?{type:"maintain",msg:"Fatigue trend \u2014 hold current load"}:{type:"progress",msg:"Ready for "+(h0.weight+cfg.inc)+" lbs if you want it",weight:h0.weight+cfg.inc};
+return getFatigueTrend(logs)?{type:"maintain",msg:"Fatigue trend \u2014 hold current load"}:{type:"progress",msg:"Ready for "+(h0.weight+cfg.inc)+" lb if you want it",weight:h0.weight+cfg.inc};
 if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
 }return null}
 
@@ -444,53 +445,59 @@ return function(){clearInterval(ref.current);document.removeEventListener("visib
 },[]);
 var pct=((duration-rem)/duration)*100;var m=Math.floor(rem/60),s=rem%60;
 // Row 52: countdown big enough to read from the floor, the next set under it.
-var btn=rem===0?e("button",{onClick:onDone,style:Object.assign({},STYLES.timerBtn,{background:T.ok,border:"none",color:"#fff",fontWeight:600})},"Next \u2192"):e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:Object.assign({},STYLES.timerBtn,{background:T.brd,border:"none",color:T.sec})},"Skip");
-return e("div",{style:{position:"sticky",top:0,zIndex:50,background:rem===0?"#065F46":T.card,border:"1px solid "+(rem===0?T.ok:T.brd),borderRadius:12,padding:"10px 14px 12px",margin:"0 0 8px",boxShadow:"0 4px 12px #0008",animation:rem===0?"flash 0.6s 2":"none"}},
+// It is the one brass element on screen while resting; at zero it turns green.
+var z=rem===0,lines=(props.nextLabel||"").split("\n");
+return e("div",{style:{position:"sticky",top:0,zIndex:50,background:z?T.okD:T.card,borderRadius:20,padding:"14px 18px 16px",margin:"0 0 10px",boxShadow:"0 10px 24px #0009",animation:z?"flash 0.6s 2":"none"}},
 e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
-e("div",{style:{fontFamily:MONO,fontSize:56,lineHeight:1,fontWeight:700,letterSpacing:2,color:rem===0?T.okL:T.accL,animation:rem===0?"pulse 1s infinite":"none"}},m+":"+s.toString().padStart(2,"0")),btn),
-e("div",{style:{height:4,background:T.inp,borderRadius:2,overflow:"hidden",margin:"10px 0 8px"}},e("div",{style:{height:"100%",width:pct+"%",background:rem===0?T.ok:T.acc,transition:"width 1s linear"}})),
-props.nextLabel&&e("div",{style:{fontSize:17,fontWeight:600,color:T.hi,lineHeight:1.3}},props.nextLabel),
-adaptiveLabel&&e("div",{style:{fontSize:11,color:T.mut,marginTop:3}},adaptiveLabel))
+e("div",{style:{fontFamily:MONO,fontSize:76,lineHeight:0.95,fontWeight:700,color:z?T.okL:T.accL,fontVariantNumeric:"tabular-nums"}},m+":"+s.toString().padStart(2,"0")),
+z?e("button",{onClick:onDone,style:{minHeight:48,padding:"10px 22px",borderRadius:24,border:"none",background:T.ok,color:T.bg,fontSize:17,fontWeight:700,cursor:"pointer"}},"Next")
+ :e("button",{onClick:function(){clearInterval(ref.current);onDone()},style:{minHeight:48,padding:"10px 18px",borderRadius:24,border:"1px solid "+T.brd,background:"transparent",color:T.sec,fontSize:16,cursor:"pointer"}},"Skip")),
+e("div",{style:{height:3,background:T.inp,borderRadius:2,overflow:"hidden",margin:"12px 0 12px"}},e("div",{style:{height:"100%",width:pct+"%",background:z?T.ok:T.acc,transition:"width 1s linear"}})),
+lines[0]&&e("div",{style:{fontSize:14,color:T.mut}},z?"Now":"Up next"),
+lines[0]&&e("div",{style:{fontSize:21,fontWeight:700,color:T.hi,lineHeight:1.2,marginTop:2}},lines[0]),
+lines[1]&&e("div",{style:{fontSize:16,color:T.sec,marginTop:3}},lines[1]),
+adaptiveLabel&&e("div",{style:{fontSize:13,color:T.mut,marginTop:6}},adaptiveLabel))
 }
+
 
 // ── ProgressChart ──
 function ProgressChart(props){
 var data=props.data,exName=props.exName,onClose=props.onClose;
-if(!data||data.length<2)return e("div",{style:{position:"fixed",inset:0,zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",padding:20},onClick:onClose},e("div",{style:{position:"absolute",inset:0,background:"#000000dd"}}),e("div",{onClick:function(ev){ev.stopPropagation()},style:{position:"relative",background:"#1C1917",borderRadius:16,padding:"24px 20px",border:"1px solid #292524",maxWidth:360}},e("div",{style:{fontSize:14,color:"#A8A29E"}},"Need at least 2 sessions to chart."),e("button",{onClick:onClose,style:{marginTop:12,padding:"8px 16px",background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#E7E5E4",fontSize:13,cursor:"pointer"}},"Close")));
+if(!data||data.length<2)return e("div",{style:{position:"fixed",inset:0,zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",padding:20},onClick:onClose},e("div",{style:{position:"absolute",inset:0,background:"#000000dd"}}),e("div",{onClick:function(ev){ev.stopPropagation()},style:{position:"relative",background:"#1D2125",borderRadius:16,padding:"24px 20px",border:"1px solid #272C31",maxWidth:360}},e("div",{style:{fontSize:14,color:"#A3ABB0"}},"Need at least 2 sessions to chart."),e("button",{onClick:onClose,style:{marginTop:12,padding:"8px 16px",background:"#272C31",border:"1px solid #353C42",borderRadius:8,color:"#E6E2DA",fontSize:13,cursor:"pointer"}},"Close")));
 var W=320,H=180,P=35;
 var weights=data.map(function(d){return d.weight});
 var maxW=Math.max.apply(null,weights),minW=Math.min.apply(null,weights);
 var range=maxW-minW||1;minW=minW-range*0.1;maxW=maxW+range*0.1;range=maxW-minW;
 var pts=data.map(function(d,i){return{x:P+(i/(data.length-1))*(W-2*P),y:H-P-((d.weight-minW)/range)*(H-2*P),w:d.weight,r:d.reps,rpe:d.rpe,date:d.date}});
 var line=pts.map(function(p){return p.x+","+p.y}).join(" ");
-var rpeClr=function(r){return r<=6?"#10B981":r<=7?"#FBBF24":r<=8?"#F97316":"#EF4444"};
+var rpeClr=function(r){return r<=6?"#7FB38F":r<=7?"#E8BE6A":r<=8?"#D98B4B":"#D9735B"};
 return e("div",{style:{position:"fixed",inset:0,zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:onClose},
 e("div",{style:{position:"absolute",inset:0,background:"#000000dd"}}),
-e("div",{onClick:function(ev){ev.stopPropagation()},style:{position:"relative",width:"100%",maxWidth:380,background:"#1C1917",borderRadius:16,padding:"20px 16px",border:"1px solid #292524"}},
+e("div",{onClick:function(ev){ev.stopPropagation()},style:{position:"relative",width:"100%",maxWidth:380,background:"#1D2125",borderRadius:16,padding:"20px 16px",border:"1px solid #272C31"}},
 e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
-e("div",{style:{fontSize:16,fontWeight:700,color:"#F5F5F4"}},exName),
-e("button",{onClick:onClose,style:{background:"#292524",border:"none",borderRadius:8,color:"#A8A29E",padding:"6px 10px",fontSize:12,cursor:"pointer"}},"Close")),
+e("div",{style:{fontSize:16,fontWeight:700,color:"#F0ECE4"}},exName),
+e("button",{onClick:onClose,style:{background:"#272C31",border:"none",borderRadius:8,color:"#A3ABB0",padding:"6px 10px",fontSize:12,cursor:"pointer"}},"Close")),
 e("svg",{width:"100%",viewBox:"0 0 "+W+" "+H,style:{display:"block"}},
 // Grid lines
-[0,0.25,0.5,0.75,1].map(function(f,i){var y=H-P-f*(H-2*P);return e("line",{key:i,x1:P,x2:W-P,y1:y,y2:y,stroke:"#292524",strokeWidth:1})}),
+[0,0.25,0.5,0.75,1].map(function(f,i){var y=H-P-f*(H-2*P);return e("line",{key:i,x1:P,x2:W-P,y1:y,y2:y,stroke:"#272C31",strokeWidth:1})}),
 // Y axis labels
-e("text",{x:P-4,y:P+4,fill:"#78716C",fontSize:10,textAnchor:"end"},Math.round(maxW)),
-e("text",{x:P-4,y:H-P+4,fill:"#78716C",fontSize:10,textAnchor:"end"},Math.round(minW)),
-e("text",{x:P-4,y:(H/2)+4,fill:"#78716C",fontSize:10,textAnchor:"end"},Math.round((maxW+minW)/2)),
+e("text",{x:P-4,y:P+4,fill:"#737C83",fontSize:10,textAnchor:"end"},Math.round(maxW)),
+e("text",{x:P-4,y:H-P+4,fill:"#737C83",fontSize:10,textAnchor:"end"},Math.round(minW)),
+e("text",{x:P-4,y:(H/2)+4,fill:"#737C83",fontSize:10,textAnchor:"end"},Math.round((maxW+minW)/2)),
 // Line
-e("polyline",{points:line,fill:"none",stroke:"#F59E0B",strokeWidth:2.5,strokeLinejoin:"round"}),
+e("polyline",{points:line,fill:"none",stroke:"#D9A441",strokeWidth:2.5,strokeLinejoin:"round"}),
 // Points
-pts.map(function(p,i){return e("circle",{key:i,cx:p.x,cy:p.y,r:6,fill:p.rpe?rpeClr(p.rpe):"#F59E0B",stroke:"#1C1917",strokeWidth:2})}),
+pts.map(function(p,i){return e("circle",{key:i,cx:p.x,cy:p.y,r:6,fill:p.rpe?rpeClr(p.rpe):"#D9A441",stroke:"#1D2125",strokeWidth:2})}),
 // X labels
-pts.filter(function(_,i){return i===0||i===pts.length-1}).map(function(p,i){return e("text",{key:"x"+i,x:p.x,y:H-8,fill:"#78716C",fontSize:9,textAnchor:"middle"},new Date(p.date).toLocaleDateString("en-US",{month:"short",day:"numeric"}))})),
+pts.filter(function(_,i){return i===0||i===pts.length-1}).map(function(p,i){return e("text",{key:"x"+i,x:p.x,y:H-8,fill:"#737C83",fontSize:9,textAnchor:"middle"},new Date(p.date).toLocaleDateString("en-US",{month:"short",day:"numeric"}))})),
 e("div",{style:{display:"flex",justifyContent:"center",gap:12,marginTop:10}},
-[{c:"#10B981",l:"RPE \u22646"},{c:"#FBBF24",l:"RPE 7"},{c:"#F97316",l:"RPE 8"},{c:"#EF4444",l:"RPE 9+"}].map(function(item){return e("div",{key:item.l,style:{display:"flex",alignItems:"center",gap:4}},e("div",{style:{width:8,height:8,borderRadius:"50%",background:item.c}}),e("span",{style:{fontSize:10,color:"#78716C"}},item.l))}))))
+[{c:"#7FB38F",l:"RPE \u22646"},{c:"#E8BE6A",l:"RPE 7"},{c:"#D98B4B",l:"RPE 8"},{c:"#D9735B",l:"RPE 9+"}].map(function(item){return e("div",{key:item.l,style:{display:"flex",alignItems:"center",gap:4}},e("div",{style:{width:8,height:8,borderRadius:"50%",background:item.c}}),e("span",{style:{fontSize:10,color:"#737C83"}},item.l))}))))
 }
 
 // ── ElapsedClock ──
 function ElapsedClock(props){var _t=useState(0),el=_t[0],setEl=_t[1];useEffect(function(){var iv=setInterval(function(){setEl(Math.floor((Date.now()-props.start)/1000))},1000);return function(){clearInterval(iv)}},[props.start]);var m=Math.floor(el/60),s=el%60;
-var paceClr="#78716C";
-if(props.targetMin&&props.total&&props.done){var pct=props.done/props.total;var expectedElapsed=props.targetMin*60*pct;var ratio=pct>0?el/expectedElapsed:0;paceClr=ratio<=1?"#10B981":ratio<=1.25?"#FBBF24":"#EF4444"}
+var paceClr="#737C83";
+if(props.targetMin&&props.total&&props.done){var pct=props.done/props.total;var expectedElapsed=props.targetMin*60*pct;var ratio=pct>0?el/expectedElapsed:0;paceClr=ratio<=1?"#7FB38F":ratio<=1.25?"#E8BE6A":"#D9735B"}
 return e("span",{style:{fontFamily:MONO,fontSize:12,color:paceClr}},m+":"+s.toString().padStart(2,"0"))}
 
 // ── ExerciseCard ──
@@ -510,42 +517,63 @@ var toggleDone=function(i){primeAudio();primeVoice();var u=setData.slice();u[i]=
 // so starts the rest timer; on a logged set it only changes the RPE. The "\u2014"
 // chip clears the RPE of a logged set and does nothing on an unlogged one.
 var tapRPE=function(i,v){var set=setData[i];if(v===null){if(set.completed)updateSet(i,"rpe",0);return}if(set.completed){updateSet(i,"rpe",set.rpe===v?0:v);return}primeAudio();primeVoice();var u=setData.slice();u[i]=Object.assign({},u[i],{rpe:v,completed:true,touched:true});onUpdate(u)};
-var weightSummary="";
-if(done>0){var ws=setData.filter(function(s){return s.completed&&s.weight}).map(function(s){return s.weight});if(ws.length>0)weightSummary=ws[ws.length-1]+" lbs"}
-// Ghost summary for collapsed
-var ghostStr="";if(ghostSets&&ghostSets.length>0){var gs=ghostSets[0];ghostStr=(gs.weight?gs.weight+"lb":"")+(gs.weight&&gs.reps?" \u00d7 ":"")+((gs.reps||"")+(gs.rpe?" @"+gs.rpe:""))}
+// Rows 68-70: only one set is open at a time: the next one to log, or a logged
+// one tapped to fix it. Logged sets are one line, later sets show their plan.
+var _ei=useState(null),editIdx=_ei[0],setEditIdx=_ei[1];
+var nextIdx=setData.findIndex(function(st){return!st.completed});
+var openIdx=editIdx!==null&&setData[editIdx]&&setData[editIdx].completed?editIdx:nextIdx;
+var wStep=PROG[exercise.id]&&PROG[exercise.id].inc?PROG[exercise.id].inc:2.5,rStep=exercise.isCarry?5:1;
+var bump=function(i,f,d){var cur=Number(setData[i][f])||0;updateSet(i,f,Math.max(0,Math.round((cur+d)*10)/10))};
+var wtLabel=function(st){return exercise.hasWeight?(st.weight?st.weight+" lb":"\u2013"):"Bodyweight"};
+var ready=progression&&progression.type==="progress";
+var note=progression?progression.msg:(suggestedLoad&&suggestedLoad.reason?suggestedLoad.reason:null);
+var circle=function(st,i,big){return e("div",{onClick:function(ev){ev.stopPropagation();setEditIdx(null);toggleDone(i)},style:{width:big?48:36,height:big?48:36,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:MONO,fontSize:big?20:16,fontWeight:600,background:st.completed?T.okD:"transparent",border:"2px solid "+(st.completed?T.ok:big?T.acc:T.brd),color:st.completed?T.okL:big?T.accL:T.mut}},st.completed?"\u2713":(i+1))};
+var stepper=function(i,f,step,unit){var st=setData[i];return e("div",{style:{flex:1,minWidth:0}},
+e("div",{style:{display:"flex",alignItems:"center",background:T.bg,borderRadius:14,padding:4}},
+e("button",{"aria-label":"Less",onClick:function(){bump(i,f,-step)},style:{width:44,height:52,border:"none",borderRadius:11,background:T.inp,color:T.txt,fontSize:24,cursor:"pointer",flexShrink:0}},"\u2212"),
+e("input",{type:"number",inputMode:f==="weight"?"decimal":"numeric",value:st[f]||"",onChange:function(ev){updateSet(i,f,Number(ev.target.value))},placeholder:"0",style:{flex:1,minWidth:0,width:"100%",background:"transparent",border:"none",outline:"none",textAlign:"center",fontFamily:MONO,fontSize:32,fontWeight:600,color:st.touched||st.completed?T.hi:T.sec,padding:0}}),
+e("button",{"aria-label":"More",onClick:function(){bump(i,f,step)},style:{width:44,height:52,border:"none",borderRadius:11,background:T.inp,color:T.txt,fontSize:24,cursor:"pointer",flexShrink:0}},"+")),
+e("div",{style:{fontSize:13,color:T.mut,textAlign:"center",marginTop:5}},unit))};
 if(!isExpanded){
-var progReady=progression&&progression.type==="progress";
-return e("div",{onClick:onToggle,style:{background:allDone?"#1a2e1a":carryAdvisory?T.card+"ee":T.card,border:"1px solid "+(allDone?T.okD:progReady?T.ok+"44":carryAdvisory?T.brd+"88":T.inp),borderRadius:14,marginBottom:8,padding:"14px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",transition:"all 0.2s"}},e("div",{style:{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}},e("div",{style:{width:28,height:28,borderRadius:"50%",background:allDone?T.okD:T.inp,border:"2px solid "+(allDone?T.okBr:T.brd),display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:allDone?T.okL:T.mut,flexShrink:0}},allDone?"\u2713":done>0?done:""),e("div",{style:{minWidth:0,flex:1}},e("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},e("span",{style:{fontSize:15,fontWeight:600,color:allDone?T.okL:carryAdvisory?T.sec:T.hi}},displayName),progReady&&e("span",{style:{fontSize:9,color:T.ok,background:T.ok+"22",borderRadius:4,padding:"2px 6px",fontWeight:700,letterSpacing:0.5}},"\u2B06 READY"),carryAdvisory&&!allDone&&e("span",{style:{fontSize:9,color:T.mut,background:T.inp,borderRadius:4,padding:"2px 6px",fontWeight:600}},"OPTIONAL")),e("div",{style:{fontSize:12,color:T.mut,display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}},e("span",null,done+"/"+setData.length+" sets"),weightSummary&&e("span",null," \u00b7 "+weightSummary)),suggestedLoad&&!allDone&&e("div",{style:{fontSize:11,color:suggestedLoad.weight>lastWeight?T.ok:T.acc,fontFamily:MONO,marginTop:1}},"Start: "+suggestedLoad.weight+" lbs"),!suggestedLoad&&ghostStr&&!allDone&&e("div",{style:{fontSize:11,color:T.brdL,fontStyle:"italic",marginTop:1}},"Last: "+ghostStr))),e("span",{style:{color:T.brdL,fontSize:12,flexShrink:0}},"\u25BC"))
+return e("div",{onClick:onToggle,style:{display:"flex",alignItems:"center",gap:14,padding:"16px 4px",borderTop:"1px solid "+T.inp,cursor:"pointer"}},
+e("div",{style:{width:36,height:36,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:MONO,fontSize:16,fontWeight:600,background:allDone?T.okD:"transparent",border:"2px solid "+(allDone?T.ok:T.brd),color:allDone?T.okL:T.mut}},allDone?"\u2713":done||""),
+e("div",{style:{flex:1,minWidth:0}},e("div",{style:{fontSize:18,fontWeight:600,color:allDone?T.sec:T.hi}},displayName),
+e("div",{style:{fontSize:14,color:T.mut,marginTop:2}},done+" of "+setData.length+" sets"+(carryAdvisory&&!allDone?", optional today":""))),
+exercise.hasWeight&&!allDone&&setData[0]&&setData[0].weight?e("div",{style:{fontFamily:MONO,fontSize:22,fontWeight:600,color:T.sec}},setData[0].weight,e("span",{style:{fontFamily:"inherit",fontSize:13,color:T.mut,marginLeft:3}},"lb")):null)
 }
 // EXPANDED
-var progClr=progression?progression.type==="progress"?"#10B981":progression.type==="maintain"?"#FBBF24":"#F97316":"";
-return e("div",{style:{background:allDone?"#1a2e1a":"#1C1917",border:"1px solid "+(allDone?"#166534":"#44403C"),borderRadius:14,marginBottom:8,overflow:"hidden",transition:"all 0.2s"}},
-e("div",{onClick:onToggle,style:{padding:"14px 16px 8px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",cursor:"pointer"}},e("div",{style:{flex:1}},e("div",{style:{fontSize:17,fontWeight:700,color:allDone?"#6EE7B7":"#F5F5F4"}},(allDone?"\u2713 ":"")+displayName),e("div",{style:{fontSize:13,color:"#A8A29E",marginTop:2}},exercise.sets+" sets x "+exercise.reps+(suggestedLoad&&!allDone?" | Start: "+suggestedLoad.weight+" lbs":lastWeight>0?" | Last: "+lastWeight+" lbs":"")),exercise.note&&e("div",{style:{fontSize:12,color:"#78716C",marginTop:3,fontStyle:"italic"}},exercise.note),carryAdvisory&&!allDone&&e("div",{style:{fontSize:11,color:T.warn,marginTop:3}},"Second session \u2014 skip or lighten if grip is fatigued")),e("div",{style:{display:"flex",gap:6,alignItems:"center"}},cues.length>0&&e("button",{onClick:function(ev){ev.stopPropagation();setShowCues(!showCues)},style:{background:showCues?"#292524":"transparent",border:"1px solid "+(showCues?"#57534E":"#44403C"),borderRadius:6,padding:"3px 8px",fontSize:11,color:showCues?"#FBBF24":"#78716C",cursor:"pointer",fontWeight:600}},"Form"),e("div",{style:{background:allDone?"#166534":"#292524",borderRadius:20,padding:"3px 10px",fontSize:12,color:allDone?"#6EE7B7":"#A8A29E",fontWeight:600}},done+"/"+setData.length),e("span",{style:{color:"#57534E",fontSize:12}},"\u25B2"))),
-// One "Last time" line spanning the card, under the header
-lastLine&&e("div",{style:{padding:"0 16px 8px",fontSize:12,color:T.brdL}},lastLine),
-// Progression banner
-progression&&e("div",{style:{margin:"0 16px 8px",padding:"8px 12px",background:progClr+"15",border:"1px solid "+progClr+"44",borderRadius:8}},e("div",{style:{fontSize:13,color:progClr,fontWeight:600}},progression.msg)),
-!progression&&suggestedLoad&&suggestedLoad.reason&&e("div",{style:{margin:"0 16px 8px",padding:"8px 12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:8}},e("div",{style:{fontSize:12,color:T.sec}},suggestedLoad.reason)),
-showCues&&cues.length>0&&e("div",{style:{padding:"0 16px 10px"}},e("div",{style:{background:"#1a1a14",border:"1px solid #3d3d00",borderRadius:8,padding:"10px 12px"}},cues.map(function(c,i){return e("div",{key:i,style:{fontSize:13,color:"#D4D4AA",lineHeight:1.5,marginBottom:i<cues.length-1?6:0,paddingLeft:8,borderLeft:"2px solid #554d00"}},c)}))),
-exercise.isCarry&&e("div",{style:{padding:"0 16px 8px",display:"flex",gap:6}},Object.keys(CARRY_TYPES).map(function(k){var v=CARRY_TYPES[k];return e("button",{key:k,onClick:function(){onCarryTypeChange(k)},style:{flex:1,padding:"6px 8px",borderRadius:8,fontSize:12,cursor:"pointer",fontWeight:carryType===k?600:400,background:carryType===k?"#292524":"transparent",border:"1px solid "+(carryType===k?"#57534E":"#333"),color:carryType===k?"#F5F5F4":"#78716C"}},v.label,e("span",{style:{display:"block",fontSize:10,fontWeight:400,color:"#78716C",marginTop:1}},v.desc))})),
-e("div",{style:{padding:"0 16px 12px"}},
-e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"4px 0",marginBottom:4}},
-e("div",{style:{width:44,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"Set"),
-exercise.hasWeight&&e("div",{style:{width:60,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"Weight"),
-e("div",{style:{width:52,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},exercise.isCarry?"Yards":"Reps"),
-e("div",{style:{flex:1,textAlign:"center",fontSize:10,color:T.mut,textTransform:"uppercase",letterSpacing:1}},"RPE")),
-setData.map(function(set,i){var ghost=ghostSets&&ghostSets[i]?ghostSets[i]:null;
-var RPE_COLORS={5:T.ok,6:"#34D399",7:T.ok,8:T.acc,9:T.err,10:T.err};
-return e("div",{key:i},e("div",{style:{padding:"6px 0",opacity:set.completed?0.6:1}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("div",{onClick:function(){toggleDone(i)},style:Object.assign({},STYLES.setCheck,{background:set.completed?T.okD:T.inp,border:"2px solid "+(set.completed?T.okBr:T.brd),color:set.completed?T.okL:T.mut})},set.completed?"\u2713":(i+1)),exercise.hasWeight&&e("input",{type:"number",inputMode:"decimal",value:set.weight||"",onChange:function(ev){updateSet(i,"weight",Number(ev.target.value))},placeholder:ghost&&ghost.weight?String(ghost.weight):"0",style:Object.assign({},STYLES.numInput,{width:60,color:!set.touched&&!set.completed?T.mut:T.hi})}),e("input",{type:"number",inputMode:"numeric",value:set.reps||"",onChange:function(ev){updateSet(i,"reps",Number(ev.target.value))},placeholder:ghost&&ghost.reps?String(ghost.reps):"0",style:Object.assign({},STYLES.numInput,{width:52,color:!set.touched&&!set.completed?T.mut:T.hi})})),e("div",{style:{display:"flex",gap:4,flexWrap:"wrap",marginTop:6}},[null,5,6,7,8,9,10].map(function(v){var isActive=v===null?(!set.rpe||set.rpe===0):(set.rpe===v);var label=v===null?"\u2014":""+v;var clr=v!==null?RPE_COLORS[v]||T.sec:T.mut;return e("button",{key:v===null?"none":v,onClick:function(){tapRPE(i,v)},style:{width:40,height:40,borderRadius:"50%",border:isActive?"none":"1px solid "+T.brd,background:isActive&&v!==null?clr:"transparent",color:isActive&&v!==null?"#fff":(isActive?T.mut:T.sec),fontSize:13,fontWeight:isActive?700:400,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0,fontFamily:MONO}},label)}))))})))
+return e("div",{style:{background:T.card,borderRadius:20,margin:"4px 0 10px",padding:"16px 16px 12px"}},
+e("div",{onClick:onToggle,style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,cursor:"pointer"}},
+e("div",{style:{flex:1,minWidth:0}},
+e("div",{style:{fontSize:22,fontWeight:700,color:T.hi,lineHeight:1.2}},displayName),
+e("div",{style:{fontSize:15,color:T.sec,marginTop:3}},exercise.sets+" sets of "+sayReps(exercise.reps))),
+cues.length>0&&e("button",{onClick:function(ev){ev.stopPropagation();setShowCues(!showCues)},style:{background:"transparent",border:"1px solid "+(showCues?T.brdL:T.brd),borderRadius:18,padding:"6px 14px",fontSize:14,color:showCues?T.hi:T.sec,cursor:"pointer"}},"Form")),
+carryAdvisory&&!allDone&&e("div",{style:{fontSize:14,color:T.warn,marginTop:8}},"Second session today: skip or go lighter if your grip is tired."),
+note&&e("div",{style:{fontSize:14,color:ready?T.ok:T.sec,marginTop:8}},note),
+showCues&&cues.length>0&&e("div",{style:{marginTop:12}},cues.map(function(c,ci){return e("div",{key:ci,style:{fontSize:15,color:T.txt,lineHeight:1.45,padding:"2px 0 2px 12px",borderLeft:"2px solid "+T.brd,marginBottom:6}},c)})),
+exercise.isCarry&&e("div",{style:{display:"flex",background:T.bg,borderRadius:12,padding:4,gap:4,marginTop:12}},Object.keys(CARRY_TYPES).map(function(k){var v=CARRY_TYPES[k],sel=carryType===k;return e("button",{key:k,onClick:function(){onCarryTypeChange(k)},style:{flex:1,minHeight:40,borderRadius:9,border:"none",cursor:"pointer",fontSize:15,fontWeight:sel?600:500,background:sel?T.inp:"transparent",color:sel?T.hi:T.mut}},v.label)})),
+e("div",{style:{marginTop:12}},setData.map(function(st,i){
+if(i===openIdx){
+// The open set: steppers, then how hard it felt. A chip logs the set (or, on a logged set, changes its RPE).
+return e("div",{key:i,style:{background:T.inp,borderRadius:16,padding:"14px 12px 12px",margin:"6px 0"}},
+e("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:12}},circle(st,i,true),e("div",{style:{fontSize:16,color:T.sec}},st.completed?"Set "+(i+1)+", logged":"Set "+(i+1)+" of "+setData.length)),
+e("div",{style:{display:"flex",gap:10}},exercise.hasWeight&&stepper(i,"weight",wStep,"lb"),stepper(i,"reps",rStep,exercise.isCarry?"yards":"reps")),
+e("div",{style:{fontSize:14,color:T.mut,margin:"14px 2px 8px"}},st.completed?"How hard was it?":"How hard? Tap to log the set"),
+e("div",{style:{display:"flex",gap:6}},[5,6,7,8,9,10].map(function(v){var on=st.rpe===v;return e("button",{key:v,onClick:function(){tapRPE(i,v);if(st.completed)setEditIdx(null)},style:{flex:1,height:48,borderRadius:12,border:"none",background:on?T.acc:T.card,color:on?T.bg:T.txt,fontFamily:MONO,fontSize:22,fontWeight:600,cursor:"pointer",padding:0}},""+v)})))}
+if(st.completed){
+return e("div",{key:i,onClick:function(){setEditIdx(i)},style:{display:"flex",alignItems:"center",gap:12,padding:"8px 2px",cursor:"pointer"}},circle(st,i,false),
+e("div",{style:{fontFamily:MONO,fontSize:22,fontWeight:500,color:T.sec}},(exercise.hasWeight&&st.weight?st.weight+" \u00d7 ":"")+(st.reps||"\u2013")),
+st.rpe?e("div",{style:{fontSize:14,color:T.mut}},"RPE "+st.rpe):null)}
+return e("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"8px 2px",opacity:0.55}},circle(st,i,false),
+e("div",{style:{fontFamily:MONO,fontSize:22,fontWeight:500,color:T.mut}},(exercise.hasWeight&&st.weight?st.weight+" \u00d7 ":"")+(st.reps||"\u2013")))})))
 }
 
 // ── ConfirmDialog ──
-function ConfirmDialog(props){return e("div",{style:STYLES.dialogOverlay,onClick:props.onCancel},e("div",{style:{position:"absolute",inset:0,background:"#000000cc"}}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.dialogBox},e("div",{style:{fontSize:17,fontWeight:700,color:T.hi,marginBottom:8}},props.title),e("div",{style:{fontSize:14,color:T.sec,lineHeight:1.5,marginBottom:20}},props.message),e("div",{style:STYLES.footerBtnRow},e("button",{onClick:props.onCancel,style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.txt,fontSize:14,fontWeight:500,cursor:"pointer"}},"Cancel"),e("button",{onClick:props.onConfirm,style:{flex:1,padding:"12px",background:props.danger?T.errD:T.acc,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}},props.confirmLabel||"Confirm"))))}
+function ConfirmDialog(props){return e("div",{style:STYLES.dialogOverlay,onClick:props.onCancel},e("div",{style:{position:"absolute",inset:0,background:"#000000cc"}}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.dialogBox},e("div",{style:{fontSize:17,fontWeight:700,color:T.hi,marginBottom:8}},props.title),e("div",{style:{fontSize:14,color:T.sec,lineHeight:1.5,marginBottom:20}},props.message),e("div",{style:STYLES.footerBtnRow},e("button",{onClick:props.onCancel,style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.txt,fontSize:14,fontWeight:500,cursor:"pointer"}},"Cancel"),e("button",{onClick:props.onConfirm,style:{flex:1,padding:"12px",background:props.danger?T.errD:T.acc,border:"none",borderRadius:10,color:"#14171A",fontSize:14,fontWeight:600,cursor:"pointer"}},props.confirmLabel||"Confirm"))))}
 
 // ── SettingsSheet ──
-function SettingsSheet(props){var restDur=props.restDur,setRestDur=props.setRestDur,onClose=props.onClose,onReset=props.onReset,logs=props.logs,lastWeights=props.lastWeights,videoUrls=props.videoUrls,cycleState=props.cycleState;var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#78716C",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#F59E0B":"#292524",border:"1px solid "+(restDur===s?"#F59E0B":"#44403C"),color:restDur===s?"#1C1917":"#A8A29E",cursor:"pointer"}},s+"s")}))),
-e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:16}},e("button",{onClick:function(){setShowDanger(!showDanger)},style:{width:"100%",background:"transparent",border:"1px solid #292524",borderRadius:12,padding:"14px 16px",cursor:"pointer",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",null,e("div",{style:{fontSize:14,fontWeight:600,color:"#78716C"}},"Danger Zone"),e("div",{style:{fontSize:12,color:"#57534E",marginTop:2}},"Reset all app data")),e("span",{style:{color:"#57534E",fontSize:14}},showDanger?"\u25B2":"\u25BC")),showDanger&&e("div",{style:{marginTop:10,padding:"16px",background:"#1a0a0a",border:"1px solid rgba(153,27,27,0.27)",borderRadius:12}},e("div",{style:{fontSize:13,color:"#A8A29E",marginBottom:12,lineHeight:1.5}},"Permanently deletes all data. Cannot be undone."),e("button",{onClick:function(){setConfirmReset(true)},style:{width:"100%",padding:"12px",background:"#991B1B",border:"none",borderRadius:10,color:"#FCA5A5",fontSize:14,fontWeight:600,cursor:"pointer"}},"Delete All Data")))),confirmReset&&e(ConfirmDialog,{title:"Delete All Data?",message:"This will permanently erase everything. Are you sure?",confirmLabel:"Delete Everything",danger:true,onCancel:function(){setConfirmReset(false)},onConfirm:function(){setConfirmReset(false);onReset()}}))}
+function SettingsSheet(props){var restDur=props.restDur,setRestDur=props.setRestDur,onClose=props.onClose,onReset=props.onReset,logs=props.logs,lastWeights=props.lastWeights,videoUrls=props.videoUrls,cycleState=props.cycleState;var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#737C83",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#D9A441":"#272C31",border:"1px solid "+(restDur===s?"#D9A441":"#353C42"),color:restDur===s?"#1D2125":"#A3ABB0",cursor:"pointer"}},s+"s")}))),
+e("div",{style:{marginTop:8,borderTop:"1px solid #272C31",paddingTop:16}},e("button",{onClick:function(){setShowDanger(!showDanger)},style:{width:"100%",background:"transparent",border:"1px solid #272C31",borderRadius:12,padding:"14px 16px",cursor:"pointer",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",null,e("div",{style:{fontSize:14,fontWeight:600,color:"#737C83"}},"Danger Zone"),e("div",{style:{fontSize:12,color:"#4A5259",marginTop:2}},"Reset all app data")),e("span",{style:{color:"#4A5259",fontSize:14}},showDanger?"\u25B2":"\u25BC")),showDanger&&e("div",{style:{marginTop:10,padding:"16px",background:"#241A18",border:"1px solid rgba(153,27,27,0.27)",borderRadius:12}},e("div",{style:{fontSize:13,color:"#A3ABB0",marginBottom:12,lineHeight:1.5}},"Permanently deletes all data. Cannot be undone."),e("button",{onClick:function(){setConfirmReset(true)},style:{width:"100%",padding:"12px",background:"#6E3529",border:"none",borderRadius:10,color:"#E8A493",fontSize:14,fontWeight:600,cursor:"pointer"}},"Delete All Data")))),confirmReset&&e(ConfirmDialog,{title:"Delete All Data?",message:"This will permanently erase everything. Are you sure?",confirmLabel:"Delete Everything",danger:true,onCancel:function(){setConfirmReset(false)},onConfirm:function(){setConfirmReset(false);onReset()}}))}
 
 // ========================================================================
 // 9. MAIN APP
@@ -611,7 +639,7 @@ var advanceCircuit=function(exId){if(!circuitMode)return;var sess2=SESSIONS[curr
 var nextSetCue=function(exId,u){var order=SESSIONS[currentSession].exercises;var idx=order.findIndex(function(x){return x.id===exId});var pick=null;
 if(circuitMode){for(var ci=1;ci<=order.length;ci++){var x=order[(idx+ci)%order.length];if(!(u[x.id]||[]).every(function(s){return s.completed})){pick=x;break}}}else pick=order[idx];
 if(!pick)return null;var ps=u[pick.id]||[];var k=ps.findIndex(function(s){return!s.completed});if(k===-1)return null;
-var w=pick.hasWeight?ps[k].weight:0;return{cue:cueSet(exLabel(pick),k,ps.length,w,pick.reps),label:"Next: "+exLabel(pick)+" \u00b7 set "+(k+1)+" of "+ps.length+(w?" \u00b7 "+w+" lb":"")+" \u00b7 "+sayReps(pick.reps).replace(" per "," / ")}};
+var w=pick.hasWeight?ps[k].weight:0;return{cue:cueSet(exLabel(pick),k,ps.length,w,pick.reps),label:exLabel(pick)+"\n"+"Set "+(k+1)+" of "+ps.length+(w?", "+w+" lb":"")+", "+sayReps(pick.reps)}};
 
 useEffect(function(){var checkRollover=function(){setTodayKey(getLocalDateKey())};checkRollover();var id=setInterval(checkRollover,60000);document.addEventListener("visibilitychange",checkRollover);return function(){clearInterval(id);document.removeEventListener("visibilitychange",checkRollover)}},[]);
 
@@ -715,28 +743,46 @@ function renderHome(){
 var todayN=(cycleState.completedToday||[]).length;
 var weekLogs=logs.filter(function(l){return new Date(l.date)>=new Date(Date.now()-7*864e5)});
 var balanceAdv=getBalanceAdvisory(logs,rec);
-var lastLabel=cycleState.lastSession?(SESSIONS[cycleState.lastSession]?SESSIONS[cycleState.lastSession].label.replace("Session ",""):cycleState.lastSession):null;
-var showDoneToday=todayN===1&&CYCLE.indexOf((cycleState.completedToday||[])[0])!==-1;
-var summaryLine=(lastLabel?"Last: "+lastLabel+(daysSince!==null?(daysSince===0?", today":", "+daysSince+"d ago"):""):"No sessions yet")+" - "+weekLogs.length+" session"+(weekLogs.length===1?"":"s")+" in 7 days"+(showDoneToday?" - "+todayN+" done today":"");
+var lastLabel=cycleState.lastSession?(SESSIONS[cycleState.lastSession]?SESSIONS[cycleState.lastSession].label:cycleState.lastSession):null;
+var lastLine=lastLabel?lastLabel+(daysSince!==null?(daysSince===0?" today":daysSince===1?" yesterday":", "+daysSince+" days ago"):""):"No sessions yet";
+var weekLine=weekLogs.length+(weekLogs.length===1?" session":" sessions")+" this week";
+var RS=SESSIONS[rec];var letter=rec==="modC"?"C":rec==="TGU"?"T":rec;
+var exNames=RS.exercises.map(function(x){return x.name.replace(/-/g,"\u2011")}).join(", ");
+var dateLine=new Date().toLocaleDateString([],{weekday:"long",month:"short",day:"numeric"});
 return e("div",{style:STYLES.screen},
-e("div",{style:Object.assign({},STYLES.headerPad,{display:"flex",justifyContent:"space-between",alignItems:"flex-start"})},
-e("div",null,e("div",{style:{fontSize:12,color:T.mut,textTransform:"uppercase",letterSpacing:2.5,fontWeight:600}},"ABC Cycle Tracker",e("span",{style:{fontSize:9,color:T.brdL,marginLeft:6,letterSpacing:1,textTransform:"none"}},"v"+APP_VERSION)),e("div",{style:{fontSize:26,fontWeight:700,color:T.hi,marginTop:3}},todayN>0?todayN+" session"+(todayN>1?"s":"")+" today":"Ready to train")),
-e("button",{onClick:function(){setShowSettings(true)},style:{background:T.inp,border:"1px solid "+T.brd,borderRadius:10,padding:"8px 10px",cursor:"pointer",color:T.sec,fontSize:16}},"\u2699")),
-e("div",{style:STYLES.scrollBodyPx},
-draftSession&&SESSIONS[draftSession.session]&&e("div",{style:{background:"#1a1a0a",border:"2px solid "+T.acc,borderRadius:14,padding:"14px 16px",marginBottom:10}},
-e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},e("div",{style:{width:10,height:10,borderRadius:"50%",background:T.acc,animation:"pulse 1.5s infinite"}}),e("div",{style:{fontSize:15,fontWeight:700,color:T.accL}},"Unfinished session found")),
-e("div",{style:{fontSize:13,color:T.sec,marginBottom:10}},SESSIONS[draftSession.session].label+" \u2014 started "+new Date(draftSession.start).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})),
-e("div",{style:{display:"flex",gap:8}},
-e("button",{onClick:function(){var d=draftSession;if(!d||!SESSIONS[d.session])return;var sess=SESSIONS[d.session];var restoredEx=d.exData||{};cuedRef.current={};Object.keys(restoredEx).forEach(function(id){(restoredEx[id]||[]).forEach(function(st,si){if(st&&st.completed)cuedRef.current[id+":"+si]=true})});sess.exercises.forEach(function(ex){if(!restoredEx[ex.id]||!Array.isArray(restoredEx[ex.id])){restoredEx[ex.id]=Array.from({length:ex.sets},function(){return{weight:0,reps:"",rpe:"",completed:false,touched:false}})}});var validActiveEx=d.activeEx&&restoredEx[d.activeEx]?d.activeEx:sess.exercises[0].id;setCurrent(d.session);setExData(restoredEx);setStart(d.start||Date.now());setReadiness(d.readiness||null);setWarmup(d.warmup||null);setNotes(d.notes||{notes:""});setSessionRPE(d.sessionRPE||0);setActiveEx(validActiveEx);setCircuitMode(!!d.circuitMode);setDraftSession(null);setScreen("workout")},style:{flex:1,padding:"12px",background:T.acc,border:"none",borderRadius:10,color:"#1C1917",fontSize:14,fontWeight:700,cursor:"pointer"}},"Resume"),
-e("button",{onClick:function(){clearDraft();setDraftSession(null)},style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.sec,fontSize:14,fontWeight:500,cursor:"pointer"}},"Discard"))),
-e("button",{onClick:function(){startSession(rec)},style:{width:"100%",padding:"14px 16px",background:"linear-gradient(135deg,"+SESSIONS[rec].color+"22,"+SESSIONS[rec].color+"11)",border:"2px solid "+SESSIONS[rec].color,borderRadius:16,cursor:"pointer",textAlign:"left",marginBottom:12,flexShrink:0}},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",null,e("div",{style:{fontSize:11,color:SESSIONS[rec].color,textTransform:"uppercase",letterSpacing:2,fontWeight:700}},"Recommended"),e("div",{style:{fontSize:22,fontWeight:700,color:"#F5F5F4",marginTop:3}},SESSIONS[rec].label),e("div",{style:{fontSize:13,color:"#A8A29E",marginTop:2}},SESSIONS[rec].time+" | "+SESSIONS[rec].exercises.length+" exercises"),e("div",{style:{fontSize:11,color:T.mut,marginTop:3}},recReason),e("div",{style:{fontSize:11,color:T.mut,marginTop:3}},summaryLine)),e("div",{style:{width:44,height:44,borderRadius:"50%",background:SESSIONS[rec].color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:"#fff",fontWeight:700}},"\u2192"))),
-balanceAdv&&e("div",{style:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,padding:"10px 14px",marginBottom:8}},e("div",{style:{fontSize:12,color:T.sec,lineHeight:1.5}},balanceAdv.msg)),
-e("div",{style:{display:"flex",flexDirection:"column",minHeight:0}},
-e("div",{style:Object.assign({},STYLES.sectionLabel,{fontSize:11,letterSpacing:2,marginBottom:6,paddingLeft:2})},"All Sessions"),
-e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,alignContent:"start"}},
-Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];var avg=getAvgTime(k,logs);return e("button",{key:k,onClick:function(){startSession(k)},style:{background:"#1C1917",border:"1px solid "+(k===rec?s.color+"66":"#292524"),borderRadius:12,padding:"10px 12px",cursor:"pointer",textAlign:"left",minHeight:70,display:"flex",flexDirection:"column",justifyContent:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:1}},e("div",{style:{width:7,height:7,borderRadius:"50%",background:s.color}}),e("div",{style:{fontSize:14,fontWeight:600,color:"#F5F5F4"}},s.label)),e("div",{style:{fontSize:11,color:"#78716C"}},s.time+(avg?" \u00b7 Avg: "+avg+"m total":"")),s.subtitle&&e("div",{style:{fontSize:10,color:"#57534E",fontStyle:"italic"}},s.subtitle))})))),
-e("div",{style:Object.assign({},STYLES.footerBar,{padding:0})},
-e("div",{style:{display:"grid",gridTemplateColumns:"1fr",gap:6,padding:"10px 14px 10px"}},e("button",{onClick:function(){setShowHist(true)},style:{background:"#1C1917",border:"1px solid #292524",borderRadius:12,padding:10,cursor:"pointer",color:"#A8A29E",fontSize:13,fontWeight:500}},"📋 History"))),
+e("div",{style:Object.assign({},STYLES.headerPad,{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:6})},
+e("div",{style:{fontSize:15,color:T.sec,fontWeight:500}},dateLine),
+e("button",{"aria-label":"Settings",onClick:function(){setShowSettings(true)},style:{background:"transparent",border:"none",padding:"8px 4px 8px 12px",cursor:"pointer",color:T.mut,fontSize:20,lineHeight:1}},"\u2699")),
+e("div",{style:Object.assign({},STYLES.scrollBodyPx,{padding:"0 20px"})},
+draftSession&&SESSIONS[draftSession.session]&&e("div",{style:{borderLeft:"3px solid "+T.acc,padding:"4px 0 4px 14px",margin:"8px 0 18px"}},
+e("div",{style:{fontSize:17,fontWeight:600,color:T.hi}},SESSIONS[draftSession.session].label+" is still open"),
+e("div",{style:{fontSize:14,color:T.sec,margin:"2px 0 12px"}},"Started "+new Date(draftSession.start).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})),
+e("div",{style:{display:"flex",gap:10}},
+e("button",{onClick:function(){var d=draftSession;if(!d||!SESSIONS[d.session])return;var sess=SESSIONS[d.session];var restoredEx=d.exData||{};cuedRef.current={};Object.keys(restoredEx).forEach(function(id){(restoredEx[id]||[]).forEach(function(st,si){if(st&&st.completed)cuedRef.current[id+":"+si]=true})});sess.exercises.forEach(function(ex){if(!restoredEx[ex.id]||!Array.isArray(restoredEx[ex.id])){restoredEx[ex.id]=Array.from({length:ex.sets},function(){return{weight:0,reps:"",rpe:"",completed:false,touched:false}})}});var validActiveEx=d.activeEx&&restoredEx[d.activeEx]?d.activeEx:sess.exercises[0].id;setCurrent(d.session);setExData(restoredEx);setStart(d.start||Date.now());setReadiness(d.readiness||null);setWarmup(d.warmup||null);setNotes(d.notes||{notes:""});setSessionRPE(d.sessionRPE||0);setActiveEx(validActiveEx);setCircuitMode(!!d.circuitMode);setDraftSession(null);setScreen("workout")},style:{padding:"11px 22px",background:T.acc,border:"none",borderRadius:10,color:T.bg,fontSize:15,fontWeight:600,cursor:"pointer"}},"Resume"),
+e("button",{onClick:function(){clearDraft();setDraftSession(null)},style:{padding:"11px 18px",background:"transparent",border:"1px solid "+T.brd,borderRadius:10,color:T.sec,fontSize:15,cursor:"pointer"}},"Discard"))),
+// The recommended session: one large letter is the mark; everything else stays quiet.
+e("button",{"aria-label":RS.label+" (Recommended)",onClick:function(){startSession(rec)},style:{width:"100%",background:T.card,border:"none",borderRadius:20,padding:"20px 20px 18px",cursor:"pointer",textAlign:"left",margin:"10px 0 14px",flexShrink:0,display:"block"}},
+e("div",{style:{display:"flex",alignItems:"flex-start",gap:18}},
+e("div",{style:{fontFamily:MONO,fontSize:112,lineHeight:0.82,fontWeight:700,color:RS.color,letterSpacing:-2,marginTop:4}},letter),
+e("div",{style:{flex:1,minWidth:0}},
+e("div",{style:{fontSize:14,color:RS.color,fontWeight:600}},"Recommended"),
+e("div",{style:{fontSize:26,fontWeight:700,color:T.hi,lineHeight:1.15,marginTop:2}},RS.label),
+e("div",{style:{fontSize:15,color:T.sec,lineHeight:1.4,marginTop:6}},exNames),
+e("div",{style:{fontSize:14,color:T.mut,marginTop:6}},RS.time))),
+e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:18,paddingTop:14,borderTop:"1px solid "+T.inp}},
+e("div",{style:{fontSize:14,color:T.sec}},recReason),
+e("div",{style:{background:RS.color,color:T.bg,fontWeight:700,fontSize:16,borderRadius:22,padding:"10px 22px"}},"Start"))),
+e("div",{style:{fontSize:15,color:T.sec,lineHeight:1.6,padding:"0 4px"}},weekLine+(todayN>0?", "+todayN+" today":"")+(lastLabel&&daysSince!==null&&daysSince>0?". Last one "+(daysSince===1?"yesterday":daysSince+" days ago")+".":".")),
+balanceAdv&&e("div",{style:{fontSize:14,color:T.warn,lineHeight:1.5,padding:"10px 4px 0"}},balanceAdv.msg),
+// Every session, as a plain list: pick one to do it out of order.
+e("div",{style:{marginTop:22}},
+e("div",{style:{fontSize:14,color:T.mut,padding:"0 4px 6px"}},"Other sessions"),
+Object.keys(SESSIONS).filter(function(k){return k!==rec}).map(function(k,ix){var s2=SESSIONS[k];var avg=getAvgTime(k,logs);return e("button",{key:k,onClick:function(){startSession(k)},style:{width:"100%",display:"flex",alignItems:"center",gap:14,background:"transparent",border:"none",borderTop:ix?"1px solid "+T.inp:"none",padding:"13px 4px",cursor:"pointer",textAlign:"left"}},
+e("div",{style:{width:10,height:10,borderRadius:"50%",background:s2.color,flexShrink:0}}),
+e("div",{style:{flex:1,minWidth:0}},e("div",{style:{fontSize:17,fontWeight:600,color:T.txt}},s2.label),s2.subtitle&&e("div",{style:{fontSize:13,color:T.mut,marginTop:1}},s2.subtitle)),
+e("div",{style:{fontFamily:MONO,fontSize:17,color:T.mut}},avg?avg+" min":s2.time))}))),
+e("div",{style:Object.assign({},STYLES.footerBar,{borderTop:"none",padding:"8px 20px calc(10px + env(safe-area-inset-bottom,0px))"})},
+e("button",{onClick:function(){setShowHist(true)},style:{width:"100%",background:"transparent",border:"1px solid "+T.brd,borderRadius:14,padding:14,cursor:"pointer",color:T.txt,fontSize:16,fontWeight:500}},"History")),
 showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,onClose:function(){setShowSettings(false)},onReset:clearAll,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
 }
 
@@ -745,19 +791,19 @@ function renderHistory(){
 return e("div",{style:STYLES.screen},
 e("div",{style:Object.assign({},STYLES.headerPad,{display:"flex",alignItems:"center",justifyContent:"space-between"})},e("div",{style:{display:"flex",alignItems:"center",gap:12}},e("button",{onClick:function(){setShowHist(false);setShowAddLog(false);setExpandedLog(null);setEditingLogIdx(null);setEditSnapshot(null)},style:STYLES.backBtnFlat},"\u2190 Back"),e("div",{style:{fontSize:20,fontWeight:700,color:T.hi}},"History")),e("button",{onClick:function(){setShowAddLog(true)},style:{background:T.inp,border:"1px solid "+T.brd,borderRadius:8,color:T.sec,padding:"8px 12px",fontSize:13,cursor:"pointer"}},"+ Log")),
 e("div",{style:{flex:1,overflowY:"auto",padding:"0 12px",paddingBottom:"calc(20px + env(safe-area-inset-bottom,0px))",WebkitOverflowScrolling:"touch"}},
-showAddLog&&e("div",{style:{background:"#1C1917",border:"1px solid #44403C",borderRadius:14,padding:"14px",marginBottom:12}},e("div",{style:{fontSize:15,fontWeight:600,color:"#F5F5F4",marginBottom:10}},"Log Past Session"),e("div",{style:{marginBottom:8}},e("div",{style:{fontSize:12,color:"#78716C",marginBottom:4}},"Date"),e("input",{type:"date",value:newLog.date,onChange:function(ev){setNewLog(Object.assign({},newLog,{date:ev.target.value}))},style:{width:"100%",background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#F5F5F4",padding:"10px 12px",fontSize:14,outline:"none",colorScheme:"dark"}})),e("div",{style:{marginBottom:8}},e("div",{style:{fontSize:12,color:"#78716C",marginBottom:4}},"Session"),e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];return e("button",{key:k,onClick:function(){setNewLog(Object.assign({},newLog,{session:k}))},style:{padding:"5px 10px",borderRadius:8,fontSize:12,cursor:"pointer",fontWeight:newLog.session===k?600:400,background:newLog.session===k?s.color+"33":"#292524",border:"1px solid "+(newLog.session===k?s.color:"#44403C"),color:newLog.session===k?s.color:"#A8A29E"}},s.label)}))),e("textarea",{value:newLog.notes,onChange:function(ev){setNewLog(Object.assign({},newLog,{notes:ev.target.value}))},placeholder:"Notes (optional)...",rows:2,style:{width:"100%",background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#E7E5E4",padding:"10px 12px",fontSize:14,resize:"none",outline:"none",marginBottom:8,lineHeight:1.5}}),e("div",{style:{display:"flex",gap:8}},e("button",{onClick:function(){setShowAddLog(false)},style:{flex:1,padding:"10px",background:"#292524",border:"1px solid #44403C",borderRadius:8,color:"#A8A29E",fontSize:14,cursor:"pointer"}},"Cancel"),e("button",{onClick:addManualLog,style:{flex:1,padding:"10px",background:newLog.date?"#F59E0B":"#44403C",border:"none",borderRadius:8,color:newLog.date?"#1C1917":"#78716C",fontSize:14,fontWeight:600,cursor:newLog.date?"pointer":"default"}},"Save"))),
-logs.length===0?e("div",{style:{color:"#78716C",textAlign:"center",padding:40,fontSize:14}},"No sessions yet. Get after it!"):
+showAddLog&&e("div",{style:{background:"#1D2125",border:"1px solid #353C42",borderRadius:14,padding:"14px",marginBottom:12}},e("div",{style:{fontSize:15,fontWeight:600,color:"#F0ECE4",marginBottom:10}},"Log Past Session"),e("div",{style:{marginBottom:8}},e("div",{style:{fontSize:12,color:"#737C83",marginBottom:4}},"Date"),e("input",{type:"date",value:newLog.date,onChange:function(ev){setNewLog(Object.assign({},newLog,{date:ev.target.value}))},style:{width:"100%",background:"#272C31",border:"1px solid #353C42",borderRadius:8,color:"#F0ECE4",padding:"10px 12px",fontSize:14,outline:"none",colorScheme:"dark"}})),e("div",{style:{marginBottom:8}},e("div",{style:{fontSize:12,color:"#737C83",marginBottom:4}},"Session"),e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},Object.keys(SESSIONS).map(function(k){var s=SESSIONS[k];return e("button",{key:k,onClick:function(){setNewLog(Object.assign({},newLog,{session:k}))},style:{padding:"5px 10px",borderRadius:8,fontSize:12,cursor:"pointer",fontWeight:newLog.session===k?600:400,background:newLog.session===k?s.color+"33":"#272C31",border:"1px solid "+(newLog.session===k?s.color:"#353C42"),color:newLog.session===k?s.color:"#A3ABB0"}},s.label)}))),e("textarea",{value:newLog.notes,onChange:function(ev){setNewLog(Object.assign({},newLog,{notes:ev.target.value}))},placeholder:"Notes (optional)...",rows:2,style:{width:"100%",background:"#272C31",border:"1px solid #353C42",borderRadius:8,color:"#E6E2DA",padding:"10px 12px",fontSize:14,resize:"none",outline:"none",marginBottom:8,lineHeight:1.5}}),e("div",{style:{display:"flex",gap:8}},e("button",{onClick:function(){setShowAddLog(false)},style:{flex:1,padding:"10px",background:"#272C31",border:"1px solid #353C42",borderRadius:8,color:"#A3ABB0",fontSize:14,cursor:"pointer"}},"Cancel"),e("button",{onClick:addManualLog,style:{flex:1,padding:"10px",background:newLog.date?"#D9A441":"#353C42",border:"none",borderRadius:8,color:newLog.date?"#1D2125":"#737C83",fontSize:14,fontWeight:600,cursor:newLog.date?"pointer":"default"}},"Save"))),
+logs.length===0?e("div",{style:{color:"#737C83",textAlign:"center",padding:40,fontSize:14}},"No sessions yet. Get after it!"):
 logs.map(function(l,i){var s=SESSIONS[l.session];var d=new Date(l.date);var isExp=expandedLog===i;
 var hasDetail=l.exercises&&l.exercises.length>0&&l.exercises.some(function(ex){return ex.sets&&ex.sets.length>0});
-return e("div",{key:i,style:{background:"#1C1917",border:"1px solid "+(isExp?"#44403C":"#292524"),borderRadius:12,padding:"12px 14px",marginBottom:6,cursor:hasDetail?"pointer":"default"},onClick:function(){if(hasDetail&&editingLogIdx===null)setExpandedLog(isExp?null:i)}},
-e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("span",{style:{width:8,height:8,borderRadius:"50%",background:s?s.color:"#78716C"}}),e("span",{style:{fontSize:15,fontWeight:600,color:"#F5F5F4"}},s?s.label:l.session),l.manual&&e("span",{style:{fontSize:10,color:"#78716C",background:"#292524",borderRadius:4,padding:"1px 6px"}},"manual")),e("div",{style:{display:"flex",alignItems:"center",gap:6}},l.duration>0&&e("span",{style:{fontSize:12,color:"#78716C"}},l.duration+"m"),hasDetail&&e("span",{style:{fontSize:10,color:"#57534E"}},isExp?"\u25B2":"\u25BC"),e("button",{onClick:function(ev){ev.stopPropagation();setConfirmDel(i)},style:{background:"transparent",border:"none",color:"#57534E",fontSize:14,cursor:"pointer",padding:"2px 4px"}},"\u{1F5D1}"))),
-e("div",{style:{fontSize:12,color:"#78716C",marginTop:3}},d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})+(hasDetail?" | "+l.exercises.reduce(function(a,x){return a+x.sets.length},0)+" sets":"")),
-isExp&&hasDetail&&e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:8}},
+return e("div",{key:i,style:{background:"#1D2125",border:"1px solid "+(isExp?"#353C42":"#272C31"),borderRadius:12,padding:"12px 14px",marginBottom:6,cursor:hasDetail?"pointer":"default"},onClick:function(){if(hasDetail&&editingLogIdx===null)setExpandedLog(isExp?null:i)}},
+e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("span",{style:{width:8,height:8,borderRadius:"50%",background:s?s.color:"#737C83"}}),e("span",{style:{fontSize:15,fontWeight:600,color:"#F0ECE4"}},s?s.label:l.session),l.manual&&e("span",{style:{fontSize:10,color:"#737C83",background:"#272C31",borderRadius:4,padding:"1px 6px"}},"manual")),e("div",{style:{display:"flex",alignItems:"center",gap:6}},l.duration>0&&e("span",{style:{fontSize:12,color:"#737C83"}},l.duration+"m"),hasDetail&&e("span",{style:{fontSize:10,color:"#4A5259"}},isExp?"\u25B2":"\u25BC"),e("button",{onClick:function(ev){ev.stopPropagation();setConfirmDel(i)},style:{background:"transparent",border:"none",color:"#4A5259",fontSize:14,cursor:"pointer",padding:"2px 4px"}},"\u{1F5D1}"))),
+e("div",{style:{fontSize:12,color:"#737C83",marginTop:3}},d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})+(hasDetail?" | "+l.exercises.reduce(function(a,x){return a+x.sets.length},0)+" sets":"")),
+isExp&&hasDetail&&e("div",{style:{marginTop:8,borderTop:"1px solid #272C31",paddingTop:8}},
 editingLogIdx===i&&editSnapshot?
 e("div",null,
 editSnapshot.filter(function(ex){return ex.sets&&ex.sets.length>0}).map(function(ex,j){
 return e("div",{key:j,style:{marginBottom:8}},
-e("div",{style:{fontSize:12,fontWeight:600,color:"#A8A29E",marginBottom:4}},exNameLookup(ex.id)),
+e("div",{style:{fontSize:12,fontWeight:600,color:"#A3ABB0",marginBottom:4}},exNameLookup(ex.id)),
 e("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"2px 0",marginBottom:2}},
 e("div",{style:{width:32,fontSize:9,color:T.mut,textAlign:"center"}},"#"),
 e("div",{style:{width:56,fontSize:9,color:T.mut,textAlign:"center"}},"Wt"),
@@ -788,13 +834,13 @@ style:{flex:1,padding:"8px",background:T.inp,border:"1px solid "+T.brd,borderRad
 e("button",{onClick:function(ev){ev.stopPropagation();
 var updated=editSnapshot.map(function(ex){return{id:ex.id,sets:ex.sets.map(function(s){return{weight:Math.max(0,Math.min(Number(s.weight)||0,2000)),reps:Math.max(0,Math.min(Number(s.reps)||0,500)),rpe:Math.max(0,Math.min(Number(s.rpe)||0,10)),completed:s.completed!==undefined?s.completed:true}})}});
 updateLogEntry(i,updated)},
-style:{flex:1,padding:"8px",background:T.acc,border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}},"Save Changes"))
+style:{flex:1,padding:"8px",background:T.acc,border:"none",borderRadius:8,color:"#14171A",fontSize:13,fontWeight:600,cursor:"pointer"}},"Save Changes"))
 ):
 e("div",null,
-l.exercises.filter(function(ex){return ex.sets&&ex.sets.length>0}).map(function(ex,j){return e("div",{key:j,style:{marginBottom:6}},e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},e("div",{style:{fontSize:12,fontWeight:600,color:"#A8A29E"}},exNameLookup(ex.id)),e("button",{onClick:function(ev){ev.stopPropagation();setChartEx(ex.id)},style:{background:"transparent",border:"1px solid #44403C",borderRadius:6,color:"#78716C",padding:"2px 8px",fontSize:11,cursor:"pointer"}},"\u{1F4C8}")),e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:3}},ex.sets.map(function(set,k){var label="";if(set.weight&&set.reps)label=set.weight+"x"+set.reps;else if(set.reps)label=set.reps+" reps";else if(set.weight)label=set.weight+" lbs";else label="-";if(set.rpe)label+=" @"+set.rpe;return e("span",{key:k,style:{fontSize:12,fontFamily:MONO,color:"#E7E5E4",background:"#292524",borderRadius:6,padding:"3px 8px"}},label)})))}),
+l.exercises.filter(function(ex){return ex.sets&&ex.sets.length>0}).map(function(ex,j){return e("div",{key:j,style:{marginBottom:6}},e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},e("div",{style:{fontSize:12,fontWeight:600,color:"#A3ABB0"}},exNameLookup(ex.id)),e("button",{onClick:function(ev){ev.stopPropagation();setChartEx(ex.id)},style:{background:"transparent",border:"1px solid #353C42",borderRadius:6,color:"#737C83",padding:"2px 8px",fontSize:11,cursor:"pointer"}},"\u{1F4C8}")),e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:3}},ex.sets.map(function(set,k){var label="";if(set.weight&&set.reps)label=set.weight+"x"+set.reps;else if(set.reps)label=set.reps+" reps";else if(set.weight)label=set.weight+" lbs";else label="-";if(set.rpe)label+=" @"+set.rpe;return e("span",{key:k,style:{fontSize:12,fontFamily:MONO,color:"#E6E2DA",background:"#272C31",borderRadius:6,padding:"3px 8px"}},label)})))}),
 e("button",{onClick:function(ev){ev.stopPropagation();startEditLog(i)},
 style:{marginTop:6,padding:"6px 12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:8,color:T.sec,fontSize:12,cursor:"pointer"}},"\u270F\uFE0F Edit Sets"))),
-l.notes&&e("div",{style:{fontSize:12,color:"#A8A29E",marginTop:6,fontStyle:"italic",borderTop:"1px solid #292524",paddingTop:6}},l.notes))})),
+l.notes&&e("div",{style:{fontSize:12,color:"#A3ABB0",marginTop:6,fontStyle:"italic",borderTop:"1px solid #272C31",paddingTop:6}},l.notes))})),
 confirmDel!==null&&e(ConfirmDialog,{title:"Delete Session?",message:"Remove this session from your history?",confirmLabel:"Delete",danger:true,onCancel:function(){setConfirmDel(null)},onConfirm:function(){deleteLog(confirmDel)}}),
 chartEx&&e(ProgressChart,{data:getExHistory(chartEx,logs),exName:EX_GROUP_NAMES[EX_GROUP[chartEx]]||exNameLookup(chartEx),onClose:function(){setChartEx(null)}}))
 }
@@ -809,46 +855,47 @@ var wuId=warmup||getSmartWarmup(currentSession,readiness,daysSince);
 var wuData=wuId==="skip"?null:WARMUPS.find(function(w){return w.id===wuId});
 var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
 var feelKey=rdScore<=4?"rough":rdScore<=6?"ok":"good";
+var note=function(txt,clr){return e("div",{style:{borderLeft:"3px solid "+clr,padding:"2px 0 2px 12px",margin:"0 0 14px",fontSize:15,color:T.txt,lineHeight:1.45}},txt)};
+var seg=function(opts,cur,on){return e("div",{style:{display:"flex",background:T.card,borderRadius:12,padding:4,gap:4}},opts.map(function(o){var sel=cur===o.k;return e("button",{key:o.l,onClick:function(){on(o)},style:{flex:1,minHeight:44,borderRadius:9,border:"none",cursor:"pointer",fontSize:16,fontWeight:sel?600:500,background:sel?T.inp:"transparent",color:sel?T.hi:T.mut,boxShadow:sel?"inset 0 0 0 1px "+T.brd:"none"}},o.l)}))};
 return e("div",{style:STYLES.screen},
-e("div",{style:STYLES.headerPad},
-e("button",{onClick:function(){clearDraft();home()},style:STYLES.backBtn},"\u2190 Cancel"),
-e("div",{style:Object.assign({},STYLES.sessionLabel,{color:sess.color})},sess.label),
-e("div",{style:{fontSize:22,fontWeight:700,color:T.hi,marginTop:3}},"Your Game Plan")),
-e("div",{style:STYLES.scrollBody},
-ctx.fatigue&&e("div",{style:STYLES.warnBanner},
-e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},ctx.fatigue.msg)),
-ctx.isDouble&&e("div",{style:STYLES.warnBanner},
-e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},"Second session today \u2014 consider lighter carries.")),
-ctx.exercises.map(function(ex){
-var progClr=ex.progression?ex.progression.type==="progress"?T.ok:ex.progression.type==="caution"?T.warn:T.sec:T.sec;
-var progIcon=ex.progression?ex.progression.type==="progress"?"\u2B06":ex.progression.type==="caution"?"\u26A0":"\u2192":null;
-return e("div",{key:ex.id,style:Object.assign({},STYLES.card,{marginBottom:8})},
-e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
-e("div",{style:{fontSize:15,fontWeight:700,color:T.hi}},ex.name),
-ex.suggestedWeight&&e("div",{style:{fontSize:18,fontWeight:700,color:T.accL,fontFamily:MONO}},ex.suggestedWeight+" lbs")),
-e("div",{style:{fontSize:12,color:T.mut}},ex.sets+" sets"+(ex.lastSets?" \u00b7 Last: "+ex.lastSets.map(function(s){return(s.weight||"BW")+(s.reps?"x"+s.reps:"")}).join(", "):"")),
-ex.progression&&e("div",{style:{marginTop:4,fontSize:12,color:progClr,display:"flex",alignItems:"center",gap:4}},
-e("span",null,progIcon),e("span",null,ex.progression.msg)),
-ex.suggestedReason&&!ex.progression&&e("div",{style:{marginTop:4,fontSize:12,color:T.sec}},ex.suggestedReason))}),
-// Feel row: default OK, stored only once tapped
-e("div",{style:Object.assign({},STYLES.card,{marginBottom:8,display:"flex",alignItems:"center",gap:8})},
-e("div",{style:{fontSize:14,fontWeight:600,color:T.hi,marginRight:4}},"Feel:"),
-FEEL.map(function(f){var sel=feelKey===f.key;return e("button",{key:f.key,onClick:function(){setFeel(f.rd)},style:{flex:1,minHeight:44,padding:"8px 6px",borderRadius:10,fontSize:14,fontWeight:sel?700:400,cursor:"pointer",background:sel?T.inp:"transparent",border:"1px solid "+(sel?T.brdL:T.inp),color:sel?T.hi:T.mut}},f.label)})),
-// Warm-up row: the suggested warm-up (or the one picked), expandable to its steps, a switch and skip
-e("div",{style:Object.assign({},STYLES.card,{marginBottom:8,padding:0,overflow:"hidden"})},
-e("div",{onClick:function(){setWarmupOpen(!warmupOpen)},style:{minHeight:44,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}},
-e("div",{style:{fontSize:14,fontWeight:600,color:T.hi}},wuData?"Warm-up: "+wuData.label+", "+wuData.time:"Warm-up: skipped"),
-e("span",{style:{fontSize:10,color:T.brdL,marginLeft:8}},warmupOpen?"\u25B2":"\u25BC")),
-warmupOpen&&e("div",{style:{padding:"10px 14px 12px",borderTop:"1px solid "+T.inp}},
-wuData&&wuData.steps.map(function(s,i){return e("div",{key:i,style:{fontSize:12,color:T.sec,marginBottom:3,lineHeight:1.4}},s)}),
-e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:wuData?10:0}},
-WARMUPS.filter(function(w){return w.id!==wuId}).map(function(w){return e("button",{key:w.id,onClick:function(){setWarmup(w.id)},style:{minHeight:44,padding:"8px 12px",borderRadius:10,fontSize:13,cursor:"pointer",background:T.inp,border:"1px solid "+T.brd,color:T.txt}},w.icon+" "+w.label+" \u00B7 "+w.time)}),
-wuId!=="skip"&&e("button",{onClick:function(){setWarmup("skip")},style:{minHeight:44,padding:"8px 12px",borderRadius:10,fontSize:13,cursor:"pointer",background:"transparent",border:"1px dashed "+T.brd,color:T.mut}},"Skip warm-up")))),
-// Standard / Circuit toggle
-e("div",{style:{display:"flex",gap:6,marginBottom:8}},
-[{v:false,l:"Standard",d:"All sets per exercise, then next"},{v:true,l:"Circuit",d:"Rotate exercises each set"}].map(function(opt){var sel=circuitMode===opt.v;return e("button",{key:opt.l,onClick:function(){setCircuitMode(opt.v)},style:{flex:1,minHeight:44,padding:"8px 10px",borderRadius:10,cursor:"pointer",background:sel?T.inp:"transparent",border:"1px solid "+(sel?T.brdL:T.inp),textAlign:"left"}},e("div",{style:{fontSize:13,fontWeight:sel?600:400,color:sel?T.hi:T.mut}},opt.l),e("div",{style:{fontSize:11,color:T.mut,marginTop:2}},opt.d))}))),
-e("div",{style:STYLES.footerBar},
-e("button",{onClick:function(){if(!warmup)setWarmup(wuId);primeAudio();primeVoice();var fx=sess.exercises[0];if(fx)speak(introCue(fx,exData,"First: "));setScreen("workout")},style:{width:"100%",padding:16,background:sess.color,border:"none",borderRadius:14,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}},"Start Lifting \uD83C\uDFCB")))
+e("div",{style:Object.assign({},STYLES.headerPad,{padding:"calc(10px + env(safe-area-inset-top,0px)) 20px 8px"})},
+e("button",{onClick:function(){clearDraft();home()},style:{background:"transparent",border:"none",color:T.sec,fontSize:16,padding:"8px 0",cursor:"pointer"}},"\u2190 Cancel"),
+e("div",{style:{display:"flex",alignItems:"baseline",gap:12,marginTop:6}},
+e("div",{style:{fontSize:30,fontWeight:700,color:T.hi}},sess.label),
+e("div",{style:{fontSize:15,color:T.mut}},sess.time))),
+e("div",{style:Object.assign({},STYLES.scrollBody,{padding:"8px 20px 20px"})},
+ctx.fatigue&&note(ctx.fatigue.msg,T.warn),
+ctx.isDouble&&note("Second session today, so go lighter on carries.",T.warn),
+// The plan: what to pick up for each exercise. The weight is the thing to read.
+e("div",{style:{marginBottom:22}},ctx.exercises.map(function(ex,ix){
+var last=ex.lastSets?ex.lastSets.map(function(s){return(s.weight||"BW")+(s.reps?" \u00d7 "+s.reps:"")})[0]:null;
+var offer=ex.progression&&ex.progression.type==="progress";
+var other=ex.progression&&!offer?ex.progression.msg:(!ex.progression&&ex.suggestedReason?ex.suggestedReason:null);
+return e("div",{key:ex.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 0",borderTop:ix?"1px solid "+T.inp:"none"}},
+e("div",{style:{flex:1,minWidth:0}},
+e("div",{style:{fontSize:18,fontWeight:600,color:T.hi}},ex.name),
+e("div",{style:{fontSize:14,color:T.mut,marginTop:2}},ex.sets+" sets"+(last?", last time "+last:"")),
+offer&&e("div",{style:{fontSize:14,color:T.ok,marginTop:4}},ex.progression.msg),
+other&&e("div",{style:{fontSize:14,color:T.sec,marginTop:4}},other)),
+ex.suggestedWeight?e("div",{style:{textAlign:"right"}},e("span",{style:{fontFamily:MONO,fontSize:34,fontWeight:600,color:T.hi,lineHeight:1}},ex.suggestedWeight),e("span",{style:{fontSize:14,color:T.mut,marginLeft:4}},"lb")):e("div",{style:{fontSize:14,color:T.mut}},"Bodyweight"))})),
+// Feel: default OK, stored only once tapped
+e("div",{style:{fontSize:15,color:T.sec,margin:"0 0 8px 2px"}},"How do you feel today?"),
+seg(FEEL.map(function(f){return{k:f.key,l:f.label,rd:f.rd}}),feelKey,function(o){setFeel(o.rd)}),
+// Warm-up: the suggestion (or the one picked), expandable to its steps, a switch and skip
+e("div",{style:{marginTop:22,borderTop:"1px solid "+T.inp,borderBottom:"1px solid "+T.inp}},
+e("div",{onClick:function(){setWarmupOpen(!warmupOpen)},style:{minHeight:52,padding:"12px 2px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}},
+e("div",null,e("div",{style:{fontSize:17,fontWeight:600,color:T.hi}},wuData?"Warm-up: "+wuData.label:"Warm-up skipped"),wuData&&e("div",{style:{fontSize:14,color:T.mut,marginTop:2}},wuData.time)),
+e("span",{style:{fontSize:14,color:T.mut}},warmupOpen?"Hide":"Show")),
+warmupOpen&&e("div",{style:{padding:"0 2px 14px"}},
+wuData&&wuData.steps.map(function(st,i2){return e("div",{key:i2,style:{fontSize:15,color:T.sec,marginBottom:6,lineHeight:1.45}},st)}),
+e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:wuData?10:0}},
+WARMUPS.filter(function(w){return w.id!==wuId}).map(function(w){return e("button",{key:w.id,onClick:function(){setWarmup(w.id)},style:{minHeight:44,padding:"8px 14px",borderRadius:10,fontSize:15,cursor:"pointer",background:T.card,border:"1px solid "+T.brd,color:T.txt}},w.label+", "+w.time)}),
+wuId!=="skip"&&e("button",{onClick:function(){setWarmup("skip")},style:{minHeight:44,padding:"8px 14px",borderRadius:10,fontSize:15,cursor:"pointer",background:"transparent",border:"1px solid "+T.inp,color:T.mut}},"Skip warm-up")))),
+// Standard / Circuit
+e("div",{style:{fontSize:15,color:T.sec,margin:"22px 0 8px 2px"}},circuitMode?"Circuit: one set of each exercise in turn":"Standard: all sets of one exercise, then the next"),
+seg([{k:false,l:"Standard"},{k:true,l:"Circuit"}],circuitMode,function(o){setCircuitMode(o.k)})),
+e("div",{style:Object.assign({},STYLES.footerBar,{borderTop:"none",padding:"10px 20px calc(12px + env(safe-area-inset-bottom,0px))"})},
+e("button",{onClick:function(){if(!warmup)setWarmup(wuId);primeAudio();primeVoice();var fx=sess.exercises[0];if(fx)speak(introCue(fx,exData,"First: "));setScreen("workout")},style:{width:"100%",padding:17,background:sess.color,border:"none",borderRadius:16,color:T.bg,fontSize:18,fontWeight:700,cursor:"pointer"}},"Start lifting")))
 }
 
 // ── Screen: Active Workout ──
@@ -863,13 +910,13 @@ var hasCarries=sess.exercises.some(function(ex){return ex.isCarry});
 var carryWarn=isDoubleSession&&hasCarries;
 
 return e("div",{style:STYLES.screen},
-e("div",{style:Object.assign({},STYLES.headerPad,{background:T.bg,padding:"calc(12px + env(safe-area-inset-top,0px)) 16px 12px",borderBottom:"1px solid #1C1917"})},
+e("div",{style:Object.assign({},STYLES.headerPad,{background:T.bg,padding:"calc(6px + env(safe-area-inset-top,0px)) 12px 10px"})},
 e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
-e("button",{onClick:home,style:{background:"#292524",border:"none",borderRadius:8,color:"#A8A29E",padding:"6px 12px",fontSize:13,cursor:"pointer"}},"\u2715"),
-e("div",{style:{textAlign:"center"}},e("div",{style:{fontSize:15,fontWeight:700,color:sess.color}},sess.label+(circuitMode?" \u00b7 Circuit":"")),e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8}},e("span",{style:{fontSize:12,color:"#78716C"}},done+"/"+total+" sets"),e(ElapsedClock,{start:start,targetMin:getAvgTime(currentSession,logs)||parseInt(sess.time)||15,done:done,total:total}))),
-e("div",{style:{display:"flex",gap:6}},e("button",{"aria-label":voice?"Mute voice cues":"Turn on voice cues",onClick:toggleVoice,style:{background:"transparent",border:"1px solid #44403C",borderRadius:8,color:voice?"#FBBF24":"#78716C",padding:"6px 8px",fontSize:13,cursor:"pointer"}},voice?"\u{1F50A}":"\u{1F507}"),warmupData&&e("button",{onClick:function(){setShowWarmupRef(!showWarmupRef)},style:{background:showWarmupRef?"#292524":"transparent",border:"1px solid "+(showWarmupRef?"#57534E":"#44403C"),borderRadius:8,color:showWarmupRef?"#FBBF24":"#78716C",padding:"6px 8px",fontSize:11,cursor:"pointer",fontWeight:600}},"WU"))),
-e("div",{style:{height:3,background:"#292524",borderRadius:2,marginTop:8,overflow:"hidden"}},e("div",{style:{height:"100%",width:(done/total*100)+"%",background:sess.color,transition:"width 0.3s"}}))),
-showWarmupRef&&warmupData&&e("div",{style:{padding:"8px 16px",background:"#1a1a14",borderBottom:"1px solid #3d3d00",flexShrink:0}},e("div",{style:{fontSize:12,fontWeight:600,color:"#FBBF24",marginBottom:6}},warmupData.icon+" "+warmupData.label),warmupData.steps.map(function(s,i){return e("div",{key:i,style:{fontSize:12,color:"#D4D4AA",lineHeight:1.5,marginBottom:3}},s)})),
+e("button",{"aria-label":"Leave session",onClick:home,style:{width:44,height:44,background:"transparent",border:"none",color:T.sec,fontSize:20,cursor:"pointer"}},"\u2715"),
+e("div",{style:{textAlign:"center"}},e("div",{style:{fontSize:17,fontWeight:700,color:T.hi}},sess.label+(circuitMode?", circuit":"")),e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginTop:1}},e("span",{style:{fontSize:14,color:T.mut}},done+"/"+total+" sets"),e(ElapsedClock,{start:start,targetMin:getAvgTime(currentSession,logs)||parseInt(sess.time)||15,done:done,total:total}))),
+e("div",{style:{display:"flex",alignItems:"center"}},warmupData&&e("button",{onClick:function(){setShowWarmupRef(!showWarmupRef)},style:{height:44,background:"transparent",border:"none",color:showWarmupRef?T.hi:T.mut,padding:"0 8px",fontSize:14,cursor:"pointer"}},"Warm-up"),e("button",{"aria-label":voice?"Mute voice cues":"Turn on voice cues",onClick:toggleVoice,style:{width:44,height:44,background:"transparent",border:"none",color:voice?T.txt:T.mut,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},e("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 9h4l5-4v14l-5-4H4z"}),voice?e("path",{d:"M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"}):e("path",{d:"M17 9l5 6M22 9l-5 6"}))))),
+e("div",{style:{height:3,background:T.inp,borderRadius:2,margin:"8px 6px 0",overflow:"hidden"}},e("div",{style:{height:"100%",width:(done/total*100)+"%",background:sess.color,transition:"width 0.3s"}}))),
+showWarmupRef&&warmupData&&e("div",{style:{padding:"8px 16px",background:"#1F2226",borderBottom:"1px solid #353C42",flexShrink:0}},e("div",{style:{fontSize:12,fontWeight:600,color:"#E8BE6A",marginBottom:6}},warmupData.label),warmupData.steps.map(function(s,i){return e("div",{key:i,style:{fontSize:12,color:"#CFC9BD",lineHeight:1.5,marginBottom:3}},s)})),
 e("div",{style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScrolling:"touch"}},
 floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,adaptiveLabel:adaptiveRestLabel,nextCue:floatTimer.nextCue,nextLabel:floatTimer.nextLabel,onZero:function(){advanceCircuit(floatTimer.exId)},onDone:function(){setFloatTimer(null);setAdaptiveRestLabel(null);advanceCircuit(floatTimer.exId)}}),
 carryWarn&&e("div",{style:STYLES.warnBannerCompact},e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},"Second session today. Consider skipping or lightening carries to manage grip fatigue.")),
@@ -893,12 +940,12 @@ if(jd!==-1||uncompletedOrEdited)S.set(KEYS.draft,{session:currentSession,exData:
 // Row 65: after an exercise's last set too (standard mode cues the next exercise).
 var fresh=jd!==-1&&!cuedRef.current[ex.id+":"+jd];if(jd!==-1)cuedRef.current[ex.id+":"+jd]=true;
 var leftEx=sess.exercises.find(function(x){return!(x.id===ex.id?ns:(u[x.id]||[])).every(function(s){return s.completed})});
-if(fresh&&leftEx){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=(jd<ns.length-1||circuitMode)?(nextSetCue(ex.id,u)||{}):{cue:introCue(leftEx,u,"Next: "),label:"Next: "+exLabel(leftEx)+" \u00b7 "+leftEx.sets+" sets of "+sayReps(leftEx.reps)};setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc.cue,nextLabel:nc.label});speak(["rest-"+adaptedDur])}
+if(fresh&&leftEx){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=(jd<ns.length-1||circuitMode)?(nextSetCue(ex.id,u)||{}):{cue:introCue(leftEx,u,"Next: "),label:exLabel(leftEx)+"\n"+leftEx.sets+" sets of "+sayReps(leftEx.reps)};setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc.cue,nextLabel:nc.label});speak(["rest-"+adaptedDur])}
 var justDone=ns.every(function(s){return s.completed});
 if(justDone&&fresh){var nextEx=null;for(var ni=0;ni<sess.exercises.length;ni++){var nid=sess.exercises[ni].id;var nsets=nid===ex.id?ns:(u[nid]||[]);if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
 if(nextEx)setTimeout(function(){setActiveEx(nextEx)},400);else speak(["session-done"])}}})})),
-e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 16px 12px"})},
-e("button",{onClick:function(){setScreen("complete")},style:{width:"100%",padding:16,background:allDone?sess.color:"#292524",border:allDone?"none":"1px solid #44403C",borderRadius:14,cursor:"pointer",color:allDone?"#fff":"#A8A29E",fontSize:16,fontWeight:700}},allDone?"Complete Session \u2713":"Finish Session ("+done+"/"+total+" sets)")))
+e("div",{style:Object.assign({},STYLES.footerBar,{borderTop:"none",padding:"8px 16px calc(10px + env(safe-area-inset-bottom,0px))"})},
+e("button",{onClick:function(){setScreen("complete")},style:{width:"100%",padding:16,background:allDone?sess.color:"transparent",border:allDone?"none":"1px solid "+T.brd,borderRadius:16,cursor:"pointer",color:allDone?T.bg:T.sec,fontSize:17,fontWeight:allDone?700:500}},allDone?"Complete session":"Finish session early")))
 }
 
 // ── Screen: Session Complete ──
@@ -934,32 +981,29 @@ var nextLabel=SESSIONS[next]?SESSIONS[next].label:next;
 debrief.push("Next: "+nextLabel+(balAdv?" \u2014 "+balAdv.msg:""));
 
 
+var nextLine=debrief.length?debrief[debrief.length-1]:null,advice=debrief.slice(0,-1);
 return e("div",{style:STYLES.screen},
-e("div",{style:Object.assign({},STYLES.headerPad,{padding:"calc(14px + env(safe-area-inset-top,0px)) 16px 0"})},e("button",{onClick:function(){setScreen("workout")},style:STYLES.backBtnFlat},"\u2190 Back")),
-e("div",{style:{flex:1,overflowY:"auto",padding:"0 20px",WebkitOverflowScrolling:"touch"}},
-e("div",{style:{textAlign:"center",paddingTop:16}},
-e("div",{style:{width:64,height:64,borderRadius:"50%",background:sess.color+"22",border:"3px solid "+sess.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,margin:"0 auto 14px"}},"\u2713"),
-e("div",{style:{fontSize:24,fontWeight:700,color:T.hi,marginBottom:4}},sess.label+" Done"),
-e("div",{style:{fontSize:14,color:T.sec,marginBottom:12}},totalDone+" sets | "+dur+" min")),
-// Exercise summary
-e("div",{style:{width:"100%",maxWidth:380,margin:"0 auto",marginBottom:10}},
-sess.exercises.map(function(ex){var sets=(exData[ex.id]||[]).filter(function(s){return s.completed});if(!sets.length)return null;
-return e("div",{key:ex.id,style:{background:T.card,borderRadius:10,padding:"10px 14px",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",{style:{fontSize:13,color:T.txt,fontWeight:500}},ex.name),e("div",{style:{fontSize:12,color:T.mut,fontFamily:MONO}},sets.map(function(s){return(s.reps||"-")+(s.weight?"@"+s.weight:"")}).join(" | ")))})),
-// Coached debrief
-debrief.length>0&&e("div",{style:{width:"100%",maxWidth:380,margin:"0 auto",marginBottom:10}},
-e("div",{style:{background:T.card,borderRadius:12,padding:"12px 14px",border:"1px solid "+T.acc+"33"}},
-e("div",{style:{fontSize:12,color:T.acc,fontWeight:600,marginBottom:6}},"Next Session"),
-debrief.map(function(line,i){return e("div",{key:i,style:{fontSize:12,color:i<debrief.length-1?T.sec:T.txt,lineHeight:1.6,fontWeight:i===debrief.length-1?600:400}},line)}))),
-// Session RPE
-e("div",{style:{background:T.card,borderRadius:12,padding:"12px 14px",marginBottom:10,border:"1px solid "+T.inp}},
-e("div",{style:{fontSize:13,color:T.mut,fontWeight:600,marginBottom:8}},"Session Difficulty (RPE)"),
-e("div",{style:{display:"flex",gap:4}},
-[1,2,3,4,5,6,7,8,9,10].map(function(v){var clr=v<=4?T.ok:v<=6?T.warn:v<=8?"#F97316":T.err;return e("button",{key:v,onClick:function(){setSessionRPE(v)},style:{flex:1,padding:"8px 0",borderRadius:8,fontSize:13,fontWeight:sessionRPE===v?700:400,background:sessionRPE===v?clr+"33":"transparent",border:"1px solid "+(sessionRPE===v?clr:T.inp),color:sessionRPE===v?clr:T.mut,cursor:"pointer",fontFamily:MONO}},v)}))),
-// Notes
-e("div",{style:{width:"100%",maxWidth:380,margin:"0 auto",marginBottom:10}},
-e("div",{style:{background:T.card,border:"1px solid "+T.inp,borderRadius:12,overflow:"hidden"}},e("textarea",{value:notes.notes,onChange:function(ev){setNotes({notes:ev.target.value})},placeholder:"Quick notes...",rows:2,style:{width:"100%",background:"transparent",border:"none",color:T.txt,padding:"12px 14px",fontSize:14,resize:"none",outline:"none",lineHeight:1.5}})))),
-e("div",{style:Object.assign({},STYLES.footerBar,{padding:"12px 20px 12px"})},
-e("button",{onClick:saveAndFinish,style:{width:"100%",padding:"14px",background:sess.color,border:"none",borderRadius:12,color:"#fff",fontSize:16,fontWeight:600,cursor:"pointer"}},"Save & Done")))
+e("div",{style:Object.assign({},STYLES.headerPad,{padding:"calc(6px + env(safe-area-inset-top,0px)) 20px 0"})},e("button",{onClick:function(){setScreen("workout")},style:{background:"transparent",border:"none",color:T.sec,fontSize:16,padding:"8px 0",cursor:"pointer"}},"\u2190 Back to session")),
+e("div",{style:{flex:1,overflowY:"auto",padding:"0 20px 20px",WebkitOverflowScrolling:"touch"}},
+e("div",{style:{padding:"18px 0 20px"}},
+e("div",{style:{fontSize:32,fontWeight:700,color:T.hi}},sess.label+" done"),
+e("div",{style:{display:"flex",gap:28,marginTop:12}},
+e("div",null,e("div",{style:{fontFamily:MONO,fontSize:40,fontWeight:600,color:T.hi,lineHeight:1}},totalDone),e("div",{style:{fontSize:14,color:T.mut,marginTop:4}},totalDone===1?"set":"sets")),
+e("div",null,e("div",{style:{fontFamily:MONO,fontSize:40,fontWeight:600,color:T.hi,lineHeight:1}},dur),e("div",{style:{fontSize:14,color:T.mut,marginTop:4}},"minutes")))),
+// What was done, one line per exercise
+e("div",{style:{marginBottom:22}},sess.exercises.map(function(ex,ix){var sets=(exData[ex.id]||[]).filter(function(st){return st.completed});if(!sets.length)return null;
+return e("div",{key:ex.id,style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"10px 0",borderTop:"1px solid "+T.inp}},e("div",{style:{fontSize:16,color:T.txt}},ex.name),e("div",{style:{fontFamily:MONO,fontSize:19,color:T.sec,whiteSpace:"nowrap"}},sets.map(function(st){return(st.weight?st.weight+"\u00d7":"")+(st.reps||"\u2013")}).join("  ")))})),
+// Next time: the advice, then which session is next
+debrief.length>0&&e("div",{style:{borderLeft:"3px solid "+T.acc,padding:"2px 0 2px 14px",marginBottom:24}},
+nextLine&&e("div",{style:{fontSize:18,fontWeight:600,color:T.hi}},nextLine),
+advice.map(function(line,li){return e("div",{key:li,style:{fontSize:15,color:T.sec,lineHeight:1.5,marginTop:4}},line)})),
+// Session Difficulty (prefilled from the set RPEs, row 77)
+e("div",{style:{fontSize:15,color:T.sec,marginBottom:8}},"How hard was the whole session?"),
+e("div",{style:{display:"flex",gap:4,marginBottom:22}},
+[1,2,3,4,5,6,7,8,9,10].map(function(v){var on=sessionRPE===v;return e("button",{key:v,onClick:function(){setSessionRPE(v)},style:{flex:1,height:44,borderRadius:10,fontSize:19,fontWeight:600,background:on?T.acc:T.card,border:"none",color:on?T.bg:T.sec,cursor:"pointer",fontFamily:MONO,padding:0}},v)})),
+e("textarea",{value:notes.notes,onChange:function(ev){setNotes({notes:ev.target.value})},placeholder:"Notes (optional)",rows:2,style:{width:"100%",background:T.card,border:"none",borderRadius:14,color:T.txt,padding:"14px 16px",fontSize:16,resize:"none",outline:"none",lineHeight:1.5}})),
+e("div",{style:Object.assign({},STYLES.footerBar,{borderTop:"none",padding:"8px 20px calc(10px + env(safe-area-inset-bottom,0px))"})},
+e("button",{onClick:saveAndFinish,style:{width:"100%",padding:17,background:sess.color,border:"none",borderRadius:16,color:T.bg,fontSize:18,fontWeight:700,cursor:"pointer"}},"Save & Done")))
 }
 
 // ── Router ──

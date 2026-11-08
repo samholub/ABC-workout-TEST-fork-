@@ -2,7 +2,7 @@
 // files each carry their own literal copy of the number instead of sharing
 // a symbol. tests/gate.js fails the build if they disagree or if index.html
 // changed without this number moving.
-var APP_VERSION = 73;
+var APP_VERSION = 77;
 var CACHE_NAME = 'abc-workout-v' + APP_VERSION;
 // Spoken-cue clips (audio/) live in their own cache so a version bump does
 // not throw them away; bump this name only when the clips are re-recorded.
