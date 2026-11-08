@@ -16,7 +16,7 @@ var out = {};
 out['ten-seconds'] = 'Ten seconds.';
 out['session-done'] = 'Session done. Tap Complete Session.';
 out['voice-on'] = 'Voice on.';
-for (var r = 45; r <= 180; r += 15) out['rest-' + r] = 'Rest ' + (r % 60 === 0 ? (r / 60) + (r === 60 ? ' minute.' : ' minutes.') : r + ' seconds.');
+for (var r = 30; r <= 180; r += 15) out['rest-' + r] = 'Rest ' + (r % 60 === 0 ? (r / 60) + (r === 60 ? ' minute.' : ' minutes.') : r + ' seconds.');
 for (var w = 2.5; w <= 300; w += 2.5) out['lb-' + String(w).replace('.', '-')] = w + ' pounds.';
 Object.keys(api.SESSIONS).forEach(function (sk) {
   api.SESSIONS[sk].exercises.forEach(function (ex) {

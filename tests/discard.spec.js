@@ -38,7 +38,7 @@ test('every discard path leaves logs and the recommendation untouched', async fu
   await logOneSet(page);
   await page.getByRole('button', { name: /Finish session/i }).click();
   await page.getByRole('button', { name: 'Save & Done' }).click();
-  await expect(page.getByText('Last completed: Session A')).toBeVisible();
+  await expect(page.getByText('Up next after Session A')).toBeVisible();
   var before = await snapshot(page);
   expect(before.logs).not.toBeNull();
   expect(before.state).not.toBeNull();

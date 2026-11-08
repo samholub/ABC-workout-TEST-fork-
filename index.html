@@ -84,8 +84,8 @@ if(typeof React==="undefined"||typeof ReactDOM==="undefined"){window.__rawExport
 var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.useCallback,useRef=R.useRef,e=R.createElement;
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
-var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
-var APP_VERSION=84;
+var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",logMode:"wk-lm",workSecs:"wk-ws",backupTs:"wk-bk",schemaVersion:"wk-schema-version"};
+var APP_VERSION=85;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -169,6 +169,8 @@ tgu:{top:5,inc:2.5,rpe:7}
 };
 // Starting point for a weighted lift with no history (Sam's plan, weeks 1-2 loads; row 86).
 // Not a recommendation to progress from, just somewhere sensible to pick up.
+// Circuit mode: seconds to switch exercises inside a round (row 89); the full rest comes after the round.
+var CIRCUIT_SWITCH=30;
 var START={"bss-a":15,"bss-c":15,"sldl-b":10,"sldl-c":10,row:20,ohp:15,"carry-a":25,"carry-b":25,"carry-mc":25,tgu:10};
 
 // Exercise ID groups - same movement tracked together for charts/progression
@@ -257,21 +259,21 @@ history.push({reps:avgReps,rpe:avgRPE,weight:maxW,full:sets.length>=targetSets(e
 if(history.length<2)return null;
 var h0=history[0],h1=history[1];
 var rdScore=readiness?readiness.sleep+readiness.soreness+readiness.motivation:6;
-if(rdScore<=4)return{type:"maintain",msg:"Feeling rough \u2014 hold current load"};
+if(rdScore<=4)return{type:"maintain",msg:"Rough day, so stay at this weight"};
 var phase=getPeriodPhase(sessionCount||0);
 if(cfg.top>0){
 if(h0.full&&h1.full&&h0.reps>=cfg.top&&h1.reps>=cfg.top&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight){
 // Row 80: maintenance first. Going up is offered, never pushed: the load stays
 // put and this note says a step up is there if he wants it.
 var msg="Ready for "+(h0.weight+cfg.inc)+" lb if you want it";
-if(getFatigueTrend(logs))return{type:"maintain",msg:"Fatigue trend \u2014 hold current load"};
+if(getFatigueTrend(logs))return{type:"maintain",msg:"Recent sessions felt heavy, so stay at this weight"};
 return{type:"progress",msg:msg,weight:h0.weight+cfg.inc}}
-if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
-if(h0.reps<h1.reps&&h0.weight===h1.weight)return{type:"caution",msg:"Reps dropped at same weight \u2014 check form"};
+if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"Felt hard last time, so stay at this weight"};
+if(h0.reps<h1.reps&&h0.weight===h1.weight)return{type:"caution",msg:"Fewer reps than last time. Slow down and watch your form"};
 }else{
 if(h0.full&&h1.full&&h0.rpe>0&&h1.rpe>0&&h0.rpe<=cfg.rpe&&h1.rpe<=cfg.rpe&&h0.weight===h1.weight)
-return getFatigueTrend(logs)?{type:"maintain",msg:"Fatigue trend \u2014 hold current load"}:{type:"progress",msg:"Ready for "+(h0.weight+cfg.inc)+" lb if you want it",weight:h0.weight+cfg.inc};
-if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"RPE above target \u2014 hold current load"};
+return getFatigueTrend(logs)?{type:"maintain",msg:"Recent sessions felt heavy, so stay at this weight"}:{type:"progress",msg:"Ready for "+(h0.weight+cfg.inc)+" lb if you want it",weight:h0.weight+cfg.inc};
+if(h0.rpe>0&&h0.rpe>=cfg.rpe+1)return{type:"maintain",msg:"Felt hard last time, so stay at this weight"};
 }return null}
 
 // Per-exercise suggested starting load — answers "what weight do I pick up?"
@@ -287,7 +289,7 @@ if(ex){var w=getWorkingWeight(ex.sets);if(w>0){lastW=w;break}}}
 if(!lastW)return null;
 var prog=getProgression(exId,logs,readiness,sessionCount);
 // Row 73: a same-day second session holds carries even when +5 is due.
-if(carryAdvisory)return{weight:lastW,reason:"Second session \u2014 maintain or lighten"};
+if(carryAdvisory)return{weight:lastW,reason:"Second session today, so same weight or lighter"};
 if(prog&&prog.type==="progress")return{weight:lastW,reason:prog.msg,offer:prog.weight};
 if(prog)return{weight:lastW,reason:prog.msg};
 return{weight:lastW,reason:null}}
@@ -341,10 +343,10 @@ var avgRPE=(recent[0].rpe+recent[1].rpe+recent[2].rpe)/3;
 var rated=recent.filter(function(r){return r.rd!=null});var avgRd=rated.length?rated.reduce(function(a,r){return a+r.rd},0)/rated.length:0;
 // Pattern A: RPE clearly climbing — monotonic rise, most recent ≥ 8, spread ≥ 1.5
 if(recent[0].rpe>=8.5&&recent[0].rpe>=recent[1].rpe&&recent[1].rpe>=recent[2].rpe&&recent[0].rpe-recent[2].rpe>=1.5)
-return{msg:"RPE rising above target across last 3 sessions. Avoid pushing progression today."};
+return{msg:"Your last three sessions kept getting harder. Keep today's weights where they are."};
 // Pattern B: Sustained high effort + low readiness
 if(avgRPE>=8&&avgRd>0&&avgRd<=5)
-return{msg:"Effort at or above target with low readiness over last 3 sessions. Consider reducing load today."};
+return{msg:"You've pushed hard on low energy lately. Going a bit lighter today is fine."};
 return null}
 
 // Consolidated pre-session intelligence — pure function returning per-exercise
@@ -396,7 +398,7 @@ if(!absent)return null;
 if(rec===absent)return null;
 var label=SESSIONS[absent]?SESSIONS[absent].label:("Session "+absent);
 var absentLabel=absent==="C"?"C-family sessions":label;
-return{session:absent,msg:"No "+absentLabel+" in last "+recent.length+" logged sessions. Consider "+label+" next."}}
+return{session:absent,msg:"No "+(absent==="C"?"C session":label)+" in your last "+recent.length+" sessions. Worth doing "+label+" next."}}
 
 // ========================================================================
 // 6. UTILITIES
@@ -416,7 +418,7 @@ function playBeep(){try{var ctx=primeAudio();if(!ctx)return;var o=ctx.createOsci
 
 // Row 56: hand a JSON backup to the share sheet (Save to Files) where iOS allows,
 // else a download link; the object URL is kept long enough for Safari to read it.
-function saveJsonFile(name,data){var json=JSON.stringify(data,null,2);try{if(navigator.canShare&&navigator.share&&typeof File==="function"){var f=new File([json],name,{type:"application/json"});if(navigator.canShare({files:[f]})){navigator.share({files:[f]}).catch(function(){});return}}}catch(e){}var url=URL.createObjectURL(new Blob([json],{type:"application/json"}));var a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},30000)}
+function saveJsonFile(name,data){var json=JSON.stringify(data,null,2);try{if(navigator.canShare&&navigator.share&&typeof File==="function"){var f=new File([json],name,{type:"application/json"});if(navigator.canShare({files:[f]})){return navigator.share({files:[f]}).then(function(){return true},function(){return false})}}}catch(e){}var url=URL.createObjectURL(new Blob([json],{type:"application/json"}));var a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},30000);return Promise.resolve(true)}
 
 // Spoken cues (rows 51, 55). Each cue is a list of clips recorded ahead of time
 // in audio/ (built by tools/phrases.js and tools/make-audio.py; re-run both when
@@ -448,6 +450,20 @@ function cueSet(name,k,n,w,reps){return["set-"+slug(name)+"-"+(k+1)+"-of-"+n,lbK
 // ========================================================================
 
 // ── RestTimer ──
+// Timed sets (row 90): counts the set down, then logs it with the numbers shown.
+function WorkTimer(props){var secs=props.secs||60;var _r=useState(secs),rem=_r[0],setRem=_r[1];var endRef=useRef(Date.now()+secs*1000);var fired=useRef(false);
+useEffect(function(){var tick=function(){var r=Math.max(0,Math.ceil((endRef.current-Date.now())/1000));setRem(r);if(r<=0&&!fired.current){fired.current=true;clearInterval(id);props.onZero()}};var id=setInterval(tick,500);document.addEventListener("visibilitychange",tick);tick();return function(){clearInterval(id);document.removeEventListener("visibilitychange",tick)}},[]);
+var m=Math.floor(rem/60),s=rem%60,lines=(props.label||"").split("\n");
+return e("div",{className:"glass",style:{position:"sticky",top:0,zIndex:50,borderRadius:26,padding:"14px 18px 16px",margin:"0 0 12px"}},
+e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
+e("div",{style:{fontFamily:MONO,fontSize:60,lineHeight:0.95,fontWeight:700,color:T.hi,fontVariantNumeric:"tabular-nums"}},m+":"+s.toString().padStart(2,"0")),
+e("div",{style:{display:"flex",gap:8}},e("button",{onClick:props.onHold,style:{minHeight:48,padding:"10px 16px",borderRadius:24,border:"1px solid "+T.brd,background:"transparent",color:T.sec,fontSize:16,cursor:"pointer"}},"Hold"),
+e("button",{onClick:props.onDone,style:{minHeight:48,padding:"10px 20px",borderRadius:24,border:"none",background:T.acc,color:T.bg,fontSize:17,fontWeight:700,cursor:"pointer"}},"Done"))),
+e("div",{style:{height:3,background:T.inp,borderRadius:2,overflow:"hidden",margin:"12px 0 12px"}},e("div",{style:{height:"100%",width:((secs-rem)/secs*100)+"%",background:T.sec,transition:"width .5s linear"}})),
+lines[0]&&e("div",{style:{fontSize:14,color:T.mut}},"Logs itself at 0:00"),
+lines[0]&&e("div",{style:{fontSize:21,fontWeight:700,color:T.hi,lineHeight:1.2,marginTop:2}},lines[0]),
+lines[1]&&e("div",{style:{fontSize:16,color:T.sec,marginTop:3}},lines[1]))}
+
 function RestTimer(props){
 var duration=props.duration||90,onDone=props.onDone,adaptiveLabel=props.adaptiveLabel;
 var _r=useState(duration),rem=_r[0],setRem=_r[1];
@@ -559,7 +575,7 @@ e("input",{className:"num",type:"number",inputMode:f==="weight"?"decimal":"numer
 e("button",{"aria-label":(f==="weight"?"More weight":"More reps"),onClick:function(){bump(i,f,step)},style:{width:44,height:52,border:"none",borderRadius:11,background:"rgba(255,255,255,.08)",color:T.txt,fontSize:24,cursor:"pointer",flexShrink:0}},"+")),
 e("div",{style:{fontSize:13,color:T.mut,textAlign:"center",marginTop:5}},unit))};
 if(!isExpanded){
-return e("div",{onClick:onToggle,style:{display:"flex",alignItems:"center",gap:14,padding:"16px 6px",borderTop:"1px solid rgba(255,255,255,.065)",cursor:"pointer"}},
+return e("div",{role:"button","aria-expanded":!!isExpanded,onClick:onToggle,style:{display:"flex",alignItems:"center",gap:14,padding:"16px 6px",borderTop:"1px solid rgba(255,255,255,.065)",cursor:"pointer"}},
 e("div",{style:{width:36,height:36,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:MONO,fontSize:16,fontWeight:600,background:allDone?T.okD:"transparent",border:"2px solid "+(allDone?T.ok:T.brd),color:allDone?T.okL:T.mut}},allDone?"\u2713":done||""),
 e("div",{style:{flex:1,minWidth:0}},e("div",{style:{fontSize:18,fontWeight:600,color:allDone?T.sec:T.hi}},displayName),
 e("div",{style:{fontSize:14,color:T.mut,marginTop:2}},done+" of "+setData.length+" sets"+(carryAdvisory&&!allDone?", optional today":""))),
@@ -567,7 +583,7 @@ exercise.hasWeight&&!allDone&&setData[0]&&setData[0].weight?e("div",{style:{font
 }
 // EXPANDED
 return e("div",{className:"glass",style:{borderRadius:24,margin:"4px 0 10px",padding:"16px 16px 12px"}},
-e("div",{onClick:onToggle,style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,cursor:"pointer"}},
+e("div",{role:"button","aria-expanded":!!isExpanded,onClick:onToggle,style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,cursor:"pointer"}},
 e("div",{style:{flex:1,minWidth:0}},
 e("div",{style:{fontSize:22,fontWeight:700,color:T.hi,lineHeight:1.2}},displayName),
 e("div",{style:{fontSize:15,color:T.sec,marginTop:3}},nSets(exercise.sets)+" of "+sayReps(exercise.reps))),
@@ -585,7 +601,7 @@ e("div",{style:{display:"flex",gap:10}},exercise.hasWeight&&stepper(i,"weight",w
 e("div",{style:{fontSize:14,color:T.mut,margin:"14px 2px 8px"}},st.completed?"How hard was it?":"How hard? Tap to log the set"),
 e("div",{style:{display:"flex",gap:6}},[5,6,7,8,9,10].map(function(v){var on=st.rpe===v;return e("button",{key:v,onClick:function(){tapRPE(i,v);if(st.completed)setEditIdx(null)},style:{flex:1,height:48,borderRadius:12,border:"none",background:on?T.acc:"rgba(255,255,255,.07)",color:on?T.bg:T.txt,fontFamily:MONO,fontSize:22,fontWeight:600,cursor:"pointer",padding:0}},""+v)})))}
 if(st.completed){
-return e("div",{key:i,onClick:function(){setEditIdx(i)},style:{display:"flex",alignItems:"center",gap:12,padding:"8px 2px",cursor:"pointer"}},circle(st,i,false),
+return e("div",{key:i,role:"button","aria-label":"Edit set "+(i+1),onClick:function(){setEditIdx(i)},style:{display:"flex",alignItems:"center",gap:12,padding:"8px 2px",cursor:"pointer"}},circle(st,i,false),
 e("div",{style:{fontFamily:MONO,fontSize:22,fontWeight:500,color:T.sec}},(exercise.hasWeight&&st.weight?st.weight+" \u00d7 ":"")+(st.reps||"\u2013")),
 st.rpe?e("div",{style:{fontSize:14,color:T.mut}},"RPE "+st.rpe):null)}
 return e("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"8px 2px",opacity:0.55}},circle(st,i,false),
@@ -596,8 +612,31 @@ e("div",{style:{fontFamily:MONO,fontSize:22,fontWeight:500,color:T.mut}},(exerci
 function ConfirmDialog(props){return e("div",{style:STYLES.dialogOverlay,onClick:props.onCancel},e("div",{style:{position:"absolute",inset:0,background:"#000000cc"}}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.dialogBox},e("div",{style:{fontSize:17,fontWeight:700,color:T.hi,marginBottom:8}},props.title),e("div",{style:{fontSize:14,color:T.sec,lineHeight:1.5,marginBottom:20}},props.message),e("div",{style:STYLES.footerBtnRow},e("button",{onClick:props.onCancel,style:{flex:1,padding:"12px",background:T.inp,border:"1px solid "+T.brd,borderRadius:10,color:T.txt,fontSize:14,fontWeight:500,cursor:"pointer"}},"Cancel"),e("button",{onClick:props.onConfirm,style:{flex:1,padding:"12px",background:props.danger?T.errD:T.acc,border:"none",borderRadius:10,color:"#14171A",fontSize:14,fontWeight:600,cursor:"pointer"}},props.confirmLabel||"Confirm"))))}
 
 // ── SettingsSheet ──
-function SettingsSheet(props){var restDur=props.restDur,setRestDur=props.setRestDur,onClose=props.onClose,onReset=props.onReset,logs=props.logs,lastWeights=props.lastWeights,videoUrls=props.videoUrls,cycleState=props.cycleState;var _sr=useState(false),showDanger=_sr[0],setShowDanger=_sr[1];var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];return e("div",{style:STYLES.sheetOverlay,onClick:onClose},e("div",{style:STYLES.modalBackdrop}),e("div",{onClick:function(ev){ev.stopPropagation()},style:STYLES.sheetBody},e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},e("div",{style:{fontSize:18,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:onClose,style:STYLES.closeBtn},"Done")),e("div",{style:{marginBottom:16}},e("div",{style:{fontSize:13,color:"#737C83",fontWeight:600,marginBottom:8}},"Rest Timer Duration"),e("div",{style:{display:"flex",gap:6}},[60,75,90,120].map(function(s){return e("button",{key:s,onClick:function(){setRestDur(s)},style:{flex:1,padding:"10px 8px",borderRadius:10,fontSize:14,fontWeight:restDur===s?700:400,background:restDur===s?"#D9A441":"#272C31",border:"1px solid "+(restDur===s?"#D9A441":"#353C42"),color:restDur===s?"#1D2125":"#A3ABB0",cursor:"pointer"}},s+"s")}))),
-e("div",{style:{marginTop:8,borderTop:"1px solid #272C31",paddingTop:16}},e("button",{onClick:function(){setShowDanger(!showDanger)},style:{width:"100%",background:"transparent",border:"1px solid #272C31",borderRadius:12,padding:"14px 16px",cursor:"pointer",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}},e("div",null,e("div",{style:{fontSize:14,fontWeight:600,color:"#737C83"}},"Danger Zone"),e("div",{style:{fontSize:12,color:"#4A5259",marginTop:2}},"Reset all app data")),e("span",{style:{color:"#4A5259",fontSize:14}},showDanger?"\u25B2":"\u25BC")),showDanger&&e("div",{style:{marginTop:10,padding:"16px",background:"#241A18",border:"1px solid rgba(153,27,27,0.27)",borderRadius:12}},e("div",{style:{fontSize:13,color:"#A3ABB0",marginBottom:12,lineHeight:1.5}},"Permanently deletes all data. Cannot be undone."),e("button",{onClick:function(){setConfirmReset(true)},style:{width:"100%",padding:"12px",background:"#6E3529",border:"none",borderRadius:10,color:"#E8A493",fontSize:14,fontWeight:600,cursor:"pointer"}},"Delete All Data")))),confirmReset&&e(ConfirmDialog,{title:"Delete All Data?",message:"This will permanently erase everything. Are you sure?",confirmLabel:"Delete Everything",danger:true,onCancel:function(){setConfirmReset(false)},onConfirm:function(){setConfirmReset(false);onReset()}}))}
+function SettingsSheet(props){var _cr=useState(false),confirmReset=_cr[0],setConfirmReset=_cr[1];var _sr=useState(false),showReset=_sr[0],setShowReset=_sr[1];var fileRef=useRef(null);
+var label=function(t){return e("div",{style:{fontSize:15,color:T.sec,margin:"0 0 8px 2px"}},t)};
+var segs=function(opts,cur,on){return e("div",{className:"glass",style:{display:"flex",borderRadius:16,padding:4,gap:4,marginBottom:20}},opts.map(function(o){var sel=cur===o.k;return e("button",{key:o.k,onClick:function(){on(o.k)},style:{flex:1,minHeight:44,borderRadius:12,border:"none",cursor:"pointer",fontSize:16,fontWeight:sel?600:500,background:sel?"rgba(255,255,255,.11)":"transparent",color:sel?T.hi:T.mut}},o.l)}))};
+var lb=props.lastBackup?new Date(props.lastBackup).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):null;
+return e("div",{style:STYLES.sheetOverlay,onClick:props.onClose},e("div",{className:"fade-in",style:STYLES.modalBackdrop}),e("div",{className:"sheet-in",onClick:function(ev){ev.stopPropagation()},style:Object.assign({},STYLES.sheetBody,{background:"rgba(29,33,37,.97)",borderRadius:"26px 26px 0 0",padding:"18px 18px calc(22px + env(safe-area-inset-bottom,0px))",border:"1px solid rgba(255,255,255,.07)",borderBottom:"none"})},
+e("div",{style:{width:36,height:5,borderRadius:3,background:"rgba(255,255,255,.18)",margin:"0 auto 14px"}}),
+e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}},e("div",{style:{fontSize:24,fontWeight:700,color:T.hi}},"Settings"),e("button",{onClick:props.onClose,style:{minHeight:44,padding:"0 6px",background:"transparent",border:"none",color:T.acc,fontSize:17,fontWeight:600,cursor:"pointer"}},"Done")),
+label("Rest between sets"),
+segs([60,75,90,120].map(function(s){return{k:s,l:s+"s"}}),props.restDur,props.setRestDur),
+label("Logging a set"),
+segs([{k:"tap",l:"Tap anywhere"},{k:"timed",l:"Timed sets"}],props.logMode,props.setLogMode),
+props.logMode==="timed"&&e("div",null,e("div",{style:{fontSize:14,color:T.mut,margin:"-12px 2px 10px",lineHeight:1.4}},"Each set counts down, then logs itself with the numbers shown. Tap Done to log early or Hold to stop it."),label("Time per set"),segs([45,60,75,90].map(function(s){return{k:s,l:s+"s"}}),props.workSecs,props.setWorkSecs)),
+props.logMode==="tap"&&e("div",{style:{fontSize:14,color:T.mut,margin:"-12px 2px 20px",lineHeight:1.4}},"When a set is done, tap anywhere on the workout screen to log it."),
+label("Backup"),
+e("div",{className:"glass",style:{borderRadius:20,padding:"14px 16px",marginBottom:20}},
+e("div",{style:{fontSize:15,color:T.sec,lineHeight:1.45,marginBottom:12}},"Your history is only on this phone. Save a copy to iCloud Drive once in a while: tap Back up, then Save to Files."),
+e("div",{style:{fontSize:14,color:props.lastBackup?T.mut:T.acc,marginBottom:12}},lb?"Last backup "+lb:"No backup yet"),
+e("div",{style:{display:"flex",gap:10}},
+e("button",{onClick:props.onBackup,style:{flex:1,minHeight:48,borderRadius:14,border:"none",background:T.acc,color:T.bg,fontSize:16,fontWeight:700,cursor:"pointer"}},"Back up"),
+e("button",{className:"glass-btn",onClick:function(){if(fileRef.current)fileRef.current.click()},style:{flex:1,minHeight:48,borderRadius:14,color:T.txt,fontSize:16,fontWeight:600,cursor:"pointer"}},"Restore")),
+e("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:function(ev){var f=ev.target.files&&ev.target.files[0];ev.target.value="";if(f)props.onRestoreFile(f)}}),
+props.restoreMsg&&e("div",{style:{fontSize:14,color:T.err,marginTop:10}},props.restoreMsg)),
+e("button",{onClick:function(){setShowReset(!showReset)},style:{width:"100%",minHeight:44,background:"transparent",border:"none",color:T.mut,fontSize:15,cursor:"pointer",textAlign:"left",padding:"4px 2px"}},showReset?"Hide reset":"Erase everything…"),
+showReset&&e("button",{onClick:function(){setConfirmReset(true)},style:{width:"100%",marginTop:6,minHeight:48,borderRadius:14,border:"none",background:"rgba(217,115,91,.16)",color:T.err,fontSize:16,fontWeight:600,cursor:"pointer"}},"Erase all sessions and settings")),
+confirmReset&&e(ConfirmDialog,{title:"Erase everything?",message:"Every session and setting on this phone is deleted. A backup in iCloud Drive is not touched.",confirmLabel:"Erase",danger:true,onCancel:function(){setConfirmReset(false)},onConfirm:function(){setConfirmReset(false);props.onReset()}}))}
 
 // ========================================================================
 // 9. MAIN APP
@@ -642,6 +681,12 @@ var _srpe=useState(0),sessionRPE=_srpe[0],setSessionRPE=_srpe[1];
 // re-checking, or editing a logged set, never restarts the rest timer, the cues or
 // the jump to the next exercise.
 var cuedRef=useRef({});
+// Fewer taps (row 90): handlers per exercise, so a tap anywhere or a timed set can log the current set.
+var setHandlers=useRef({});var logRef=useRef(null);
+var _lm=useState(function(){return S.get(KEYS.logMode)==="timed"?"timed":"tap"}),logMode=_lm[0],setLogModeState=_lm[1];
+var _ws=useState(function(){return S.get(KEYS.workSecs)||60}),workSecs=_ws[0],setWorkSecsState=_ws[1];
+var setLogMode=function(m){setLogModeState(m);S.set(KEYS.logMode,m)};var setWorkSecs=function(v){setWorkSecsState(v);S.set(KEYS.workSecs,v)};
+var _wk=useState(null),work=_wk[0],setWork=_wk[1];var _rz=useState(false),restZero=_rz[0],setRestZero=_rz[1];
 // Home: which session row is open for a look before starting it.
 var _pv=useState(null),previewKey=_pv[0],setPreviewKey=_pv[1];
 // Opening a session preview scrolls it fully into view, clear of the floating bar.
@@ -669,6 +714,11 @@ if(circuitMode){for(var ci=1;ci<=order.length;ci++){var x=order[(idx+ci)%order.l
 if(!pick)return null;var ps=u[pick.id]||[];var k=ps.findIndex(function(s){return!s.completed});if(k===-1)return null;
 var w=pick.hasWeight?ps[k].weight:0;return{cue:cueSet(exLabel(pick),k,ps.length,w,pick.reps),label:exLabel(pick)+"\n"+"Set "+(k+1)+" of "+ps.length+(w?", "+w+" lb":"")+", "+sayReps(pick.reps)}};
 
+// The set a tap or a timed set logs: the open set of the open exercise, else the first exercise with sets left.
+var currentTarget=function(){if(!currentSession||!SESSIONS[currentSession])return null;var order=SESSIONS[currentSession].exercises;var open=function(x){return(exData[x.id]||[]).some(function(st){return!st.completed})};var pick=null;if(activeEx){var a=order.find(function(x){return x.id===activeEx});if(a&&open(a))pick=a}if(!pick)pick=order.find(open);if(!pick)return null;var sets=exData[pick.id];return{ex:pick,idx:sets.findIndex(function(st){return!st.completed}),total:sets.length}};
+var logCurrent=function(){var t=currentTarget();if(!t)return;var h=setHandlers.current[t.ex.id];if(!h)return;primeAudio();primeVoice();var ns=exData[t.ex.id].slice();ns[t.idx]=Object.assign({},ns[t.idx],{completed:true,touched:true});if(t.ex.id!==activeEx)setActiveEx(t.ex.id);h(ns)};
+logRef.current=logCurrent;
+var startWork=function(lead){if(logMode!=="timed")return;setWork({key:Date.now(),secs:workSecs+(lead||0)})};
 useEffect(function(){var checkRollover=function(){setTodayKey(getLocalDateKey())};checkRollover();var id=setInterval(checkRollover,60000);document.addEventListener("visibilitychange",checkRollover);return function(){clearInterval(id);document.removeEventListener("visibilitychange",checkRollover)}},[]);
 
 // Keep the screen awake while lifting (row 45): held on the workout and complete
@@ -682,13 +732,13 @@ useEffect(function(){if(screen!=="workout")return;var save=function(){S.set(KEYS
 var getRec=useCallback(function(){return computeNextSession(cycleState)},[cycleState]);
 
 var getRecReason=function(){var ls=cycleState.lastSession;
-if(cycleState.isDoubleDay)return"Double day \u2192 Modified C";
-if(!ls)return"First session \u2192 starting with A";
-if(ls==="TGU")return isCycleSession(cycleState.preTgu)?"Last was TGU \u2192 resuming cycle":"Cycle reset to A";
-if(ls==="modC")return"Last was Modified C \u2192 restarting cycle at A";
-if(!isCycleSession(ls))return"Cycle reset to A";
+if(cycleState.isDoubleDay)return"A and B done today, so a lighter C";
+if(!ls)return"Your first session starts with A";
+if(ls==="TGU")return isCycleSession(cycleState.preTgu)?"Back to the cycle after Get-Ups":"Starting the cycle again at A";
+if(ls==="modC")return"After Modified C, the cycle starts again at A";
+if(!isCycleSession(ls))return"Starting the cycle again at A";
 var label=SESSIONS[ls]?SESSIONS[ls].label:ls;
-return"Last completed: "+label};
+return"Up next after "+label};
 
 var startSession=function(key){
 if(draftSession&&SESSIONS[draftSession.session]){if(!window.confirm("You have an unfinished "+SESSIONS[draftSession.session].label+". Discard it and start "+SESSIONS[key].label+" instead?"))return;clearDraft();setDraftSession(null)}
@@ -729,15 +779,15 @@ var log=buildSessionLog();
 var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
 var ns=deriveCycleState(nl,getLocalDateKey());
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
-if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
+if(!ok){alert("Couldn't save the workout. Your phone may be out of space. It's still open here, so nothing is lost.");return}
 if(trimmed)alert("Oldest session removed to stay within storage limits.");
 var nc=sessionCount+1;S.set(KEYS.sessions,nc);setSessionCount(nc);
 setLastWeights(nw);setLogs(nl);clearDraft();home()
 };
 
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
-var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setExported(false);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
-var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});if(!(S.set(KEYS.logs,nl)&&S.set(KEYS.state,deriveCycleState(nl,getLocalDateKey())))){alert("Storage error! The session was not deleted.");return}setLogs(nl);setConfirmDel(null);setExpandedLog(null);setEditSnapshot(null);setEditingLogIdx(null)};
+var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setExported(false);setEditingLogIdx(null);setWork(null);setRestZero(false);setDraftSession(S.get(KEYS.draft)||null)};
+var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});if(!(S.set(KEYS.logs,nl)&&S.set(KEYS.state,deriveCycleState(nl,getLocalDateKey())))){alert("Couldn't delete the session. Your phone may be out of space.");return}setLogs(nl);setConfirmDel(null);setExpandedLog(null);setEditSnapshot(null);setEditingLogIdx(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
 var startEditLog=function(idx){
@@ -750,10 +800,21 @@ var nl=logs.map(function(l,i){
 if(i!==idx)return l;
 return Object.assign({},l,{exercises:updatedExercises});
 });
-if(!S.set(KEYS.logs,nl)){alert("Storage error! The edit was not saved.");return}setLogs(nl);
+if(!S.set(KEYS.logs,nl)){alert("Couldn't save the edit. Your phone may be out of space.");return}setLogs(nl);
 setEditSnapshot(null);setEditingLogIdx(null);
 };
-var addManualLog=function(){if(!newLog.date||newLog.date>getLocalDateKey())return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);if(!S.set(KEYS.logs,nl)){alert("Storage error! The session was not added.");return}setLogs(nl);setEditSnapshot(null);setEditingLogIdx(null);setExpandedLog(null);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
+var addManualLog=function(){if(!newLog.date||newLog.date>getLocalDateKey())return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);if(!S.set(KEYS.logs,nl)){alert("Couldn't add the session. Your phone may be out of space.");return}setLogs(nl);setEditSnapshot(null);setEditingLogIdx(null);setExpandedLog(null);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
+// Backup (row 91): one file with everything, saved through the share sheet (Save to Files puts it in iCloud Drive).
+var _lb=useState(function(){return S.get(KEYS.backupTs)||null}),lastBackup=_lb[0],setLastBackup=_lb[1];
+var _rm=useState(null),restoreMsg=_rm[0],setRestoreMsg=_rm[1];var _pr=useState(null),pendingRestore=_pr[0],setPendingRestore=_pr[1];
+var doBackup=function(){var data={app:"abc-cycle-tracker",version:2,exportDate:new Date().toISOString(),logs:S.get(KEYS.logs)||[],weights:S.get(KEYS.weights)||{},carry:S.get(KEYS.carry),rest:S.get(KEYS.rest),videos:S.get(KEYS.videos)||{},sessions:S.get(KEYS.sessions)||0,voice:S.get(KEYS.voice),logMode:S.get(KEYS.logMode),workSecs:S.get(KEYS.workSecs)};
+saveJsonFile("abc-workout-backup-"+getLocalDateKey()+".json",data).then(function(ok){if(ok){var t=Date.now();S.set(KEYS.backupTs,t);setLastBackup(t)}})};
+var readRestore=function(file){setRestoreMsg(null);var r=new FileReader();r.onload=function(){var d=null;try{d=JSON.parse(r.result)}catch(x){}var raw=d&&(d.logs||d["wk-lg"]);if(!d||!Array.isArray(raw)){setRestoreMsg("That file isn't a backup from this app.");return}var vl=validateLogs(raw);setPendingRestore({data:d,logs:vl,date:d.exportDate||null})};r.onerror=function(){setRestoreMsg("Couldn't read that file.")};r.readAsText(file)};
+// Data-loss token: replaces the whole log. Only after the confirm below, newest-first, cycle state re-derived.
+var applyRestore=function(){var p=pendingRestore;if(!p)return;var nl2=p.logs.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);var d=p.data;
+if(!S.set(KEYS.logs,nl2)){setPendingRestore(null);setRestoreMsg("Couldn't restore. Your phone may be out of space. Nothing was changed.");return}
+S.set(KEYS.state,deriveCycleState(nl2,getLocalDateKey()));if(d.weights&&typeof d.weights==="object")S.set(KEYS.weights,d.weights);if(d.videos&&typeof d.videos==="object")S.set(KEYS.videos,d.videos);if(d.carry)S.set(KEYS.carry,d.carry);if(d.rest)S.set(KEYS.rest,d.rest);if(typeof d.sessions==="number")S.set(KEYS.sessions,d.sessions);
+clearDraft();setPendingRestore(null);window.location.reload()};
 var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});S.set(KEYS.sessions,0);setSessionCount(0);clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
 var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(ex){allEx[ex.id]=ex.name})});return allEx[id]||id};
 
@@ -819,7 +880,7 @@ open&&e("div",{style:{padding:"0 18px 16px 54px"}},
 e("button",{onClick:function(){setPreviewKey(null);startSession(k)},style:{marginTop:12,width:"100%",padding:"13px",borderRadius:14,border:"none",background:s2.color,color:T.bg,fontSize:16,fontWeight:700,cursor:"pointer"}},"Start "+s2.label)))})))),
 e("div",{className:"foot"},
 e("button",{className:"glass-btn",onClick:function(){setShowHist(true)},style:{width:"100%",borderRadius:16,padding:15,cursor:"pointer",color:T.txt,fontSize:17,fontWeight:600}},"History")),
-showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,onClose:function(){setShowSettings(false)},onReset:clearAll,logs:logs,lastWeights:lastWeights,videoUrls:videoUrls,cycleState:cycleState}))
+showSettings&&e(SettingsSheet,{restDur:restDur,setRestDur:setRestDur,onClose:function(){setShowSettings(false);setRestoreMsg(null)},onReset:clearAll,logMode:logMode,setLogMode:setLogMode,workSecs:workSecs,setWorkSecs:setWorkSecs,lastBackup:lastBackup,onBackup:doBackup,onRestoreFile:readRestore,restoreMsg:restoreMsg}),pendingRestore&&e(ConfirmDialog,{title:"Restore this backup?",message:"The backup"+(pendingRestore.date?" from "+new Date(pendingRestore.date).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):"")+" has "+pendingRestore.logs.length+(pendingRestore.logs.length===1?" session":" sessions")+". It replaces the "+logs.length+(logs.length===1?" session":" sessions")+" on this phone.",confirmLabel:"Restore",onCancel:function(){setPendingRestore(null)},onConfirm:applyRestore}))
 }
 
 // ── Screen: History ──
@@ -933,7 +994,7 @@ wuId!=="skip"&&e("button",{onClick:function(){setWarmup("skip")},style:{minHeigh
 e("div",{style:{fontSize:15,color:T.sec,margin:"22px 0 8px 2px"}},circuitMode?"Circuit: one set of each exercise in turn":"Standard: all sets of one exercise, then the next"),
 seg([{k:false,l:"Standard"},{k:true,l:"Circuit"}],circuitMode,function(o){setCircuitMode(o.k)})),
 e("div",{className:"foot"},
-e("button",{onClick:function(){if(!warmup)setWarmup(wuId);primeAudio();primeVoice();var fx=sess.exercises[0];if(fx)speak(introCue(fx,exData,"First: "));setScreen("workout")},style:{width:"100%",padding:17,background:sess.color,border:"none",borderRadius:16,color:T.bg,fontSize:18,fontWeight:700,cursor:"pointer"}},"Start lifting")))
+e("button",{onClick:function(){if(!warmup)setWarmup(wuId);primeAudio();primeVoice();var fx=sess.exercises[0];if(fx)speak(introCue(fx,exData,"First: "));setScreen("workout");startWork(5)},style:{width:"100%",padding:17,background:sess.color,border:"none",borderRadius:16,color:T.bg,fontSize:18,fontWeight:700,cursor:"pointer"}},"Start lifting")))
 }
 
 // ── Screen: Active Workout ──
@@ -955,21 +1016,16 @@ e("div",{style:{textAlign:"center"}},e("div",{style:{fontSize:17,fontWeight:700,
 e("div",{style:{display:"flex",alignItems:"center"}},warmupData&&e("button",{onClick:function(){setShowWarmupRef(!showWarmupRef)},style:{height:44,background:"transparent",border:"none",color:showWarmupRef?T.hi:T.mut,padding:"0 8px",fontSize:14,cursor:"pointer"}},"Warm-up"),e("button",{"aria-label":voice?"Mute voice cues":"Turn on voice cues",onClick:toggleVoice,style:{width:44,height:44,background:"transparent",border:"none",color:voice?T.txt:T.mut,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},e("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 9h4l5-4v14l-5-4H4z"}),voice?e("path",{d:"M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"}):e("path",{d:"M17 9l5 6M22 9l-5 6"}))))),
 e("div",{style:{height:3,background:T.inp,borderRadius:2,margin:"8px 6px 0",overflow:"hidden"}},e("div",{style:{height:"100%",width:(done/total*100)+"%",background:sess.color,transition:"width 0.3s"}}))),
 showWarmupRef&&warmupData&&e("div",{style:{padding:"8px 16px",background:"#1F2226",borderBottom:"1px solid #353C42",flexShrink:0}},e("div",{style:{fontSize:12,fontWeight:600,color:"#E8BE6A",marginBottom:6}},warmupData.label),warmupData.steps.map(function(s,i){return e("div",{key:i,style:{fontSize:12,color:"#CFC9BD",lineHeight:1.5,marginBottom:3}},s)})),
-e("div",{className:"padfoot",style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScrolling:"touch"}},
-floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,adaptiveLabel:adaptiveRestLabel,nextCue:floatTimer.nextCue,nextLabel:floatTimer.nextLabel,onZero:function(){advanceCircuit(floatTimer.exId)},onDone:function(){setFloatTimer(null);setAdaptiveRestLabel(null);advanceCircuit(floatTimer.exId)}}),
-carryWarn&&e("div",{style:STYLES.warnBannerCompact},e("div",{style:{fontSize:12,color:T.warn,lineHeight:1.5}},"Second session today. Consider skipping or lightening carries to manage grip fatigue.")),
+e("div",{className:"padfoot",onClick:function(ev){var t=ev.target;if(t&&t.closest&&t.closest("button,input,a,select,textarea,label,[role=button],[data-notap]"))return;if(floatTimer&&!restZero)return;logCurrent()},style:{flex:1,overflowY:"auto",padding:"12px 16px",WebkitOverflowScrolling:"touch"}},
+floatTimer&&e(RestTimer,{key:timerKey,duration:floatTimer.duration||restDur,adaptiveLabel:adaptiveRestLabel,nextCue:floatTimer.nextCue,nextLabel:floatTimer.nextLabel,onZero:function(){advanceCircuit(floatTimer.exId);setRestZero(true);if(logMode==="timed"){setFloatTimer(null);setAdaptiveRestLabel(null);startWork(0)}},onDone:function(){setFloatTimer(null);setAdaptiveRestLabel(null);setRestZero(false);advanceCircuit(floatTimer.exId);startWork(0)}}),
+work&&!floatTimer&&e(WorkTimer,{key:work.key,secs:work.secs,label:(function(){var t=currentTarget();return t?exLabel(t.ex)+"\n"+"Set "+(t.idx+1)+" of "+t.total:""})(),onZero:function(){setWork(null);if(logRef.current)logRef.current()},onDone:function(){setWork(null);if(logRef.current)logRef.current()},onHold:function(){setWork(null)}}),
 sess.exercises.map(function(ex){
 var exSets=exData[ex.id]||[];
 var isActive=activeEx===ex.id;
 var prog=getProgression(ex.id,logs,readiness,getSessionCount(logs));if(carryWarn&&ex.isCarry&&prog&&prog.type==="progress")prog=null;
 var ghost=getGhostSets(ex.id,logs);
 var sugLoad=getSuggestedLoad(ex.id,logs,readiness,getSessionCount(logs),carryWarn&&ex.isCarry);
-return e(ExerciseCard,{key:ex.id,exercise:ex,setData:exSets,lastWeight:lastWeights[ex.id]||0,
-progression:prog,
-ghostSets:ghost,carryAdvisory:carryWarn&&ex.isCarry,suggestedLoad:sugLoad,
-carryType:carryType,onCarryTypeChange:changeCarry,
-isExpanded:isActive,onToggle:function(){setActiveEx(isActive?null:ex.id)},
-onUpdate:function(ns){var u=Object.assign({},exData);u[ex.id]=ns;setExData(u);
+var handleSets=setHandlers.current[ex.id]=function(ns){var u=Object.assign({},exData);u[ex.id]=ns;setExData(u);if(ns.some(function(st,i){return st.completed&&!(exData[ex.id]&&exData[ex.id][i]&&exData[ex.id][i].completed)})){setWork(null);setRestZero(false)}
 var old=exData[ex.id];
 var jd=ns.findIndex(function(s,i){return s.completed&&!(old&&old[i]&&old[i].completed)});
 var uncompletedOrEdited=old&&ns.some(function(s,i){return old[i]&&old[i].completed&&(s.completed!==old[i].completed||s.weight!==old[i].weight||s.reps!==old[i].reps)});
@@ -978,11 +1034,18 @@ if(jd!==-1||uncompletedOrEdited)S.set(KEYS.draft,{session:currentSession,exData:
 // Row 65: after an exercise's last set too (standard mode cues the next exercise).
 var fresh=jd!==-1&&!cuedRef.current[ex.id+":"+jd];if(jd!==-1)cuedRef.current[ex.id+":"+jd]=true;
 var leftEx=sess.exercises.find(function(x){return!(x.id===ex.id?ns:(u[x.id]||[])).every(function(s){return s.completed})});
-if(fresh&&leftEx){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);setAdaptiveRestLabel(adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=(jd<ns.length-1||circuitMode)?(nextSetCue(ex.id,u)||{}):{cue:introCue(leftEx,u,"Next: "),label:exLabel(leftEx)+"\n"+nSets(leftEx.sets)+" of "+sayReps(leftEx.reps)};setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc.cue,nextLabel:nc.label});speak(["rest-"+adaptedDur])}
+if(fresh&&leftEx){var completedSet=ns[jd];var adaptedDur=getAdaptiveRest(restDur,completedSet.rpe);var midRound=false;if(circuitMode){var co=sess.exercises,cix=co.findIndex(function(x){return x.id===ex.id});for(var ck=1;ck<co.length;ck++){var cj=(cix+ck)%co.length;if(!(co[cj].id===ex.id?ns:(u[co[cj].id]||[])).every(function(s){return s.completed})){midRound=cj>cix;break}}}if(midRound)adaptedDur=CIRCUIT_SWITCH;setAdaptiveRestLabel(midRound?"Switch to the next exercise":adaptedDur!==restDur?"Adjusted for RPE "+completedSet.rpe:null);setTimerKey(Date.now());var nc=(jd<ns.length-1||circuitMode)?(nextSetCue(ex.id,u)||{}):{cue:introCue(leftEx,u,"Next: "),label:exLabel(leftEx)+"\n"+nSets(leftEx.sets)+" of "+sayReps(leftEx.reps)};setFloatTimer({exId:ex.id,setIdx:jd,duration:adaptedDur,nextCue:nc.cue,nextLabel:nc.label});speak(["rest-"+adaptedDur])}
 var justDone=ns.every(function(s){return s.completed});
 if(justDone&&fresh){var nextEx=null;for(var ni=0;ni<sess.exercises.length;ni++){var nid=sess.exercises[ni].id;var nsets=nid===ex.id?ns:(u[nid]||[]);if(!nsets.every(function(s){return s.completed})){nextEx=nid;break}}
-if(nextEx)setTimeout(function(){setActiveEx(nextEx)},400);else speak(["session-done"])}}})})),
+if(nextEx)setTimeout(function(){setActiveEx(nextEx)},400);else speak(["session-done"])}};
+return e(ExerciseCard,{key:ex.id,exercise:ex,setData:exSets,lastWeight:lastWeights[ex.id]||0,
+progression:prog,
+ghostSets:ghost,carryAdvisory:carryWarn&&ex.isCarry,suggestedLoad:sugLoad,
+carryType:carryType,onCarryTypeChange:changeCarry,
+isExpanded:isActive,onToggle:function(){setActiveEx(isActive?null:ex.id)},
+onUpdate:handleSets})})),
 e("div",{className:"foot"},
+(function(){if(allDone||work||(floatTimer&&!restZero))return null;var t=currentTarget();return t?e("div",{style:{textAlign:"center",fontSize:15,color:T.sec,marginBottom:10}},"Tap anywhere to log set "+(t.idx+1)+" of "+t.total):null})(),
 e("button",{onClick:function(){setScreen("complete")},className:allDone?undefined:"glass-btn",style:{width:"100%",padding:16,background:allDone?sess.color:undefined,border:allDone?"none":undefined,borderRadius:16,cursor:"pointer",color:allDone?T.bg:T.sec,fontSize:17,fontWeight:allDone?700:500}},allDone?"Complete session":"Finish session early")))
 }
 
@@ -1005,7 +1068,7 @@ var debrief=[];
 var isDouble=countTrainingToday(cycleState.completedToday)>=1;
 sess.exercises.forEach(function(ex){
 var sets=(exData[ex.id]||[]).filter(function(s){return s.completed});
-if(!sets.length){if(ex.isCarry&&isDouble)debrief.push(ex.name+": skipped (double-day grip management)");return}
+if(!sets.length){if(ex.isCarry&&isDouble)debrief.push(ex.name+": skipped to rest your grip");return}
 var maxW=getWorkingWeight(sets);
 var prog=getProgression(ex.id,logsWithToday,null,getSessionCount(logs));
 var cfg=PROG[ex.id];
