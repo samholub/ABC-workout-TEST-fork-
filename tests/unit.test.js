@@ -248,6 +248,20 @@ t('deriveCycleState: a manual log counts like a finished one', function () {
   A.strictEqual(M.computeNextSession(M.deriveCycleState(logs, '2026-11-05')), 'B');
 });
 
+// --- getFatigueTrend: untapped Feel (row 63) ------------------------------
+t('getFatigueTrend: sessions where Feel was never tapped do not count as low readiness', function () {
+  var ok = { sleep: 2, soreness: 2, motivation: 2 };
+  var logs = [
+    log({ ago: 1, sessionRPE: 8, readiness: ok }),
+    log({ ago: 3, sessionRPE: 8 }),
+    log({ ago: 5, sessionRPE: 8 })
+  ];
+  A.strictEqual(M.getFatigueTrend(logs), null);
+  var rough = { sleep: 1, soreness: 1, motivation: 1 };
+  var low = [log({ ago: 1, sessionRPE: 8, readiness: rough }), log({ ago: 3, sessionRPE: 8 }), log({ ago: 5, sessionRPE: 8 })];
+  A.ok(M.getFatigueTrend(low), 'a tapped Rough with high RPE still warns');
+});
+
 // --- countTrainingToday ------------------------------------------------
 t('countTrainingToday: counts A, B, C and Modified C, not TGU', function () {
   A.strictEqual(M.countTrainingToday(['A', 'B', 'C', 'modC']), 4);
