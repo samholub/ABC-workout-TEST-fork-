@@ -1,4 +1,4 @@
-// Smoke journey (BACKLOG rows 51 and 52): spoken cues and the rest card.
+// Smoke journey (BACKLOG rows 51-54): spoken cues, the rest card, silent mode and the voice.
 //
 // speechSynthesis is replaced with a recorder so the test reads what would be
 // said. The clock is faked so the 90-second rest runs instantly.
@@ -14,8 +14,12 @@ test('voice announces the first exercise, the rest, ten seconds and the next set
     function U(t) { this.text = t; }
     window.SpeechSynthesisUtterance = U;
     Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
-      speak: function (u) { if (u.text.trim()) window.__said.push(u.text); },
-      cancel: function () {}
+      speak: function (u) { if (u.text.trim()) { window.__said.push(u.text); window.__voice = u.voice && u.voice.name; } },
+      cancel: function () {},
+      getVoices: function () { return [
+        { name: 'Grandpa', lang: 'en-US' }, { name: 'Samantha', lang: 'en-US' },
+        { name: 'Ava (Premium)', lang: 'en-US' }, { name: 'Daniel', lang: 'en-GB' }, { name: 'Thomas', lang: 'fr-FR' }
+      ]; }
     } });
   });
   await page.clock.install();
@@ -27,6 +31,8 @@ test('voice announces the first exercise, the rest, ten seconds and the next set
   await page.getByRole('button', { name: /Start Lifting/ }).click();
   await expect(page.getByText('0/9 sets', { exact: true })).toBeVisible();
   expect((await said())[0]).toMatch(/^First: Bulgarian Split Squats, 3 sets of 8 to 10 per leg\./);
+  // Row 54: the best natural voice is used, never a novelty one.
+  expect(await page.evaluate(function () { return window.__voice; })).toBe('Ava (Premium)');
   // Row 53: the tap that starts lifting switches iOS to media playback so cues play on silent.
   expect(await page.evaluate(function () { return navigator.audioSession.type; })).toBe('playback');
 
@@ -53,4 +59,22 @@ test('voice announces the first exercise, the rest, ten seconds and the next set
   await page.getByRole('button', { name: '8', exact: true }).nth(1).click();
   await expect(page.getByText('2/9 sets', { exact: true })).toBeVisible();
   expect((await said()).length).toBe(before);
+});
+
+test('Settings lists natural English voices, plays a sample and remembers the pick', async function ({ page }) {
+  await page.addInitScript(function () {
+    window.__said = [];
+    window.SpeechSynthesisUtterance = function (t) { this.text = t; };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+      speak: function (u) { window.__said.push((u.voice && u.voice.name) + ': ' + u.text); },
+      cancel: function () {},
+      getVoices: function () { return [{ name: 'Grandpa', lang: 'en-US' }, { name: 'Samantha', lang: 'en-US' }, { name: 'Ava (Premium)', lang: 'en-US' }]; }
+    } });
+  });
+  await page.goto('/index.html');
+  await page.getByRole('button', { name: '\u2699' }).click();
+  await expect(page.getByRole('button', { name: /Grandpa/ })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Samantha/ }).click();
+  expect(await page.evaluate(function () { return localStorage.getItem('wk-vn'); })).toBe('"Samantha"');
+  expect(await page.evaluate(function () { return window.__said.pop(); })).toMatch(/^Samantha: Rest 90 seconds/);
 });
