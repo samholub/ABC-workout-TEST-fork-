@@ -63,7 +63,7 @@ var R=React,RD=ReactDOM,useState=R.useState,useEffect=R.useEffect,useCallback=R.
 var isPWA=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
 var S={get:function(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(x){return null}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));idbSet(k,v);return true}catch(x){return false}}};
 var KEYS={state:"wk-st",logs:"wk-lg",weights:"wk-wt",videos:"wk-vd",carry:"wk-cr",rest:"wk-rs",sessions:"wk-sc",draft:"wk-draft",voice:"wk-vc",schemaVersion:"wk-schema-version"};
-var APP_VERSION=68;
+var APP_VERSION=69;
 
 var _idbDB=null;
 function initDB(){return new Promise(function(resolve,reject){if(_idbDB){resolve(_idbDB);return}var req=indexedDB.open("WorkoutAppDB",1);req.onupgradeneeded=function(e){e.target.result.createObjectStore("keyval")};req.onsuccess=function(e){_idbDB=e.target.result;resolve(_idbDB)};req.onerror=function(){reject(req.error)}})}
@@ -192,6 +192,12 @@ function computeNextSession(state){var ls=state.lastSession;if(state.isDoubleDay
 // isDoubleDay expires on the first save after the day rolls over even if the
 // mount-time rollover effect has not run.
 function nextCycleState(state,session,today){var ld=state.lastDate;var prev=ld&&ld.length===10&&ld!==today?[]:(state.completedToday||[]);var ct=prev.concat([session]);return{lastSession:session,lastDate:today,isDoubleDay:ct.filter(function(x){return CYCLE.indexOf(x)!==-1}).length>=2&&CYCLE.indexOf(session)!==-1,completedToday:ct,preTgu:session==="TGU"?(state.preTgu||computeNextSession(state)):undefined}}
+// Row 43: the cycle state comes from the logs (newest-first), not from a stored
+// copy, so deleting, importing or wiping history can never leave Next Up
+// counting a session the history does not show. It replays nextCycleState
+// oldest-first by local day; then, as the day rollover does, a completedToday
+// from an earlier day is dropped. Manual logs count like any other session.
+function deriveCycleState(logs,today){var st={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};for(var i=(logs||[]).length-1;i>=0;i--){var l=logs[i];if(!l||!l.session||!l.date)continue;st=nextCycleState(st,l.session,getLocalDateKey(new Date(l.date)))}if(st.lastDate&&st.lastDate!==today)st=Object.assign({},st,{completedToday:[]});return st}
 
 // Session count and training focus — based on sessions logged, not calendar
 function getSessionCount(logs){var c=0;for(var i=0;i<logs.length;i++){if(!logs[i].manual)c++}return c}
@@ -543,12 +549,14 @@ e("div",{style:{marginTop:8,borderTop:"1px solid #292524",paddingTop:16}},e("but
 
 function App(){
 var _scr=useState("home"),screen=_scr[0],setScreen=_scr[1];
-var _cs=useState(function(){return validateState(S.get(KEYS.state))}),cycleState=_cs[0],setCycleState=_cs[1];
+// Local day, ticked by the rollover effect; the cycle state is derived from it and the logs (row 43).
+var _td=useState(getLocalDateKey),todayKey=_td[0],setTodayKey=_td[1];
 var _cur=useState(null),currentSession=_cur[0],setCurrent=_cur[1];
 var _wu=useState(null),warmup=_wu[0],setWarmup=_wu[1];
 var _ed=useState({}),exData=_ed[0],setExData=_ed[1];
 var _lw=useState(function(){return S.get(KEYS.weights)||{}}),lastWeights=_lw[0],setLastWeights=_lw[1];
 var _lg=useState(function(){return validateLogs(S.get(KEYS.logs))}),logs=_lg[0],setLogs=_lg[1];
+var cycleState=deriveCycleState(logs,todayKey);
 // Sessions saved on this device, kept apart from logs.length so the 1000-session
 // trim and deletions in History do not move the every-10th backup nudge. Seeded
 // from the logs the first time the key is missing.
@@ -591,7 +599,7 @@ if(circuitMode){for(var ci=1;ci<=order.length;ci++){var x=order[(idx+ci)%order.l
 if(!pick)return null;var ps=u[pick.id]||[];var k=ps.findIndex(function(s){return!s.completed});if(k===-1)return null;
 var w=pick.hasWeight?ps[k].weight:0;return{cue:cueSet(exLabel(pick),k,ps.length,w,pick.reps),label:"Next: "+exLabel(pick)+" \u00b7 set "+(k+1)+" of "+ps.length+(w?" \u00b7 "+w+" lb":"")+" \u00b7 "+sayReps(pick.reps).replace(" per "," / ")}};
 
-useEffect(function(){var checkRollover=function(){setCycleState(function(prev){var today=getLocalDateKey();var ld=prev.lastDate;var ldKey=ld?(ld.length===10?ld:getLocalDateKey(new Date(ld))):null;if(ldKey&&ldKey!==today){var updated=Object.assign({},prev,{completedToday:[]});S.set(KEYS.state,updated);return updated}return prev})};checkRollover();var id=setInterval(checkRollover,60000);document.addEventListener("visibilitychange",checkRollover);return function(){clearInterval(id);document.removeEventListener("visibilitychange",checkRollover)}},[]);
+useEffect(function(){var checkRollover=function(){setTodayKey(getLocalDateKey())};checkRollover();var id=setInterval(checkRollover,60000);document.addEventListener("visibilitychange",checkRollover);return function(){clearInterval(id);document.removeEventListener("visibilitychange",checkRollover)}},[]);
 
 // Keep the screen awake while lifting (row 45): held on the workout and complete
 // screens, released anywhere else (Save & Done and X both go home). iOS drops the
@@ -648,12 +656,12 @@ var nw=Object.assign({},lastWeights);
 sess.exercises.forEach(function(ex){var sets=exData[ex.id]||[];var ww=getWorkingWeight(sets.filter(function(s){return s.completed}));if(ww)nw[ex.id]=ww});
 var log=buildSessionLog();
 var nlFull=[log].concat(logs);var trimmed=nlFull.length>1000;var nl=nlFull.slice(0,1000);
-var ns=nextCycleState(cycleState,currentSession,getLocalDateKey());
+var ns=deriveCycleState(nl,getLocalDateKey());
 var ok=S.set(KEYS.logs,nl)&&S.set(KEYS.state,ns)&&S.set(KEYS.weights,nw);
 if(!ok){alert("Storage error! Cannot save workout. Please free up space on your device.");return}
 if(trimmed)alert("Oldest session removed to stay within storage limits.");
 var nc=sessionCount+1;S.set(KEYS.sessions,nc);setSessionCount(nc);
-setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
+setLastWeights(nw);setLogs(nl);clearDraft();home()
 };
 
 // pendingLog: the session being completed, so a backup taken from the Complete
@@ -661,7 +669,7 @@ setLastWeights(nw);setLogs(nl);setCycleState(ns);clearDraft();home()
 var exportBackup=function(pendingLog){var data={version:21,exportDate:new Date().toISOString(),state:cycleState,logs:pendingLog?[pendingLog].concat(logs):logs,weights:lastWeights,videos:videoUrls,carry:carryType,rest:restDur,sessions:sessionCount+(pendingLog?1:0)};var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="abc-workout-backup-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url)};
 var changeCarry=function(t){setCarryType(t);S.set(KEYS.carry,t)};
 var home=function(){setScreen("home");setCurrent(null);setWarmup(null);setExData({});setShowHist(false);setShowAddLog(false);setShowSettings(false);setShowWarmupRef(false);setExpandedLog(null);setActiveEx(null);setWarmupOpen(false);setCircuitMode(false);setChartEx(null);setSessionRPE(0);setFloatTimer(null);setAdaptiveRestLabel(null);setExported(false);setEditingLogIdx(null);setDraftSession(S.get(KEYS.draft)||null)};
-var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);setConfirmDel(null);setExpandedLog(null)};
+var deleteLog=function(idx){var nl=logs.filter(function(_,i){return i!==idx});setLogs(nl);S.set(KEYS.logs,nl);S.set(KEYS.state,deriveCycleState(nl,getLocalDateKey()));setConfirmDel(null);setExpandedLog(null)};
 var _eli=useState(null),editingLogIdx=_eli[0],setEditingLogIdx=_eli[1];
 var _esn=useState(null),editSnapshot=_esn[0],setEditSnapshot=_esn[1];
 var startEditLog=function(idx){
@@ -678,7 +686,7 @@ setLogs(nl);S.set(KEYS.logs,nl);
 setEditSnapshot(null);setEditingLogIdx(null);
 };
 var addManualLog=function(){if(!newLog.date)return;var log={date:new Date(newLog.date+"T12:00:00").toISOString(),session:newLog.session,duration:0,notes:newLog.notes||"Manually logged",exercises:[],manual:true};var nl=[log].concat(logs).sort(function(a,b){return new Date(b.date)-new Date(a.date)}).slice(0,1000);setLogs(nl);S.set(KEYS.logs,nl);setShowAddLog(false);setNewLog({session:"A",date:"",notes:""})};
-var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setCycleState(empty);setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});S.set(KEYS.sessions,0);setSessionCount(0);clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
+var clearAll=function(){var empty={lastSession:null,lastDate:null,isDoubleDay:false,completedToday:[]};setLastWeights({});setLogs([]);setVideoUrls({});S.set(KEYS.state,empty);S.set(KEYS.weights,{});S.set(KEYS.logs,[]);S.set(KEYS.videos,{});S.set(KEYS.sessions,0);setSessionCount(0);clearDraft();setDraftSession(null);setShowSettings(false);setShowHist(false)};
 var exNameLookup=function(id){var allEx={};Object.keys(SESSIONS).forEach(function(k){SESSIONS[k].exercises.forEach(function(ex){allEx[ex.id]=ex.name})});return allEx[id]||id};
 
 var rec=getRec();

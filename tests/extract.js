@@ -49,7 +49,7 @@ var EXPORTS = [
   'getProgression', 'getSuggestedLoad', 'getFatigueTrend',
   // supporting functions the fixtures lean on
   'getWorkingWeight', 'getExHistory', 'getPeriodPhase', 'getSessionCount',
-  'computeNextSession', 'nextCycleState',
+  'computeNextSession', 'nextCycleState', 'deriveCycleState',
   'countTrainingToday', 'getBalanceAdvisory',
   // section 3 config the spine fixtures read
   'SESSIONS', 'FEEL', 'getLocalDateKey',
