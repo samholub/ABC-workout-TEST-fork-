@@ -2,7 +2,7 @@
 // files each carry their own literal copy of the number instead of sharing
 // a symbol. tests/gate.js fails the build if they disagree or if index.html
 // changed without this number moving.
-var APP_VERSION = 85;
+var APP_VERSION = 86;
 var CACHE_NAME = 'abc-workout-v' + APP_VERSION;
 // Spoken-cue clips (audio/) live in their own cache so a version bump does
 // not throw them away; bump this name only when the clips are re-recorded.
@@ -84,32 +84,39 @@ self.addEventListener('activate', function(event) {
 self.addEventListener('fetch', function(event) {
   var url = event.request.url;
   if (event.request.mode === 'navigate') {
-    // Network first, so a deploy is live on the next open. Row 60: on a weak
-    // connection serve the cached page after 3s and let the network response
-    // refresh the cache in the background. Only an ok, same-origin response is
-    // cached (row 13: never a captive portal's page).
-    var net = fetch(event.request).then(function(response) {
+    // Row 93: open instantly from the cached page, fetch the live one in the
+    // background and keep it. If its APP_VERSION differs, tell the page, which
+    // reloads itself once it is on Home with no workout open. Only an ok,
+    // same-origin response is cached (row 13: never a captive portal's page).
+    var req = event.request;
+    var net = fetch(req).then(function(response) {
       if (response.ok && response.type === 'basic') {
         var copy = response.clone();
-        caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, copy); });
+        return caches.open(CACHE_NAME).then(function(cache) { return cache.put(req, copy); }).then(function() { return response; });
       }
       return response;
     });
-    event.waitUntil(net.catch(function() {}));
-    var fromNet = net.then(function(response) {
-      if (response.ok) return response;
-      return caches.match(event.request).then(function(cached) { return cached || response; });
-    }).catch(function() {
-      return caches.match(event.request).then(function(cached) {
-        return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+    event.respondWith(caches.match(req, { ignoreSearch: true }).then(function(cached) {
+      if (cached) {
+        var old = cached.clone();
+        event.waitUntil(net.then(function(response) {
+          if (!response.ok || response.type !== 'basic') return;
+          return Promise.all([old.text(), response.clone().text()]).then(function(t) {
+            var v = function(x) { var m = /var APP_VERSION=(\d+);/.exec(x); return m ? m[1] : null; };
+            var nv = v(t[1]);
+            if (nv && nv !== v(t[0])) {
+              return self.clients.matchAll({ type: 'window' }).then(function(cs) {
+                cs.forEach(function(c) { c.postMessage({ type: 'update', version: nv }); });
+              });
+            }
+          });
+        }).catch(function() {}));
+        return cached;
+      }
+      return net.catch(function() {
+        return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
       });
-    });
-    var slow = new Promise(function(resolve) {
-      setTimeout(function() {
-        caches.match(event.request).then(function(cached) { if (cached) resolve(cached); });
-      }, 3000);
-    });
-    event.respondWith(Promise.race([fromNet, slow]));
+    }));
     return;
   }
   if (url.indexOf(self.location.origin) === 0 && url.indexOf('/audio/') !== -1) {
@@ -138,7 +145,7 @@ self.addEventListener('fetch', function(event) {
           caches.open(AUDIO_CACHE).then(function(cache) { cache.put(event.request, aclone); });
           return response;
         }
-        if (url.indexOf('fonts.gstatic.com') !== -1 ||
+        if (url.indexOf('fonts.gstatic.com') !== -1 || url.indexOf('fonts.googleapis.com') !== -1 ||
             url.indexOf('cdnjs.cloudflare.com') !== -1) {
           var clone = response.clone();
           caches.open(CACHE_NAME).then(function(cache) {
