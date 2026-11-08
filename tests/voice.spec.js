@@ -93,3 +93,51 @@ test('every possible cue key has a recorded clip', async function ({ page }) {
   var missing = keys.filter(function (k) { return !fs.existsSync(path.join(AUDIO, k + '.mp3')); });
   expect(missing).toEqual([]);
 });
+
+function fakeAudio() {
+  window.__played = [];
+  window.Audio = function () {
+    var el = this, ls = {};
+    this.src = '';
+    this.addEventListener = function (t, f) { (ls[t] = ls[t] || []).push(f); };
+    this.pause = function () {};
+    this.play = function () {
+      var m = /audio\/([^/]+)\.mp3$/.exec(el.src);
+      if (m) window.__played.push(m[1]);
+      Promise.resolve().then(function () { (ls.ended || []).forEach(function (f) { f(); }); });
+      return Promise.resolve();
+    };
+  };
+}
+
+// Row 65: after an exercise's last set there is a rest too, and its zero cue
+// is the next exercise.
+test('the rest after an exercise ends cues the next exercise', async function ({ page }) {
+  await page.addInitScript(fakeAudio);
+  await page.clock.install();
+  await page.goto('/index.html');
+  var played = function () { return page.evaluate(function () { return window.__played.slice(); }); };
+  await page.getByRole('button', { name: /^Session A/ }).last().click();
+  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  for (var i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: '8', exact: true }).nth(i).click();
+    await expect(page.getByText((i + 1) + '/9 sets', { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText(/^Next: Push-Ups \u00b7 3 sets of 8 to 15/)).toBeVisible();
+  await page.clock.fastForward(91000);
+  await expect.poll(played).toEqual(expect.arrayContaining(['next-push-ups-3-8-15', 'cue-pushup']));
+});
+
+// Row 66: in circuit mode the next exercise opens when the rest reaches zero.
+test('circuit mode opens the next exercise when the rest ends', async function ({ page }) {
+  await page.addInitScript(fakeAudio);
+  await page.clock.install();
+  await page.goto('/index.html');
+  await page.getByRole('button', { name: /^Session A/ }).last().click();
+  await page.getByRole('button', { name: /Circuit/ }).click();
+  await page.getByRole('button', { name: /Start Lifting/ }).click();
+  await page.getByRole('button', { name: '8', exact: true }).first().click();
+  await expect(page.getByText('3 sets x 8-15')).toHaveCount(0);
+  await page.clock.fastForward(91000);
+  await expect(page.getByText('3 sets x 8-15')).toBeVisible();
+});
